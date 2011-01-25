@@ -109,7 +109,7 @@ sub modify_file
 	close(INFILE);
 	close(OUTFILE) unless $dryrun;
 
-	rename(OUTFILE, INFILE);
+	rename($outfile, $infile) unless $dryrun;
 }
 
 # Generate cscope.files and cscope.out
