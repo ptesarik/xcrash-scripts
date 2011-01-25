@@ -3,6 +3,8 @@
 use warnings;
 use Parse::RecDescent;
 
+$dryrun = 0;
+
 $c_grammar=<<'EOF';
 
 call: <skip:''> identifier '(' expression(s /,/) ')' garbage(?)
@@ -71,7 +73,7 @@ sub modify_file
 	my $outfile = "$infile.new";
 
 	open(INFILE, "<$infile");
-	open(OUTFILE, ">$outfile");
+	open(OUTFILE, ">$outfile") unless $dryrun;
 
 	$rdline = 1;
 	foreach my $linenum (@$linearray) {
@@ -79,7 +81,7 @@ sub modify_file
 
 		my $line;
 		while (($line = <INFILE>) && $rdline++ < $linenum) {
-			print OUTFILE $line;
+			print OUTFILE $line unless $dryrun;
 		}
 
 		# Chop off all that precedes readmem
@@ -98,13 +100,14 @@ sub modify_file
 		transform($expr);
 		print OUTFILE $prefix,
 			$expr->{fn}, '(', join (',', @{$expr->{args}}), ')',
-			$expr->{suffix};
+			$expr->{suffix}
+			    unless $dryrun;
 	}
 	while(<INFILE>) {
-		print OUTFILE $_;
+		print OUTFILE $_ unless $dryrun;
 	}
 	close(INFILE);
-	close(OUTFILE);
+	close(OUTFILE) unless $dryrun;
 }
 
 # Generate cscope.files and cscope.out
