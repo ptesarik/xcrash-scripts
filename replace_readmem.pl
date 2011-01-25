@@ -29,13 +29,20 @@ operator: /[][#&|.!?:+*\/%<=>-]+/
 number: /[[:digit:]]+/
 	| /0x[[:xdigit:]]+/
 
-string	: m{(["'])		# a leading delimiter
+string	: m{"			# a leading delimiter
 	    (			# zero or more...
 	     \\.		# escaped anything
 	     |			# or
-	     [^"]		# anything but a delimiter
+	     [^"]		# anything but the delimiter
 	    )*
-	    \1}x
+	    "}x
+	| m{'			# a leading delimiter
+	    (			# zero or more...
+	     \\.		# escaped anything
+	     |			# or
+	     [^']		# anything but the delimiter
+	    )*
+	    '}x
 
 comment: m{//			# comment delimiter
 	    [^\n]*		# anything except a newline
