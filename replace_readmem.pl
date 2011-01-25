@@ -80,7 +80,7 @@ sub modify_file
 		next if $linenum <= $rdline;	# occasional duplicates
 
 		my $line;
-		while (($line = <INFILE>) && $rdline++ < $linenum) {
+		while (defined($line = <INFILE>) && $rdline++ < $linenum) {
 			print OUTFILE $line unless $dryrun;
 		}
 
