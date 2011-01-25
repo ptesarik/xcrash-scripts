@@ -130,5 +130,6 @@ $parser = new Parse::RecDescent($c_grammar)
 
 # Modify the files
 while ((my $file, $linearray) = each %calls) {
-	modify_file($file, $linearray);
+    print STDERR "Processing $file\n";
+    modify_file($file, $linearray);
 }
