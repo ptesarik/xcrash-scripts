@@ -60,11 +60,43 @@ garbage: /.+/s
 
 EOF
 
+sub replace_nonwhite
+{
+    (my $orig, $new) = @_;
+    $orig =~ /^\s*/;
+    my $prefix = $&;
+    $new =~ s/^\s*/$prefix/;
+    return $new;
+}
+
 sub transform
 {
-	my $expr = shift;
-# Look at $expr->{args}, modify their number and type,
-# change $expr->{fn} if necessary, etc.
+    my $expr = shift;
+    my $args = $expr->{args};
+
+    my $size = $args->[3];
+    $size =~ s/^\s+//;
+    $size =~ s/\s*$//;
+
+    if ($size =~ m{sizeof\(
+		(?'type'				# store the match
+		 short|ushort|int|uint			# short & int
+		 |long|ulong|unsigned long|longlong	# long & long long
+		 |[[:alpha:] ]+\*			# pointer types
+		)}x) {
+	my $type = $+{'type'};
+	$type = "ulong" if $type eq "unsigned long";
+	$type = "ptr" if $type =~ /\*$/;
+
+	my $count = 1;
+	if ($size =~ /^sizeof\([^)]+\)\s*\*\s*(?'count'.*)
+			|(?'count'.*)\s*\*\s*sizeof\([^)]+\)$/x) {
+	    $count = $+{'count'};
+	}
+
+	$expr->{fn} = "read$type";
+	$args->[3] = replace_nonwhite($args->[3], $count);
+    }
 }
 
 sub modify_file
