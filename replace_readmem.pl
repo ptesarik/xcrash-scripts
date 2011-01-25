@@ -108,6 +108,8 @@ sub modify_file
 	}
 	close(INFILE);
 	close(OUTFILE) unless $dryrun;
+
+	rename(OUTFILE, INFILE);
 }
 
 # Generate cscope.files and cscope.out
