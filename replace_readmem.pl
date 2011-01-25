@@ -15,7 +15,7 @@ expression: part(s?)
  
 part:	subexp
 	| '(' expression(s /,/) ')'
-		{ '(' . join('',@{$item[2]}) . ')' }
+		{ '(' . join(',',@{$item[2]}) . ')' }
 	| comment
 		{ ' ' }
 	|/\s+(\\\n)?/
