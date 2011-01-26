@@ -18,3 +18,15 @@ quilt new replace-readmem.patch
 quilt add *.c *.h
 "$scriptdir"/replace_readmem.pl
 quilt refresh -p ab --no-timestamp
+
+# Introduce target types
+quilt import "$scriptdir"/target-types.patch
+quilt push
+
+# Replace
+quilt new target-types-use.patch
+quilt add *.c *.h
+for f in `cat cscope.files`; do
+	"$scriptdir"/target-types.pl "$f" > "$f".new && mv "$f".new "$f"
+done
+quilt refresh -p ab --no-timestamp
