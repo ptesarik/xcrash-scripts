@@ -144,9 +144,6 @@ sub modify_file
 	rename($outfile, $infile) unless $dryrun;
 }
 
-# Generate cscope.files and cscope.out
-system('make cscope < /dev/null');
-
 # Find all calls to readmem()
 my %calls;
 open(CALLS, 'cscope -L -3readmem|') or die "Cannot get readmem call sites";

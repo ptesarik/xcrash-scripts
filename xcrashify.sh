@@ -6,6 +6,9 @@
 # assume that scripts are accessible the same way as this script
 scriptdir=`dirname "$0"`
 
+# Generate cscope.files and cscope.out
+make cscope < /dev/null
+
 # Add readlong, readint, etc. functions
 quilt import "$scriptdir"/readtype.patch
 quilt push
