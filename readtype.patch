@@ -1,0 +1,263 @@
+---
+ Makefile |    9 ++++--
+ cross.c  |   93 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ defs.h   |   84 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 184 insertions(+), 2 deletions(-)
+
+--- /dev/null
++++ b/cross.c
+@@ -0,0 +1,93 @@
++/* cross.c - functions for cross-platform functionality
++ *
++ * Copyright (C) 2011 Petr Tesarik
++ * Copyright (C) 2011 Novell, Inc. All rights reserved.
++ *
++ * This program is free software; you can redistribute it and/or modify
++ * it under the terms of the GNU General Public License as published by
++ * the Free Software Foundation; either version 2 of the License, or
++ * (at your option) any later version.
++ *
++ * This program is distributed in the hope that it will be useful,
++ * but WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++ * GNU General Public License for more details.
++ */
++
++#include "defs.h"
++
++#if __BYTE_ORDER != TARGET_BYTE_ORDER
++
++/* Helpers for converting endianity in a buffer
++ */
++void
++buffer_bswap_16(ushort *buffer, int count)
++{
++	int i;
++	for (i = 0; i < count; ++buffer, ++i)
++		*buffer = bswap_16(*buffer);
++}
++
++void
++buffer_bswap_32(uint *buffer, int count)
++{
++	int i;
++	for (i = 0; i < count; ++buffer, ++i)
++		*buffer = bswap_32(*buffer);
++}
++
++void
++buffer_bswap_64(ulong *buffer, int count)
++{
++	int i;
++	for (i = 0; i < count; ++buffer, ++i)
++		*buffer = bswap_64(*buffer);
++}
++
++#endif
++
++/* Functions for memory reads with endianity conversions
++ */
++int
++readshort(ulonglong addr, int memtype, void *buffer, int count,
++	  char *type, ulong error_handle)
++{
++	int ret = readmem(addr, memtype, buffer, count * sizeof(short),
++			  type, error_handle);
++	if (ret)
++		buffer_ttohs((ushort*)buffer, count);
++	return ret;
++}
++
++int
++readint(ulonglong addr, int memtype, void *buffer, int count,
++	char *type, ulong error_handle)
++{
++	int ret = readmem(addr, memtype, buffer, count * sizeof(int),
++			  type, error_handle);
++	if (ret)
++		buffer_ttohi((uint*)buffer, count);
++	return ret;
++}
++
++int
++readlong(ulonglong addr, int memtype, void *buffer, int count,
++	 char *type, ulong error_handle)
++{
++	int ret = readmem(addr, memtype, buffer, count * sizeof(long),
++			  type, error_handle);
++	if (ret)
++		buffer_ttohl((ulong*)buffer, count);
++	return ret;
++}
++
++int
++readulonglong(ulonglong addr, int memtype, void *buffer, int count,
++	      char *type, ulong error_handle)
++{
++	int ret = readmem(addr, memtype, buffer, count * sizeof(long long),
++			  type, error_handle);
++	if (ret)
++		buffer_ttohll((ulonglong*)buffer, count);
++	return ret;
++}
+--- a/defs.h
++++ b/defs.h
+@@ -47,6 +47,7 @@
+ #include <sys/wait.h>
+ #include <sys/time.h>
+ #include <execinfo.h> /* backtrace() */
++#include <endian.h>
+ 
+ #define BASELEVEL_REVISION  "4.0"
+ 
+@@ -61,30 +62,48 @@
+ #endif
+ 
+ #ifdef X86
++#define _32BIT_
++#define TARGET_BYTE_ORDER	__LITTLE_ENDIAN
+ #define NR_CPUS  (256)
+ #endif
+ #ifdef X86_64
++#define _64BIT_
++#define TARGET_BYTE_ORDER	__LITTLE_ENDIAN
+ #define NR_CPUS  (4096)
+ #endif
+ #ifdef ALPHA
++#define _64BIT_
++#define TARGET_BYTE_ORDER	__LITTLE_ENDIAN
+ #define NR_CPUS  (64)
+ #endif
+ #ifdef PPC
++#define _32BIT_
++#define TARGET_BYTE_ORDER	__BIG_ENDIAN
+ #define NR_CPUS  (32)
+ #endif
+ #ifdef IA64
++#define _64BIT_
++#define TARGET_BYTE_ORDER	__LITTLE_ENDIAN
+ #define NR_CPUS  (4096)
+ #endif
+ #ifdef PPC64
++#define _64BIT_
++#define TARGET_BYTE_ORDER	__BIG_ENDIAN
+ #define NR_CPUS  (1024)
+ #endif
+ #ifdef S390
++#define _32BIT_
++#define TARGET_BYTE_ORDER	__BIG_ENDIAN
+ #define NR_CPUS  (64)
+ #endif
+ #ifdef S390X
++#define _64BIT_
++#define TARGET_BYTE_ORDER	__BIG_ENDIAN
+ #define NR_CPUS  (64)
+ #endif
+ #ifdef ARM
++#define _32BIT_
++#define TARGET_BYTE_ORDER	__LITTLE_ENDIAN
+ #define NR_CPUS  (4)
+ #endif
+ 
+@@ -5031,4 +5050,69 @@ extern int have_full_symbols(void);
+ #define XEN_HYPERVISOR_ARCH 
+ #endif
+ 
++/*
++ * cross.c
++ */
++
++#if __BYTE_ORDER == TARGET_BYTE_ORDER
++
++#define ttohs(x)	(x)
++#define ttohi(x)	(x)
++#define ttohl(x)	(x)
++#define ttohll(x)	(x)
++
++#define buffer_ttohs(b,c)	do { } while(0)
++#define buffer_ttohi(b,c)	do { } while(0)
++#define buffer_ttohl(b,c)	do { } while(0)
++#define buffer_ttohll(b,c)	do { } while(0)
++
++#else
++
++#include <byteswap.h>
++
++void buffer_bswap_16(ushort *, int);
++void buffer_bswap_32(uint *, int);
++void buffer_bswap_64(ulong *, int);
++
++#if defined(_32BIT_)
++
++#define ttohs(x)	bswap_16(x)
++#define ttohi(x)	bswap_32(x)
++#define ttohl(x)	bswap_32(x)
++#define ttohll(x)	bswap_64(x)
++
++#define buffer_ttohs(b,c)	buffer_bswap_16(b,c)
++#define buffer_ttohi(b,c)	buffer_bswap_32(b,c)
++#define buffer_ttohl(b,c)	buffer_bswap_32(b,c)
++#define buffer_ttohll(b,c)	buffer_bswap_64(b,c)
++
++#elif defined(_64BIT_)
++
++#define ttohs(x)	bswap_16(x)
++#define ttohi(x)	bswap_32(x)
++#define ttohl(x)	bswap_64(x)
++#define ttohll(x)	bswap_64(x)
++
++#define buffer_ttohs(b,c)	buffer_bswap_16(b,c)
++#define buffer_ttohi(b,c)	buffer_bswap_32(b,c)
++#define buffer_ttohl(b,c)	buffer_bswap_64(b,c)
++#define buffer_ttohll(b,c)	buffer_bswap_64(b,c)
++
++#else
++# error "Please define either _32BIT_ or _64BIT_ for the target platform."
++#endif
++
++#endif /* __BYTE_ORDER == TARGET_BYTE_ORDER */
++
++int readshort(ulonglong, int, void *, int, char *, ulong);
++int readint(ulonglong, int, void *, int, char *, ulong);
++int readlong(ulonglong, int, void *, int, char *, ulong);
++int readlonglong(ulonglong, int, void *, int, char *, ulong);
++
++#define readushort	readshort
++#define readuint	readint
++#define readulong	readlong
++#define readptr		readlong
++#define readulonglong	readlonglong
++
+ #endif /* !GDB_COMMON */
+--- a/Makefile
++++ b/Makefile
+@@ -96,7 +96,8 @@ CFILES=main.c tools.c global_data.c memo
+ 	netdump.c diskdump.c xendump.c unwind.c unwind_decoder.c \
+ 	unwind_x86_32_64.c unwind_arm.c \
+ 	xen_hyper.c xen_hyper_command.c xen_hyper_global_data.c \
+-	xen_hyper_dump_tables.c kvmdump.c qemu.c qemu-load.c
++	xen_hyper_dump_tables.c kvmdump.c qemu.c qemu-load.c \
++	cross.c
+ 
+ SOURCE_FILES=${CFILES} ${GENERIC_HFILES} ${MCORE_HFILES} \
+ 	${REDHAT_CFILES} ${REDHAT_HFILES} ${UNWIND_HFILES} \
+@@ -113,7 +114,8 @@ OBJECT_FILES=main.o tools.o global_data.
+ 	lkcd_x86_trace.o unwind_v1.o unwind_v2.o unwind_v3.o \
+ 	unwind_x86_32_64.o unwind_arm.o \
+ 	xen_hyper.o xen_hyper_command.o xen_hyper_global_data.o \
+-	xen_hyper_dump_tables.o kvmdump.o qemu.o qemu-load.o
++	xen_hyper_dump_tables.o kvmdump.o qemu.o qemu-load.o \
++	cross.o
+ 
+ # These are the current set of crash extensions sources.  They are not built
+ # by default unless the third command line of the "all:" stanza is uncommented.
+@@ -501,6 +503,9 @@ xen_hyper_global_data.o: ${GENERIC_HFILE
+ xen_hyper_dump_tables.o: ${GENERIC_HFILES} xen_hyper_dump_tables.c
+ 	cc -c ${CRASH_CFLAGS} xen_hyper_dump_tables.c ${WARNING_OPTIONS} ${WARNING_ERROR}
+ 
++cross.o: ${GENERIC_HFILES} ${REDHAT_HFILES} cross.c
++	cc -c ${CRASH_CFLAGS} cross.c ${WARNING_OPTIONS} ${WARNING_ERROR}
++
+ ${PROGRAM}: force
+ 	@make --no-print-directory all
+ 

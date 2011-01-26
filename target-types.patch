@@ -1,0 +1,37 @@
+---
+ defs.h |   24 ++++++++++++++++++++++++
+ 1 file changed, 24 insertions(+)
+
+--- a/defs.h
++++ b/defs.h
+@@ -107,6 +107,30 @@
+ #define NR_CPUS  (4)
+ #endif
+ 
++#if defined(_32BIT_)
++
++typedef  int16_t tshort;
++typedef uint16_t tushort;
++typedef  int32_t tint;
++typedef uint32_t tuint;
++typedef  int32_t tlong;
++typedef uint32_t tulong;
++typedef  int64_t tlonglong;
++typedef uint64_t tulonglong;
++
++#elif defined(_64BIT_)
++
++typedef  int16_t tshort;
++typedef uint16_t tushort;
++typedef  int32_t tint;
++typedef uint32_t tuint;
++typedef  int64_t tlong;
++typedef uint64_t tulong;
++typedef  int64_t tlonglong;
++typedef uint64_t tulonglong;
++
++#endif
++
+ #define BUFSIZE  (1500)
+ #define NULLCHAR ('\0')
+ 
