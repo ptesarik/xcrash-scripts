@@ -27,6 +27,8 @@ quilt push
 quilt new target-types-use.patch
 quilt add *.c *.h
 for f in `cat cscope.files`; do
-	"$scriptdir"/target-types.pl "$f" > "$f".new && mv "$f".new "$f"
+	if [ "$f" != configure.c ]; then
+		"$scriptdir"/target-types.pl "$f" > "$f".new && mv "$f".new "$f"
+	fi
 done
 quilt refresh -p ab --no-timestamp
