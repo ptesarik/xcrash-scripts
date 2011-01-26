@@ -6,8 +6,8 @@ my $gdb_off = -1;
 my $if_nesting = 0;
 
 while (<>) {
-    # Do not touch this typedef:
-    if (/^\s*typedef .*ulonglong\s*;/) {
+    # Do not touch these typedefs:
+    if (/^\s*typedef\b.*\b(ulonglong|[su]8|[su]16|[su]32|[su]64|[su]leb128_t)\s*;/) {
 	print;
 	next;
     }
@@ -38,18 +38,27 @@ while (<>) {
 	next;
     }
 
-    s/\bshort unsigned int\b/tushort/g;
+    # long long types
     s/\bunsigned long long\b/tulonglong/g;
-    s/\bunsigned int\b/tuint/g;
+    s/\blong long int\b/tlonglong/g;
     s/\blong long\b/tlonglong/g;
-    s/\bunsigned long\b/tulonglong/g;
-    s/\bshort\b/tshort/g;
-    s/\bushort\b/tushort/g;
-    s/\bint\b/tint/g;
-    s/\buint\b/tuint/g;
-    s/\blong\b/tlong/g;
-    s/\bulong\b/tulong/g;
     s/\blonglong\b/tlonglong/g;
     s/\bulonglong\b/tulonglong/g;
+
+    # long types
+    s/\bunsigned long\b/tulong/g;
+    s/\blong\b(?!\s*double)/tlong/g;
+    s/\bulong\b/tulong/g;
+
+    # short types
+    s/\bshort unsigned int\b/tushort/g;
+    s/\bunsigned short\b/tushort/g;
+    s/\bshort\b/tshort/g;
+    s/\bushort\b/tushort/g;
+
+    # int types
+    s/\bunsigned int\b/tuint/g;
+    s/\bint\b/tint/g;
+    s/\buint\b/tuint/g;
     print;
 }
