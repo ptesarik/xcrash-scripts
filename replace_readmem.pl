@@ -107,12 +107,12 @@ sub modify_file
 	open(INFILE, "<$infile");
 	open(OUTFILE, ">$outfile") unless $dryrun;
 
-	$rdline = 1;
+	$rdline = 0;
 	foreach my $linenum (@$linearray) {
 		next if $linenum <= $rdline;	# occasional duplicates
 
 		my $line;
-		while (defined($line = <INFILE>) && $rdline++ < $linenum) {
+		while (defined($line = <INFILE>) && ++$rdline < $linenum) {
 			print OUTFILE $line unless $dryrun;
 		}
 
