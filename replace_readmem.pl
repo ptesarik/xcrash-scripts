@@ -119,7 +119,7 @@ sub modify_file
 		# Chop off all that precedes readmem
 		if( ! ($line =~ s/(.*?)(\breadmem\b.*)/$2/) ) {
 			print "readmem not found at $infile:$linenum\n";
-			print $line;
+			print OUTFILE $line unless $dryrun;
 			next;
 		}
 		my $prefix = $1;
