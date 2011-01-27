@@ -10,25 +10,25 @@
  
 +#if defined(_32BIT_)
 +
-+typedef  int16_t tshort;
-+typedef uint16_t tushort;
-+typedef  int32_t tint;
-+typedef uint32_t tuint;
-+typedef  int32_t tlong;
-+typedef uint32_t tulong;
-+typedef  int64_t tlonglong;
-+typedef uint64_t tulonglong;
++typedef  int16_t tshort __attribute__ ((aligned (2)));
++typedef uint16_t tushort __attribute__ ((aligned (2)));
++typedef  int32_t tint __attribute__ ((aligned (4)));
++typedef uint32_t tuint __attribute__ ((aligned (4)));
++typedef  int32_t tlong __attribute__ ((aligned (4)));
++typedef uint32_t tulong __attribute__ ((aligned (4)));
++typedef  int64_t tlonglong __attribute__ ((aligned (8)));
++typedef uint64_t tulonglong __attribute__ ((aligned (8)));
 +
 +#elif defined(_64BIT_)
 +
-+typedef  int16_t tshort;
-+typedef uint16_t tushort;
-+typedef  int32_t tint;
-+typedef uint32_t tuint;
-+typedef  int64_t tlong;
-+typedef uint64_t tulong;
-+typedef  int64_t tlonglong;
-+typedef uint64_t tulonglong;
++typedef  int16_t tshort __attribute__ ((aligned (2)));
++typedef uint16_t tushort __attribute__ ((aligned (2)));
++typedef  int32_t tint __attribute__ ((aligned (4)));
++typedef uint32_t tuint __attribute__ ((aligned (4)));
++typedef  int64_t tlong __attribute__ ((aligned (8)));
++typedef uint64_t tulong __attribute__ ((aligned (8)));
++typedef  int64_t tlonglong __attribute__ ((aligned (8)));
++typedef uint64_t tulonglong __attribute__ ((aligned (8)));
 +
 +#endif
 +
