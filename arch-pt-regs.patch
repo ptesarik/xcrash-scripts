@@ -1,0 +1,221 @@
+Add pt_regs for every platform
+
+Add the definition (with platform-independent types) for every platform.
+
+Signed-off-by: Bernhard Walle <bwalle@suse.de>
+Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
+
+---
+ defs.h |  203 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 203 insertions(+)
+
+--- a/defs.h
++++ b/defs.h
+@@ -4601,4 +4601,207 @@ extern int have_full_symbols(void);
+ #define readulong	readlong
+ #define readptr		readlong
+ #define readulonglong	readlonglong
++/*
++ * struct pt_regs for every platform
++ */
++
++struct pt_regs_x86 {
++        int32_t ebx;
++        int32_t ecx;
++        int32_t edx;
++        int32_t esi;
++        int32_t edi;
++        int32_t ebp;
++        int32_t eax;
++        int32_t xds;
++        int32_t xes;
++        int32_t xfs;
++        int32_t orig_eax;
++        int32_t eip;
++        int32_t  xcs;
++        int32_t eflags;
++        int32_t esp;
++        int32_t  xss;
++};
++
++struct pt_regs_x86_64 {
++	uint64_t r15;
++	uint64_t r14;
++	uint64_t r13;
++	uint64_t r12;
++	uint64_t rbp;
++	uint64_t rbx;
++	uint64_t r11;
++	uint64_t r10;
++	uint64_t r9;
++	uint64_t r8;
++	uint64_t rax;
++	uint64_t rcx;
++	uint64_t rdx;
++	uint64_t rsi;
++	uint64_t rdi;
++	uint64_t orig_rax;
++	uint64_t rip;
++	uint64_t cs;
++	uint64_t eflags;
++	uint64_t rsp;
++	uint64_t ss;
++};
++
++/* don't use the name ia64_fpreg to avoid a name clash with IA64 headers */
++typedef struct {
++        union {
++                uint64_t bits[2];
++                long double __dummy;    /* force 16-byte alignment */
++        } u;
++} ia64_fpreg_t;
++
++struct pt_regs_ia64 {
++	uint64_t b6;
++	uint64_t b7;
++	uint64_t ar_csd;
++	uint64_t ar_ssd;
++	uint64_t r8;
++	uint64_t r9;
++	uint64_t r10;
++	uint64_t r11;
++	uint64_t cr_ipsr;
++	uint64_t cr_iip;
++	uint64_t cr_ifs;
++	uint64_t ar_unat;
++	uint64_t ar_pfs;
++	uint64_t ar_rsc;
++	uint64_t ar_rnat;
++	uint64_t ar_bspstore;
++	uint64_t pr;
++	uint64_t b0;
++	uint64_t loadrs;
++	uint64_t r1;
++	uint64_t r12;
++	uint64_t r13;
++	uint64_t ar_fpsr;
++	uint64_t r15;
++	uint64_t r14;
++	uint64_t r2;
++	uint64_t r3;
++	uint64_t r16;
++	uint64_t r17;
++	uint64_t r18;
++	uint64_t r19;
++	uint64_t r20;
++	uint64_t r21;
++	uint64_t r22;
++	uint64_t r23;
++	uint64_t r24;
++	uint64_t r25;
++	uint64_t r26;
++	uint64_t r27;
++	uint64_t r28;
++	uint64_t r29;
++	uint64_t r30;
++	uint64_t r31;
++	uint64_t ar_ccv;
++	ia64_fpreg_t f6;
++	ia64_fpreg_t f7;
++	ia64_fpreg_t f8;
++	ia64_fpreg_t f9;
++	ia64_fpreg_t f10;
++	ia64_fpreg_t f11;
++};
++
++struct pt_regs_ppc {
++	uint32_t gpr[32];
++	uint32_t nip;
++	uint32_t msr;
++	uint32_t orig_gpr3;
++	uint32_t ctr;
++	uint32_t link;
++	uint32_t xer;
++	uint32_t ccr;
++	uint32_t mq;
++	uint32_t trap;
++	uint32_t dar;
++	uint32_t dsisr;
++	uint32_t result;
++};
++
++struct pt_regs_ppc64 {
++	uint64_t gpr[32];
++	uint64_t nip;
++	uint64_t msr;
++	uint64_t orig_gpr3;
++	uint64_t ctr;
++	uint64_t link;
++	uint64_t xer;
++	uint64_t ccr;
++	uint64_t softe;
++	uint64_t trap;
++	uint64_t dar;
++	uint64_t dsisr;
++	uint64_t result;
++};
++
++struct pt_regs_alpha {
++	uint64_t r0;
++	uint64_t r1;
++	uint64_t r2;
++	uint64_t r3;
++	uint64_t r4;
++	uint64_t r5;
++	uint64_t r6;
++	uint64_t r7;
++	uint64_t r8;
++	uint64_t r19;
++	uint64_t r20;
++	uint64_t r21;
++	uint64_t r22;
++	uint64_t r23;
++	uint64_t r24;
++	uint64_t r25;
++	uint64_t r26;
++	uint64_t r27;
++	uint64_t r28;
++	uint64_t hae;
++	uint64_t trap_a0;
++	uint64_t trap_a1;
++	uint64_t trap_a2;
++	uint64_t ps;
++	uint64_t pc;
++	uint64_t gp;
++	uint64_t r16;
++	uint64_t r17;
++	uint64_t r18;
++};
++
++#define NUM_GPRS_S390	16
++
++typedef struct {
++        uint32_t mask;
++        uint32_t addr;
++} __attribute__ ((aligned(8))) psw_s390_t;
++
++struct pt_regs_s390 {
++	uint32_t args[1];
++	psw_s390_t psw;
++	uint32_t gprs[NUM_GPRS_S390];
++	uint32_t orig_gpr2;
++	uint16_t ilc;
++	uint16_t trap;
++};
++
++typedef struct {
++        uint64_t mask;
++        uint64_t addr;
++} __attribute__ ((aligned(8))) psw_s390x_t;
++
++
++struct pt_regs_s390x {
++    	uint64_t args[1];
++	psw_s390x_t psw;
++	uint64_t gprs[NUM_GPRS_S390];
++	uint64_t orig_gpr2;
++	uint16_t ilc;
++	uint16_t trap;
++};
++
+ #endif /* !GDB_COMMON */

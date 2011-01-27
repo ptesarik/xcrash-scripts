@@ -34,6 +34,10 @@ for f in `cat cscope.files`; do
 done
 quilt refresh -p ab --no-timestamp
 
+# Provide a platform-independent struct pt_regs
+quilt import "$scriptdir"/arch-pt-regs.patch
+quilt push
+
 # Configure GDB_CONF_FLAGS from configure
 # (sent upstreams already)
 quilt import "$scriptdir"/configure-gdb-conf-flags.patch
