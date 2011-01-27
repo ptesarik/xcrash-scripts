@@ -30,7 +30,7 @@ quilt push
 quilt new target-types-use.patch
 quilt add *.c *.h
 for f in `cat cscope.files`; do
-	if [ "$f" != configure.c -a "${f#va}" == "$f" -a "${f#qemu}" == "$f" -a "${f#kvm}" == "$f" ]; then
+	if [ "$f" != configure.c -a "${f#va}" == "$f" -a "${f#qemu}" == "$f" -a "$f" != kvmdump.h ]; then
 		"$scriptdir"/target-types.pl "$f" > "$f".new && mv "$f".new "$f"
 	fi
 done
