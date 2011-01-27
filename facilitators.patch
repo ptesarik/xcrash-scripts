@@ -1,0 +1,29 @@
+---
+ defs.h |   16 ++++++++--------
+ 1 file changed, 8 insertions(+), 8 deletions(-)
+
+--- a/defs.h
++++ b/defs.h
+@@ -1771,14 +1771,14 @@ struct builtin_debug_table {
+  *  Facilitators for pulling correctly-sized data out of a buffer at a
+  *  known address. 
+  */
+-#define INT(ADDR)       *((int *)((char *)(ADDR)))
+-#define UINT(ADDR)      *((uint *)((char *)(ADDR)))
+-#define LONG(ADDR)      *((long *)((char *)(ADDR)))
+-#define ULONG(ADDR)     *((ulong *)((char *)(ADDR)))
+-#define ULONGLONG(ADDR) *((ulonglong *)((char *)(ADDR)))
+-#define ULONG_PTR(ADDR) *((ulong **)((char *)(ADDR)))
+-#define USHORT(ADDR)    *((ushort *)((char *)(ADDR)))
+-#define SHORT(ADDR)     *((short *)((char *)(ADDR)))
++#define INT(ADDR)       ((int)ttohi(*((int *)((char *)(ADDR)))))
++#define UINT(ADDR)      ((uint)ttohi(*((uint *)((char *)(ADDR)))))
++#define LONG(ADDR)      ((long)ttohl(*((long *)((char *)(ADDR)))))
++#define ULONG(ADDR)     ((ulong)ttohl(*((ulong *)((char *)(ADDR)))))
++#define ULONGLONG(ADDR) ((ulonglong)ttohll(*((ulonglong *)((char *)(ADDR)))))
++#define ULONG_PTR(ADDR) ((ulong*)ttohl(*((ulong *)((char *)(ADDR)))))
++#define USHORT(ADDR)    ((ushort)ttohs(*((ushort *)((char *)(ADDR)))))
++#define SHORT(ADDR)     ((short)ttohs(*((short *)((char *)(ADDR)))))
+ 
+ struct node_table {
+ 	int node_id;

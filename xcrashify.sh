@@ -16,6 +16,9 @@ remove="$scriptdir"/remove-block.pl
 quilt import "$scriptdir"/configure-gdb-conf-flags.patch
 quilt push
 
+quilt import "$scriptdir"/remove-VOID_PTR.patch
+quilt push
+
 ################################################################
 # Endianity-related problems
 
@@ -32,6 +35,10 @@ quilt new replace-readmem.patch
 quilt add *.c *.h
 "$scriptdir"/replace_readmem.pl
 quilt refresh -p ab --no-timestamp
+
+# Modify the "facilitator" macros
+quilt import "$scriptdir"/facilitators.patch
+quilt push
 
 ################################################################
 # Target types next...
