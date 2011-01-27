@@ -8,6 +8,17 @@ scriptdir=`dirname "$0"`
 subst="$scriptdir"/simple-subst.pl
 remove="$scriptdir"/remove-block.pl
 
+################################################################
+# Upstreamed patches first...
+
+# Configure GDB_CONF_FLAGS from configure
+# (sent upstreams already)
+quilt import "$scriptdir"/configure-gdb-conf-flags.patch
+quilt push
+
+################################################################
+# Endianity-related problems
+
 # Add readlong, readint, etc. functions
 quilt import "$scriptdir"/readtype.patch
 quilt push
@@ -21,6 +32,9 @@ quilt new replace-readmem.patch
 quilt add *.c *.h
 "$scriptdir"/replace_readmem.pl
 quilt refresh -p ab --no-timestamp
+
+################################################################
+# Target types next...
 
 # Introduce target types
 quilt import "$scriptdir"/target-types.patch
@@ -80,10 +94,8 @@ for f in $files; do
 done
 quilt refresh -p ab --no-timestamp
 
-# Configure GDB_CONF_FLAGS from configure
-# (sent upstreams already)
-quilt import "$scriptdir"/configure-gdb-conf-flags.patch
-quilt push
+################################################################
+# Build-time changes
 
 # Allow configuring for any target
 quilt import "$scriptdir"/configure-any-target.patch
