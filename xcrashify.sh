@@ -5,6 +5,8 @@
 
 # assume that scripts are accessible the same way as this script
 scriptdir=`dirname "$0"`
+subst="$scriptdir"/simple-subst.pl
+remove="$scriptdir"/remove-block.pl
 
 # Add readlong, readint, etc. functions
 quilt import "$scriptdir"/readtype.patch
@@ -37,6 +39,22 @@ quilt refresh -p ab --no-timestamp
 # Provide a platform-independent struct pt_regs
 quilt import "$scriptdir"/arch-pt-regs.patch
 quilt push
+
+# Use the new pt_regs definitions where possible
+quilt new pt-regs-ppc64.patch
+old='struct ppc64_pt_regs'
+new='struct pt_regs_ppc64'
+files=ppc64.c
+quilt add "$files"
+for f in $files; do
+    $subst "$old" "$new" "$f" > "$f".new && mv "$f".new "$f"
+done
+files=defs.h
+quilt add "$files"
+for f in $files; do
+    $remove "$old" "$f" > "$f".new && mv "$f".new "$f"
+done
+quilt refresh -p ab --no-timestamp
 
 # Configure GDB_CONF_FLAGS from configure
 # (sent upstreams already)
