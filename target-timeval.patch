@@ -1,0 +1,16 @@
+---
+ defs.h |    5 +++++
+ 1 file changed, 5 insertions(+)
+
+--- a/defs.h
++++ b/defs.h
+@@ -5139,4 +5139,9 @@ tint readlonglong(tulonglong, tint, void
+ #define readptr		readlong
+ #define readulonglong	readlonglong
+ 
++struct ttimeval {
++	tlong		tv_sec;		/* seconds */
++        tlong		tv_usec;	/* microseconds */
++};
++
+ #endif /* !GDB_COMMON */

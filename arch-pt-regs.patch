@@ -11,10 +11,10 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
 
 --- a/defs.h
 +++ b/defs.h
-@@ -4601,4 +4601,207 @@ extern int have_full_symbols(void);
- #define readulong	readlong
- #define readptr		readlong
- #define readulonglong	readlonglong
+@@ -5124,4 +5124,207 @@ struct ttimeval {
+         tlong		tv_usec;	/* microseconds */
+ };
+ 
 +/*
 + * struct pt_regs for every platform
 + */

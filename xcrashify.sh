@@ -54,6 +54,22 @@ quilt refresh -p ab --no-timestamp
 quilt import "$scriptdir"/unwind-x86-cleanups.patch
 quilt push
 
+# Introduce target timeval
+quilt import "$scriptdir"/target-timeval.patch
+quilt push
+
+quilt new target-timeval-use.patch
+old='struct timeval'
+new='struct ttimeval'
+files=*.[ch]
+quilt add "$files"
+for f in $files; do
+	if [ "$f" != remote.c -a "$f" != s390dbf.c ]; then
+	    $subst "$old" "$new" "$f" > "$f".new && mv "$f".new "$f"
+	fi
+done
+quilt refresh -p ab --no-timestamp
+
 # Provide a platform-independent struct pt_regs
 quilt import "$scriptdir"/arch-pt-regs.patch
 quilt push
