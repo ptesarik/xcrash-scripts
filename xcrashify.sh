@@ -36,6 +36,10 @@ for f in `cat cscope.files`; do
 done
 quilt refresh -p ab --no-timestamp
 
+# Type change needs some further fixups
+quilt import "$scriptdir"/unwind-x86-cleanups.patch
+quilt push
+
 # Provide a platform-independent struct pt_regs
 quilt import "$scriptdir"/arch-pt-regs.patch
 quilt push
