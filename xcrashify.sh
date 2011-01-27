@@ -33,3 +33,12 @@ for f in `cat cscope.files`; do
 	fi
 done
 quilt refresh -p ab --no-timestamp
+
+# Configure GDB_CONF_FLAGS from configure
+# (sent upstreams already)
+quilt import "$scriptdir"/configure-gdb-conf-flags.patch
+quilt push
+
+# Allow configuring for any target
+quilt import "$scriptdir"/configure-any-target.patch
+quilt push

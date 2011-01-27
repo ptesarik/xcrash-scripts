@@ -1,0 +1,136 @@
+---
+ configure.c |   84 +++++-------------------------------------------------------
+ 1 file changed, 7 insertions(+), 77 deletions(-)
+
+--- a/configure.c
++++ b/configure.c
+@@ -61,7 +61,6 @@ void unconfigure(void);
+ void set_warnings(int);
+ void show_configuration(void);
+ void target_rebuild_instructions(struct supported_gdb_version *, char *);
+-void arch_mismatch(struct supported_gdb_version *);
+ void get_current_configuration(struct supported_gdb_version *);
+ void makefile_setup(FILE **, FILE **);
+ void makefile_create(FILE **, FILE **);
+@@ -127,9 +126,6 @@ int name_to_target(char *);
+ #define TARGET_CFLAGS_PPC64  "TARGET_CFLAGS=-m64"
+ #define TARGET_CFLAGS_X86_64 "TARGET_CFLAGS="
+ #define TARGET_CFLAGS_ARM            "TARGET_CFLAGS=-D_FILE_OFFSET_BITS=64"
+-#define TARGET_CFLAGS_ARM_ON_X86     "TARGET_CFLAGS=-D_FILE_OFFSET_BITS=64"
+-#define TARGET_CFLAGS_ARM_ON_X86_64  "TARGET_CFLAGS=-m32 -D_FILE_OFFSET_BITS=64"
+-#define TARGET_CFLAGS_X86_ON_X86_64  "TARGET_CFLAGS=-m32 -D_FILE_OFFSET_BITS=64"
+ 
+ #define GDB_TARGET_X86    "GDB_CONF_FLAGS=--target=i686-pc-linux-gnu"
+ #define GDB_TARGET_ALPHA  "GDB_CONF_FLAGS=--target=alpha-linux-gnu"
+@@ -285,18 +281,6 @@ target_rebuild_instructions(struct suppo
+ }
+ 
+ void
+-arch_mismatch(struct supported_gdb_version *sp)
+-{
+-	fprintf(stderr,
+-	    "\nThe initial build in this source tree was for the %s architecture.\n",
+-		target_to_name(target_data.initial_gdb_target));
+-
+-	target_rebuild_instructions(sp, target_to_name(target_data.target));
+-
+-	exit(1);
+-}
+-
+-void
+ get_current_configuration(struct supported_gdb_version *sp)
+ {
+ 	FILE *fp;
+@@ -339,61 +323,15 @@ get_current_configuration(struct support
+ 	target_data.host = target_data.target;
+ 
+ 	if (target_data.target_as_param) {
+-		if ((target_data.target == X86 || target_data.target == X86_64) &&
+-		    (name_to_target((char *)target_data.target_as_param) == ARM)) {
+-			/* 
+-			 *  Debugging of ARM core files supported on X86, and on
+-			 *  X86_64 when built as a 32-bit executable.
+-			 */
+-			target_data.target = ARM;
+-		} else if ((target_data.target == X86_64) &&
+-			(name_to_target((char *)target_data.target_as_param) == X86)) {
+-			/*
+-			 *  Build an X86 crash binary on an X86_64 host.
+-			 */
+-			target_data.target = X86;
+-		} else if (name_to_target((char *)target_data.target_as_param) ==
+-			target_data.host) {
+-			if ((target_data.initial_gdb_target != UNKNOWN) &&
+-			    (target_data.host != target_data.initial_gdb_target))
+-				arch_mismatch(sp);
+-		} else {
+-			fprintf(stderr,
+-			    "\ntarget=%s is not supported on the %s host architecture\n\n",
+-				target_data.target_as_param,
+-				target_to_name(target_data.host));
+-			exit(1);
+-		}
+-        }
+-
++		target_data.target =
++			name_to_target((char *)target_data.target_as_param);
++        } else
+ 	/*
+ 	 *  Impose implied (sticky) target if an initial build has been
+ 	 *  done in the source tree.
+ 	 */
+-	if (target_data.initial_gdb_target && 
+-	    (target_data.target != target_data.initial_gdb_target)) {
+-		if ((target_data.initial_gdb_target == ARM) &&
+-		    (target_data.target != ARM)) {
+-			if ((target_data.target == X86) || 
+-			    (target_data.target == X86_64))
+-				target_data.target = ARM;
+-			else
+-				arch_mismatch(sp);
+-		}
+-		if ((target_data.target == ARM) &&
+-		    (target_data.initial_gdb_target != ARM))
+-			arch_mismatch(sp);
+-
+-		if ((target_data.initial_gdb_target == X86) &&
+-		    (target_data.target != X86)) {
+-			if (target_data.target == X86_64) 
+-				target_data.target = X86;
+-			else
+-				arch_mismatch(sp);
+-		}
+-		if ((target_data.target == X86) &&
+-		    (target_data.initial_gdb_target != X86))
+-			arch_mismatch(sp);
++	if (target_data.initial_gdb_target) {
++		target_data.target = target_data.initial_gdb_target;
+ 	}
+ 
+         if ((fp = fopen("Makefile", "r")) == NULL) {
+@@ -532,10 +470,7 @@ build_configure(struct supported_gdb_ver
+ 	{
+ 	case X86:
+ 		target = TARGET_X86;
+-		if (target_data.host == X86_64)
+-                        target_CFLAGS = TARGET_CFLAGS_X86_ON_X86_64;
+-                else
+-			target_CFLAGS = TARGET_CFLAGS_X86;
++		target_CFLAGS = TARGET_CFLAGS_X86;
+ 		gdb_conf_flags = GDB_TARGET_X86;
+ 		break;
+ 	case ALPHA:
+@@ -575,12 +510,7 @@ build_configure(struct supported_gdb_ver
+                 break;
+ 	case ARM:
+                 target = TARGET_ARM;
+-                if (target_data.host == X86)
+-                        target_CFLAGS = TARGET_CFLAGS_ARM_ON_X86;
+-                else if (target_data.host == X86_64)
+-                        target_CFLAGS = TARGET_CFLAGS_ARM_ON_X86_64;
+-		else
+-                        target_CFLAGS = TARGET_CFLAGS_ARM;
++                target_CFLAGS = TARGET_CFLAGS_ARM;
+ 		gdb_conf_flags = GDB_TARGET_ARM;
+                 break;
+ 	}
