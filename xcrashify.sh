@@ -60,6 +60,26 @@ for f in $files; do
 done
 quilt refresh -p ab --no-timestamp
 
+quilt new pt-regs-x86_64.patch
+old='struct pt_regs'
+new='struct pt_regs_x86_64'
+files=unwind_x86_64.h
+quilt add "$files"
+for f in $files; do
+    $remove "$old" "$f" | $subst "$old" "$new" > "$f".new && mv "$f".new "$f"
+done
+quilt refresh -p ab --no-timestamp
+
+quilt new use-ia64_fpreg_t.patch
+old='struct ia64_fpreg'
+new='ia64_fpreg_t'
+files="ia64.c lkcd_dump_v7.h lkcd_dump_v8.h lkcd_fix_mem.h unwind.c unwind.h"
+quilt add "$files"
+for f in $files; do
+    $subst "$old" "$new" "$f" > "$f".new && mv "$f".new "$f"
+done
+quilt refresh -p ab --no-timestamp
+
 # Configure GDB_CONF_FLAGS from configure
 # (sent upstreams already)
 quilt import "$scriptdir"/configure-gdb-conf-flags.patch
