@@ -59,7 +59,7 @@ quilt new target-types-use.patch
 files=`cat cscope.files`
 quilt add $files
 for f in $files; do
-	if [ "$f" != configure.c -a "${f#va}" == "$f" -a "${f#qemu}" == "$f" -a "$f" != kvmdump.h ]; then
+	if [ "$f" != configure.c -a "${f#va}" == "$f" -a "${f#qemu}" == "$f" -a "$f" != kvmdump.h -a "$f" != gdb_interface.c ]; then
 		"$scriptdir"/target-types.pl "$f" > "$f".new && mv "$f".new "$f"
 	fi
 done
@@ -155,7 +155,7 @@ quilt new target-printf-spec-use.patch
 files=`cat cscope.files`
 quilt add $files
 for f in $files; do
-	if [ "$f" != configure.c -a "${f#va}" == "$f" -a "${f#qemu}" == "$f" -a "$f" != kvmdump.h ]; then
+	if [ "$f" != configure.c -a "${f#va}" == "$f" -a "${f#qemu}" == "$f" -a "$f" != kvmdump.h  -a "$f" != gdb_interface.c ]; then
 		echo Processing $f
 		"$scriptdir"/printf-spec.pl "$f" > "$f".new && mv "$f".new "$f"
 	fi
