@@ -1,0 +1,53 @@
+Subject: Cleanup: GDB does not need syment
+
+The syment struct is not used for anything by the embedded GDB,
+so we can remove it completely.
+
+Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
+
+---
+ defs.h        |    5 ++---
+ gdb-7.0.patch |    4 +---
+ 2 files changed, 3 insertions(+), 6 deletions(-)
+
+--- a/defs.h
++++ b/defs.h
+@@ -1963,9 +1963,6 @@ struct alias_data {                 /* c
+ 		retaddr[i] = 0;						\
+ }
+ 
+-#endif /* !GDB_COMMON */
+-
+-
+ #define SYMBOL_NAME_USED (0x1)
+ #define MODULE_SYMBOL    (0x2)
+ #define IS_MODULE_SYMBOL(SYM)  ((SYM)->flags & MODULE_SYMBOL)
+@@ -1981,6 +1978,8 @@ struct syment {
+ 	unsigned char pad2;
+ };
+ 
++#endif /* !GDB_COMMON */
++
+ #define NAMESPACE_INIT     (1)
+ #define NAMESPACE_REUSE    (2)
+ #define NAMESPACE_FREE     (3)
+--- a/gdb-7.0.patch
++++ b/gdb-7.0.patch
+@@ -468,7 +468,7 @@
+    return returnval;
+  }
+  
+-@@ -4783,3 +4790,619 @@ Valid values are \"ask\", \"all\", \"can
++@@ -4783,3 +4790,617 @@ Valid values are \"ask\", \"all\", \"can
+  
+    observer_attach_executable_changed (symtab_observer_executable_changed);
+  }
+@@ -880,8 +880,6 @@
+ +	register struct objfile *objfile;
+ +	register struct minimal_symbol *m;
+ +	struct load_module *lm;
+-+	struct syment *sp;
+-+	struct syment *spx;
+ +	int external, subsequent, found;
+ +	off_t offset;
+ +	ulong value, adjusted;

@@ -19,6 +19,9 @@ quilt push
 quilt import "$scriptdir"/remove-VOID_PTR.patch
 quilt push
 
+quilt import "$scriptdir"/gdb-does-not-need-syment.patch
+quilt push
+
 ################################################################
 # Endianity-related problems
 
