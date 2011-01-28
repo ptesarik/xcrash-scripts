@@ -70,6 +70,8 @@ quilt import "$scriptdir"/unwind-x86-cleanups.patch
 quilt push
 quilt import "$scriptdir"/target-ptr-fixup.patch
 quilt push
+quilt import "$scriptdir"/gdb_interface-fixups.patch
+quilt push
 
 # Introduce target timeval
 quilt import "$scriptdir"/target-timeval.patch
