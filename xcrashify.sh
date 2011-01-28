@@ -51,9 +51,12 @@ quilt import "$scriptdir"/target-types.patch
 quilt push
 
 # Replace
+rm -f cscope.files cscope.out
+make cscope < /dev/null
 quilt new target-types-use.patch
-quilt add *.c *.h
-for f in `cat cscope.files`; do
+files=`cat cscope.files`
+quilt add $files
+for f in $files; do
 	if [ "$f" != configure.c -a "${f#va}" == "$f" -a "${f#qemu}" == "$f" -a "$f" != kvmdump.h ]; then
 		"$scriptdir"/target-types.pl "$f" > "$f".new && mv "$f".new "$f"
 	fi
