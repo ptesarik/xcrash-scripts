@@ -60,6 +60,8 @@ quilt refresh -p ab --no-timestamp
 # Type change needs some further fixups
 quilt import "$scriptdir"/unwind-x86-cleanups.patch
 quilt push
+quilt import "$scriptdir"/target-ptr-fixup.patch
+quilt push
 
 # Introduce target timeval
 quilt import "$scriptdir"/target-timeval.patch

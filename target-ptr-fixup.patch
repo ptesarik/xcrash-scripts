@@ -1,0 +1,15 @@
+---
+ memory.c |    2 --
+ 1 file changed, 2 deletions(-)
+
+--- a/memory.c
++++ b/memory.c
+@@ -224,8 +224,6 @@ mem_init(void)
+                 error(FATAL, "unsupported sizeof(tint): %d\n", sizeof(tint));
+         if ((sizeof(tlong) != SIZEOF_32BIT) && (sizeof(tlong) != SIZEOF_64BIT))
+                 error(FATAL, "unsupported sizeof(tlong): %d\n", sizeof(tlong));
+-        if (sizeof(void *) != sizeof(tlong))
+-                error(FATAL, "pointer size: %d is not sizeof(tlong): %d\n", sizeof(void *), sizeof(tlong));
+ 
+         DISPLAY_DEFAULT = (sizeof(tlong) == 8) ? DISPLAY_64 : DISPLAY_32;
+ }
