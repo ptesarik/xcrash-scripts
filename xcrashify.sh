@@ -85,6 +85,20 @@ for f in $files; do
 done
 quilt refresh -p ab --no-timestamp
 
+# Introduce target off_t
+quilt import "$scriptdir"/target-off_t.patch
+quilt push
+
+quilt new target-off_t-use.patch
+old='off_t'
+new='toff_t'
+files=diskdump.h
+quilt add "$files"
+for f in $files; do
+	$subst "$old" "$new" "$f" > "$f".new && mv "$f".new "$f"
+done
+quilt refresh -p ab --no-timestamp
+
 # Provide a platform-independent struct pt_regs
 quilt import "$scriptdir"/arch-pt-regs.patch
 quilt push
