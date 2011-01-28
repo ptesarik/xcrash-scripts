@@ -22,10 +22,6 @@ quilt push
 ################################################################
 # Endianity-related problems
 
-# Add readlong, readint, etc. functions
-quilt import "$scriptdir"/readtype.patch
-quilt push
-
 # Re-generate cscope.files and cscope.out
 rm -f cscope.files cscope.out
 make cscope < /dev/null
@@ -35,6 +31,10 @@ quilt new replace-readmem.patch
 quilt add *.c *.h
 "$scriptdir"/replace_readmem.pl
 quilt refresh -p ab --no-timestamp
+
+# Add readlong, readint, etc. functions
+quilt import "$scriptdir"/readtype.patch
+quilt push
 
 # Modify the "facilitator" macros
 quilt import "$scriptdir"/facilitators.patch
