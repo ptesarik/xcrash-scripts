@@ -1,5 +1,7 @@
 #! /bin/sh
 
+set -e
+
 # run this script in crash top-level directory to add the
 # cross-platform capability
 
