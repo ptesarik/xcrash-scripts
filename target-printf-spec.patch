@@ -1,0 +1,70 @@
+---
+ defs.h |   43 +++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 43 insertions(+)
+
+--- a/defs.h
++++ b/defs.h
+@@ -48,6 +48,7 @@
+ #include <sys/time.h>
+ #include <execinfo.h> /* backtrace() */
+ #include <endian.h>
++#include <inttypes.h>
+ 
+ #define BASELEVEL_REVISION  "4.0"
+ 
+@@ -118,6 +119,27 @@ typedef uint32_t tulong __attribute__ ((
+ typedef  int64_t tlonglong __attribute__ ((aligned (8)));
+ typedef uint64_t tulonglong __attribute__ ((aligned (8)));
+ 
++/* tint and tuint format specifiers: */
++#define PRId	PRId32
++#define PRIi	PRIi32
++#define PRIo	PRIo32
++#define PRIu	PRIu32
++#define PRIx	PRIx32
++
++/* tlong and tulong format specifiers: */
++#define PRIld	PRId32
++#define PRIli	PRIi32
++#define PRIlo	PRIo32
++#define PRIlu	PRIu32
++#define PRIlx	PRIx32
++
++/* tlonglong and tulonglong specifiers: */
++#define PRIlld	PRId64
++#define PRIlli	PRIi64
++#define PRIllo	PRIo64
++#define PRIllu	PRIu64
++#define PRIllx	PRIx64
++
+ #elif defined(_64BIT_)
+ 
+ typedef  int16_t tshort __attribute__ ((aligned (2)));
+@@ -129,6 +151,27 @@ typedef uint64_t tulong __attribute__ ((
+ typedef  int64_t tlonglong __attribute__ ((aligned (8)));
+ typedef uint64_t tulonglong __attribute__ ((aligned (8)));
+ 
++/* tint and tuint format specifiers: */
++#define PRId	PRId32
++#define PRIi	PRIi32
++#define PRIo	PRIo32
++#define PRIu	PRIu32
++#define PRIx	PRIx32
++
++/* tlong and tulong format specifiers: */
++#define PRIld	PRId64
++#define PRIli	PRIi64
++#define PRIlo	PRIo64
++#define PRIlu	PRIu64
++#define PRIlx	PRIx64
++
++/* tlonglong and tulonglong specifiers: */
++#define PRIlld	PRId64
++#define PRIlli	PRIi64
++#define PRIllo	PRIo64
++#define PRIllu	PRIu64
++#define PRIllx	PRIx64
++
+ #endif
+ 
+ #define BUFSIZE  (1500)

@@ -140,6 +140,27 @@ done
 quilt refresh -p ab --no-timestamp
 
 ################################################################
+# Print formatters
+
+# Introduce target print formatters
+quilt import "$scriptdir"/target-printf-spec.patch
+quilt push
+
+# Replace all occurences in the source code
+rm -f cscope.files cscope.out
+make cscope < /dev/null
+quilt new target-printf-spec-use.patch
+files=`cat cscope.files`
+quilt add $files
+for f in $files; do
+	if [ "$f" != configure.c -a "${f#va}" == "$f" -a "${f#qemu}" == "$f" -a "$f" != kvmdump.h ]; then
+		echo Processing $f
+		"$scriptdir"/printf-spec.pl "$f" > "$f".new && mv "$f".new "$f"
+	fi
+done
+quilt refresh -p ab --no-timestamp
+
+################################################################
 # Build-time changes
 
 # Allow configuring for any target
