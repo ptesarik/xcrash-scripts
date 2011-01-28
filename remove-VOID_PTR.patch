@@ -19,8 +19,8 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
 
 ---
  defs.h   |    1 -
- memory.c |   42 +++++++++++++++++++++---------------------
- 2 files changed, 21 insertions(+), 22 deletions(-)
+ memory.c |   47 +++++++++++++++++++++++++----------------------
+ 2 files changed, 25 insertions(+), 23 deletions(-)
 
 --- a/defs.h
 +++ b/defs.h
@@ -123,12 +123,14 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
  	ulong expected, cnt;
  
  	BNEG(si->addrlist, sizeof(ulong) * (si->c_num+1));
-@@ -9885,16 +9885,16 @@ gather_slab_free_list(struct meminfo *si
+@@ -9885,16 +9885,18 @@ gather_slab_free_list(struct meminfo *si
  		 */
  
  	        if (si->c_flags & SLAB_CFLGS_BUFCTL) 
 -                	obj = si->s_mem + ((next - si->s_index) * si->c_offset);
-+                	obj = si->s_mem + (next - si->s_index) * si->c_offset;
++                	obj = si->s_mem +
++				((next - si->s_index) / sizeof(ulong)
++				 * si->c_offset);
  		else 
 -			obj = (ulong)next - si->c_offset;
 +			obj = next - si->c_offset;
@@ -144,7 +146,7 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
  				si->found = KMEM_BUFCTL_ADDR;
  				return;
  			}
-@@ -9909,7 +9909,7 @@ gather_slab_free_list(struct meminfo *si
+@@ -9909,7 +9911,7 @@ gather_slab_free_list(struct meminfo *si
  			si->errors++;
  		}
  
@@ -153,7 +155,7 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
                  	"s_freep chain entry", FAULT_ON_ERROR);
  	} while (next); 
  
-@@ -10057,7 +10057,7 @@ static void
+@@ -10057,7 +10059,7 @@ static void
  dump_slab_objects(struct meminfo *si)
  {
  	int i, j;
@@ -162,7 +164,17 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
  	int on_free_list; 
  	ulong cnt, expected;
  	ulong bufctl, obj;
-@@ -11561,7 +11561,7 @@ next_upage(struct task_context *tc, ulon
+@@ -10088,7 +10090,8 @@ dump_slab_objects(struct meminfo *si)
+         if (si->c_flags & SLAB_CFLGS_BUFCTL) {
+ 		for (i = 0, next = si->s_index; i < si->c_num; i++, next++) {
+                 	obj = si->s_mem + 
+-				((next - si->s_index) * si->c_offset);
++				((next - si->s_index) / sizeof(ulong)
++				 * si->c_offset);
+ 			DUMP_SLAB_OBJECT();
+ 		}
+ 	} else {
+@@ -11561,7 +11564,7 @@ next_upage(struct task_context *tc, ulon
  	int found;
  	char *vma_buf;
          ulong vm_start, vm_end;
@@ -171,7 +183,7 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
  
          if (!tc->mm_struct)
                  return FALSE;
-@@ -11575,12 +11575,12 @@ next_upage(struct task_context *tc, ulon
+@@ -11575,12 +11578,12 @@ next_upage(struct task_context *tc, ulon
  
  	vaddr = VIRTPAGEBASE(vaddr) + PAGESIZE();  /* first possible page */
  
