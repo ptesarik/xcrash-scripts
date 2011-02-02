@@ -1,0 +1,96 @@
+---
+ configure.c |   36 +++++++++++++++++++++++-------------
+ 1 file changed, 23 insertions(+), 13 deletions(-)
+
+--- a/configure.c
++++ b/configure.c
+@@ -131,10 +131,15 @@ int name_to_target(char *);
+ #define TARGET_CFLAGS_ARM_ON_X86_64  "TARGET_CFLAGS=-m32 -D_FILE_OFFSET_BITS=64"
+ #define TARGET_CFLAGS_X86_ON_X86_64  "TARGET_CFLAGS=-m32 -D_FILE_OFFSET_BITS=64"
+ 
+-#define GDB_TARGET_DEFAULT        "GDB_CONF_FLAGS="
+-#define GDB_TARGET_ARM_ON_X86     "GDB_CONF_FLAGS=--target=arm-elf-linux"
+-#define GDB_TARGET_ARM_ON_X86_64  "GDB_CONF_FLAGS=--target=arm-elf-linux CFLAGS=-m32"
+-#define GDB_TARGET_X86_ON_X86_64  "GDB_CONF_FLAGS=--target=i686-pc-linux-gnu CFLAGS=-m32"
++#define GDB_TARGET_X86    "GDB_CONF_FLAGS=--target=i686-pc-linux-gnu"
++#define GDB_TARGET_ALPHA  "GDB_CONF_FLAGS=--target=alpha-linux-gnu"
++#define GDB_TARGET_PPC    "GDB_CONF_FLAGS=--target=powerpc-linux-gnu"
++#define GDB_TARGET_IA64   "GDB_CONF_FLAGS=--target=ia64-linux-gnu"
++#define GDB_TARGET_S390   "GDB_CONF_FLAGS=--target=s390-ibm-linux-gnu"
++#define GDB_TARGET_S390X  "GDB_CONF_FLAGS=--target=s390x-ibm-linux-gnu"
++#define GDB_TARGET_PPC64  "GDB_CONF_FLAGS=--target=powerpc64-linux-gnu"
++#define GDB_TARGET_X86_64 "GDB_CONF_FLAGS=--target=x86_64-pc-linux-gnu"
++#define GDB_TARGET_ARM    "GDB_CONF_FLAGS=--target=arm-elf-linux-gnu"
+ 
+ /*
+  *  The original plan was to allow the use of a particular version
+@@ -523,55 +528,60 @@ build_configure(struct supported_gdb_ver
+ 
+ 	target = target_CFLAGS = NULL;
+ 
+-	gdb_conf_flags = GDB_TARGET_DEFAULT;
+ 	switch (target_data.target)
+ 	{
+ 	case X86:
+ 		target = TARGET_X86;
+-		if (target_data.host == X86_64) {
++		if (target_data.host == X86_64)
+                         target_CFLAGS = TARGET_CFLAGS_X86_ON_X86_64;
+-			gdb_conf_flags = GDB_TARGET_X86_ON_X86_64;
+-		} else
++                else
+ 			target_CFLAGS = TARGET_CFLAGS_X86;
++		gdb_conf_flags = GDB_TARGET_X86;
+ 		break;
+ 	case ALPHA:
+ 		target = TARGET_ALPHA;
+ 		target_CFLAGS = TARGET_CFLAGS_ALPHA;
++		gdb_conf_flags = GDB_TARGET_ALPHA;
+ 		break;
+ 	case PPC:
+ 		target = TARGET_PPC;
+ 		target_CFLAGS = TARGET_CFLAGS_PPC;
++		gdb_conf_flags = GDB_TARGET_PPC;
+ 		break;
+ 	case IA64:
+ 		target = TARGET_IA64;
+                 target_CFLAGS = TARGET_CFLAGS_IA64;
++		gdb_conf_flags = GDB_TARGET_IA64;
+ 		break;
+ 	case S390:
+ 		target = TARGET_S390;
+ 		target_CFLAGS = TARGET_CFLAGS_S390;
++		gdb_conf_flags = GDB_TARGET_S390;
+ 		break;
+ 	case S390X:
+ 		target = TARGET_S390X;
+ 		target_CFLAGS = TARGET_CFLAGS_S390X;
++		gdb_conf_flags = GDB_TARGET_S390X;
+ 		break;
+ 	case PPC64:
+                 target = TARGET_PPC64;
+                 target_CFLAGS = TARGET_CFLAGS_PPC64;
++		gdb_conf_flags = GDB_TARGET_PPC64;
+                 break;
+ 	case X86_64:
+                 target = TARGET_X86_64;
+                 target_CFLAGS = TARGET_CFLAGS_X86_64;
++		gdb_conf_flags = GDB_TARGET_X86_64;
+                 break;
+ 	case ARM:
+                 target = TARGET_ARM;
+-                if (target_data.host == X86) {
++                if (target_data.host == X86)
+                         target_CFLAGS = TARGET_CFLAGS_ARM_ON_X86;
+-			gdb_conf_flags = GDB_TARGET_ARM_ON_X86;
+-                } else if (target_data.host == X86_64) {
++                else if (target_data.host == X86_64)
+                         target_CFLAGS = TARGET_CFLAGS_ARM_ON_X86_64;
+-			gdb_conf_flags = GDB_TARGET_ARM_ON_X86_64;
+-		} else
++		else
+                         target_CFLAGS = TARGET_CFLAGS_ARM;
++		gdb_conf_flags = GDB_TARGET_ARM;
+                 break;
+ 	}
+ 
