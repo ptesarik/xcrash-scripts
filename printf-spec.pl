@@ -2,64 +2,8 @@
 
 use warnings;
 use Parse::RecDescent;
-
-$c_grammar=<<'EOF';
-
-call: <skip:''> identifier_and_ws '(' expression(s /,/) ')' garbage(?)
-	{ { fn=>$item[2], args=>$item[4], suffix=>join('',@{$item[-1]}) } }
-
-identifier_and_ws: identifier /\s*/
-	{ $item[1] . $item[2] }
-
-expression: part(s?)
-	{ join('', @{$item[1]}) }
- 
-part:	subexp
-	| '(' expression(s /,/) ')'
-		{ '(' . join(',',@{$item[2]}) . ')' }
-	| comment
-		{ ' ' }
-	|/\s+(\\\n)?/
-
-subexp: identifier
-	| operator
-	| number
-	| string
-
-identifier: /([[:alpha:]_][[:alnum:]_]*)/
-operator: /[][#~&|^.!?:+*\/%<=>-]+/
-
-number: /[[:digit:]]+/
-	| /0x[[:xdigit:]]+/
-
-string	: m{"			# a leading delimiter
-	    (			# zero or more...
-	     \\.		# escaped anything
-	     |			# or
-	     [^"]		# anything but the delimiter
-	    )*
-	    "}x
-	| m{'			# a leading delimiter
-	    (			# zero or more...
-	     \\.		# escaped anything
-	     |			# or
-	     [^']		# anything but the delimiter
-	    )*
-	    '}x
-
-comment: m{//			# comment delimiter
-	    [^\n]*		# anything except a newline
-	    \n			# then a newline
-	   }x
-	| m{/\*			# comment opener
-	    (?:[^*]+|\*(?!/))*	# anything except */
-	    \*/		        # comment closer
-            ([ \t]*)?           # trailing blanks or tabs
-	   }x
-
-garbage: /.+/s
-
-EOF
+use File::Basename;
+use File::Spec::Functions;
 
 sub replace_nonwhite
 {
@@ -94,6 +38,12 @@ sub transform
 }
 
 # Create a (simple) C parser
+my $c_grammar = do {
+    local $/ = undef;
+    open my $fh, "<".catfile(dirname($0), "c-grammar.syntax")
+        or die "could not open c-grammar syntax file: $!";
+    <$fh>;
+};
 $parser = new Parse::RecDescent($c_grammar)
 	or  die "Invalid C grammar";
 

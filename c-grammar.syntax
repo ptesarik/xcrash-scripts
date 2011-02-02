@@ -1,0 +1,55 @@
+# This is a Perl Parse::RecDescent syntax file
+
+call: <skip:''> identifier_and_ws '(' expression(s /,/) ')' garbage(?)
+	{ { fn=>$item[2], args=>$item[4], suffix=>join('',@{$item[-1]}) } }
+
+identifier_and_ws: identifier /\s*/
+	{ $item[1] . $item[2] }
+
+expression: part(s?)
+	{ join('', @{$item[1]}) }
+ 
+part:	subexp
+	| '(' expression(s /,/) ')'
+		{ '(' . join(',',@{$item[2]}) . ')' }
+	| comment
+		{ ' ' }
+	|/\s+(\\\n)?/
+
+subexp: identifier
+	| operator
+	| number
+	| string
+
+identifier: /([[:alpha:]_][[:alnum:]_]*)/
+operator: /[][#~&|^.!?:+*\/%<=>-]+/
+
+number: /[[:digit:]]+/
+	| /0x[[:xdigit:]]+/
+
+string	: m{"			# a leading delimiter
+	    (			# zero or more...
+	     \\.		# escaped anything
+	     |			# or
+	     [^"]		# anything but the delimiter
+	    )*
+	    "}x
+	| m{'			# a leading delimiter
+	    (			# zero or more...
+	     \\.		# escaped anything
+	     |			# or
+	     [^']		# anything but the delimiter
+	    )*
+	    '}x
+
+comment: m{//			# comment delimiter
+	    [^\n]*		# anything except a newline
+	    \n			# then a newline
+	   }x
+	| m{/\*			# comment opener
+	    (?:[^*]+|\*(?!/))*	# anything except */
+	    \*/		        # comment closer
+            ([ \t]*)?           # trailing blanks or tabs
+	   }x
+
+garbage: /.+/s
