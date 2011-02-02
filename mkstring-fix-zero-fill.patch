@@ -1,0 +1,105 @@
+Fix ZERO_FILL flag to mkstring()
+
+The ZERO_FILL flag should in fact be honoured during justification,
+not for the formatting. This patch makes it possible to use
+the ZERO_FILL flag for any type, not just LONG_DEC.
+
+Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
+
+---
+ tools.c |   37 ++++++++++++++++++++++---------------
+ 1 file changed, 22 insertions(+), 15 deletions(-)
+
+--- a/tools.c
++++ b/tools.c
+@@ -1521,10 +1521,10 @@ shift_string_left(char *s, int cnt)
+ 
+ /*
+  *  Shifts the contents of a string to the right by cnt characters,
+- *  inserting space characters.  (caller confirms space is available)
++ *  inserting fill characters.  (caller confirms space is available)
+  */
+-char *
+-shift_string_right(char *s, int cnt)
++static char *
++shift_string_right_fill(char *s, int cnt, int fillchar)
+ {
+         int origlen;
+ 
+@@ -1534,7 +1534,17 @@ shift_string_right(char *s, int cnt)
+         origlen = strlen(s);
+         memmove(s+cnt, s, origlen);
+         s[origlen+cnt] = NULLCHAR;
+-	return(memset(s, ' ', cnt));
++	return(memset(s, fillchar, cnt));
++}
++
++/*
++ *  Shifts the contents of a string to the right by cnt characters,
++ *  inserting space characters.  (caller confirms space is available)
++ */
++char *
++shift_string_right(char *s, int cnt)
++{
++	return shift_string_right_fill(s, cnt, ' ');
+ }
+ 
+ /*
+@@ -1553,8 +1563,9 @@ mkstring(char *s, int size, ulong flags,
+ 	int extra;
+ 	int left;
+ 	int right;
++	int fillchar;
+ 
+-	switch (flags & (LONG_DEC|LONG_HEX|INT_HEX|INT_DEC|LONGLONG_HEX|ZERO_FILL)) 
++	switch (flags & (LONG_DEC|LONG_HEX|INT_HEX|INT_DEC|LONGLONG_HEX))
+ 	{
+ 	case LONG_DEC:
+ 		sprintf(s, "%lu", (ulong)opt);
+@@ -1562,12 +1573,6 @@ mkstring(char *s, int size, ulong flags,
+ 	case LONG_HEX:
+ 		sprintf(s, "%lx", (ulong)opt);
+ 		break;
+-	case (LONG_HEX|ZERO_FILL):
+-		if (VADDR_PRLEN == 8)
+-			sprintf(s, "%08lx", (ulong)opt);
+-		else if (VADDR_PRLEN == 16)
+-			sprintf(s, "%016lx", (ulong)opt);
+-		break;
+ 	case INT_DEC:
+ 		sprintf(s, "%u", (uint)((ulong)opt));
+ 		break;
+@@ -1595,6 +1600,8 @@ mkstring(char *s, int size, ulong flags,
+ 		return(s);
+ 	extra = size - len;
+ 
++	fillchar = (flags & ZERO_FILL) ? '0' : ' ';
++
+ 	if (flags & CENTER) {
+ 		/*
+ 		 *  If absolute centering is not possible, justify the
+@@ -1618,9 +1625,9 @@ mkstring(char *s, int size, ulong flags,
+ 		else 
+ 			left = right = extra/2;
+ 
+-		shift_string_right(s, left);
++		shift_string_right_fill(s, left, fillchar);
+ 		len = strlen(s);
+-		memset(s + len, ' ', right);
++		memset(s + len, fillchar, right);
+ 		s[len + right] = NULLCHAR;
+ 	
+ 		return(s);
+@@ -1628,10 +1635,10 @@ mkstring(char *s, int size, ulong flags,
+ 
+ 	if (flags & LJUST) {
+ 		len = strlen(s);
+-		memset(s + len, ' ', extra);
++		memset(s + len, fillchar, extra);
+ 		s[len + extra] = NULLCHAR;
+ 	} else if (flags & RJUST) 
+-		shift_string_right(s, extra);
++		shift_string_right_fill(s, extra, fillchar);
+ 
+ 	return(s);
+ }
