@@ -60,7 +60,8 @@ files=`cat cscope.files`
 quilt add $files
 for f in $files; do
 	if [ "$f" != configure.c -a "${f#va}" == "$f" -a "${f#qemu}" == "$f" -a "$f" != kvmdump.h -a "$f" != gdb_interface.c ]; then
-		"$scriptdir"/target-types.pl "$f" > "$f".new && mv "$f".new "$f"
+		"$scriptdir"/target-types.pl "$f" > "$f".new
+		mv "$f".new "$f"
 	fi
 done
 quilt refresh -p ab --no-timestamp
@@ -84,7 +85,8 @@ files=*.[ch]
 quilt add "$files"
 for f in $files; do
 	if [ "$f" != remote.c -a "$f" != s390dbf.c ]; then
-	    $subst "$old" "$new" "$f" > "$f".new && mv "$f".new "$f"
+	    $subst "$old" "$new" "$f" > "$f".new
+	    mv "$f".new "$f"
 	fi
 done
 quilt refresh -p ab --no-timestamp
@@ -99,7 +101,8 @@ new='toff_t'
 files=diskdump.h
 quilt add "$files"
 for f in $files; do
-	$subst "$old" "$new" "$f" > "$f".new && mv "$f".new "$f"
+	$subst "$old" "$new" "$f" > "$f".new
+	mv "$f".new "$f"
 done
 quilt refresh -p ab --no-timestamp
 
@@ -114,12 +117,14 @@ new='struct pt_regs_ppc64'
 files=ppc64.c
 quilt add "$files"
 for f in $files; do
-    $subst "$old" "$new" "$f" > "$f".new && mv "$f".new "$f"
+    $subst "$old" "$new" "$f" > "$f".new
+    mv "$f".new "$f"
 done
 files=defs.h
 quilt add "$files"
 for f in $files; do
-    $remove "$old" "$f" > "$f".new && mv "$f".new "$f"
+    $remove "$old" "$f" > "$f".new
+    mv "$f".new "$f"
 done
 quilt refresh -p ab --no-timestamp
 
@@ -129,7 +134,8 @@ new='struct pt_regs_x86_64'
 files=unwind_x86_64.h
 quilt add "$files"
 for f in $files; do
-    $remove "$old" "$f" | $subst "$old" "$new" > "$f".new && mv "$f".new "$f"
+    $remove "$old" "$f" | $subst "$old" "$new" > "$f".new
+    mv "$f".new "$f"
 done
 quilt refresh -p ab --no-timestamp
 
@@ -139,7 +145,8 @@ new='ia64_fpreg_t'
 files="ia64.c lkcd_dump_v7.h lkcd_dump_v8.h lkcd_fix_mem.h unwind.c unwind.h"
 quilt add "$files"
 for f in $files; do
-    $subst "$old" "$new" "$f" > "$f".new && mv "$f".new "$f"
+    $subst "$old" "$new" "$f" > "$f".new
+    mv "$f".new "$f"
 done
 quilt refresh -p ab --no-timestamp
 
@@ -159,7 +166,8 @@ quilt add $files
 for f in $files; do
 	if [ "$f" != configure.c -a "${f#va}" == "$f" -a "${f#qemu}" == "$f" -a "$f" != kvmdump.h  -a "$f" != gdb_interface.c ]; then
 		echo Processing $f
-		"$scriptdir"/printf-spec.pl "$f" > "$f".new && mv "$f".new "$f"
+		"$scriptdir"/printf-spec.pl "$f" > "$f".new
+		mv "$f".new "$f"
 	fi
 done
 quilt refresh -p ab --no-timestamp
