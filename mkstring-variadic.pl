@@ -83,7 +83,7 @@ sub modify_file
 
 # Find all calls to mkstring()
 my %calls;
-open(CALLS, 'cscope -L -3mkstring|') or die "Cannot get mkstring call sites";
+open(CALLS, 'cscope -q -L -3mkstring|') or die "Cannot get mkstring call sites";
 while(<CALLS>) {
 	(my $file, my $func, my $line) = split(" ");
 	push @{$calls{$file}}, $line;
