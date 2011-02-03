@@ -29,6 +29,20 @@ quilt import "$scriptdir"/mkstring-optimize.patch
 quilt push
 
 ################################################################
+# Things that could theoretically go upstream, but are not
+# accepted there
+
+# convert mkstring() to a variadic function
+quilt import "$scriptdir"/variadic-mkstring.patch
+quilt push
+rm -f cscope.files cscope.out
+make cscope < /dev/null
+quilt new variadic-mkstring-use.patch
+quilt add *.c *.h
+"$scriptdir"/mkstring-variadic.pl
+quilt refresh -p ab --no-timestamp
+
+################################################################
 # Endianity-related problems
 
 # Re-generate cscope.files and cscope.out

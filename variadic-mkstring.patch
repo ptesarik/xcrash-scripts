@@ -1,0 +1,73 @@
+---
+ defs.h  |    2 +-
+ tools.c |   21 ++++++++++++++-------
+ 2 files changed, 15 insertions(+), 8 deletions(-)
+
+--- a/tools.c
++++ b/tools.c
+@@ -1546,40 +1546,47 @@ shift_string_right(char *s, int cnt)
+  *  actual value.
+  */
+ char *
+-mkstring(char *s, int size, ulong flags, const char *opt)
++mkstring(char *s, int size, ulong flags, ...)
+ {
+ 	int i;
+ 	int len;
+ 	int extra;
+ 	int left;
+ 	int right;
++	char *opt;
++	va_list ap;
++
++	va_start(ap, flags);
+ 
+ 	switch (flags & (LONG_DEC|LONG_HEX|INT_HEX|INT_DEC|LONGLONG_HEX|ZERO_FILL)) 
+ 	{
+ 	case LONG_DEC:
+-		sprintf(s, "%lu", (ulong)opt);
++		sprintf(s, "%lu", va_arg(ap, ulong));
+ 		break;
+ 	case LONG_HEX:
+-		sprintf(s, "%lx", (ulong)opt);
++		sprintf(s, "%lx", va_arg(ap, ulong));
+ 		break;
+ 	case LONG_HEX|ZERO_FILL:
+-		sprintf(s, "%0*lx", VADDR_PRLEN, (ulong)opt);
++		sprintf(s, "%0*lx", VADDR_PRLEN, va_arg(ap, ulong));
+ 		break;
+ 	case INT_DEC:
+-		sprintf(s, "%u", (uint)((ulong)opt));
++		sprintf(s, "%u", va_arg(ap, uint));
+ 		break;
+ 	case INT_HEX:
+-		sprintf(s, "%x", (uint)((ulong)opt));
++		sprintf(s, "%x", va_arg(ap, uint));
+ 		break;
+ 	case LONGLONG_HEX:
+-		sprintf(s, "%llx", *((ulonglong *)opt));
++		sprintf(s, "%llx", va_arg(ap, ulonglong));
+ 		break;
+ 	default:
++		opt = va_arg(ap, char *);
+ 		if (opt)
+ 			strcpy(s, opt);
+ 		break;
+ 	}
+ 
++	va_end(ap);
++
+ 	/*
+ 	 *  At this point, string s has the string to be justified,
+ 	 *  and has room to work with.  The relevant flags from this
+--- a/defs.h
++++ b/defs.h
+@@ -3511,7 +3511,7 @@ int hexadecimal_only(char *, int);
+ ulong convert(char *, int, int *, ulong);
+ void pad_line(FILE *, int, char);
+ #define INDENT(x)  pad_line(fp, x, ' ')
+-char *mkstring(char *, int, ulong, const char *);
++char *mkstring(char *, int, ulong, ...);
+ #define MKSTR(X) ((const char *)(X))
+ int count_leading_spaces(char *);
+ int count_chars(char *, char);
