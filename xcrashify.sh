@@ -25,8 +25,6 @@ quilt import "$scriptdir"/gdb-does-not-need-syment.patch
 quilt push
 
 # mkstring() fixes
-quilt import mkstring-fix-zero-fill.patch
-quilt push
 quilt import mkstring-optimize.patch
 quilt push
 
