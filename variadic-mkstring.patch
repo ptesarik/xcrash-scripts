@@ -5,7 +5,7 @@
 
 --- a/tools.c
 +++ b/tools.c
-@@ -1546,40 +1546,47 @@ shift_string_right(char *s, int cnt)
+@@ -1546,43 +1546,50 @@ shift_string_right(char *s, int cnt)
   *  actual value.
   */
  char *
@@ -32,9 +32,13 @@
 -		sprintf(s, "%lx", (ulong)opt);
 +		sprintf(s, "%lx", va_arg(ap, ulong));
  		break;
- 	case LONG_HEX|ZERO_FILL:
--		sprintf(s, "%0*lx", VADDR_PRLEN, (ulong)opt);
-+		sprintf(s, "%0*lx", VADDR_PRLEN, va_arg(ap, ulong));
+ 	case (LONG_HEX|ZERO_FILL):
+		if (VADDR_PRLEN == 8)
+-			sprintf(s, "%08lx", (ulong)opt);
++			sprintf(s, "%08lx", va_arg(ap, ulong));
+		else if (VADDR_PRLEN == 16)
+-			sprintf(s, "%016lx", (ulong)opt);
++			sprintf(s, "%016lx", va_arg(ap, ulong));
  		break;
  	case INT_DEC:
 -		sprintf(s, "%u", (uint)((ulong)opt));
