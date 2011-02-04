@@ -1,28 +1,19 @@
 ---
- defs.h          |   26 +++++++++++++-------------
+ defs.h          |   24 ++++++++++++------------
  gdb-7.0.patch   |    4 ++--
  gdb_interface.c |    6 +++---
- 3 files changed, 18 insertions(+), 18 deletions(-)
+ 3 files changed, 17 insertions(+), 17 deletions(-)
 
 --- a/defs.h
 +++ b/defs.h
-@@ -3265,7 +3265,7 @@ struct gnu_request {
-  */
- int console(char *, ...);
- int gdb_CRASHDEBUG(ulong);
--int gdb_readmem_callback(ulong, void *, int, int);
-+int gdb_readmem_callback(unsigned long long, void *, int, int);
- void patch_load_module(struct objfile *objfile, struct minimal_symbol *msymbol);
- int patch_kernel_symbol(struct gnu_request *);
- struct syment *symbol_search(char *);
-@@ -4954,26 +4954,26 @@ void display_gdb_banner(void);
+@@ -4966,26 +4966,26 @@ void display_gdb_banner(void);
  void get_gdb_version(void);
  void gdb_session_init(void);
  void gdb_interface(struct gnu_request *);
 -tint gdb_pass_through(char *, FILE *, tulong);
 -tint gdb_readmem_callback(tulong, void *, tint, tint);
 +int gdb_pass_through(char *, FILE *, ulong);
-+int gdb_readmem_callback(unsigned long long, void *, int, int);
++int gdb_readmem_callback(tulong, void *, int, int);
  void gdb_error_hook(void);
  void restore_gdb_sanity(void);
 -tint is_gdb_command(tint, tulong);
@@ -61,7 +52,7 @@
   {
  +#ifdef CRASH_MERGE
 -+  extern int gdb_readmem_callback(unsigned long, void *, int, int);
-++  extern int gdb_readmem_callback(unsigned long long, void *, int, int);
+++  extern int gdb_readmem_callback(tulong, void *, int, int);
  +  if (gdb_readmem_callback(memaddr, (void *)myaddr, len, 0))
  +        return 0;
  +  else
@@ -70,7 +61,7 @@
   {
  +#ifdef CRASH_MERGE
 -+  extern int gdb_readmem_callback(unsigned long, void *, int, int);
-++  extern int gdb_readmem_callback(unsigned long long, void *, int, int);
+++  extern int gdb_readmem_callback(tulong, void *, int, int);
  +  if (gdb_readmem_callback(memaddr, (void *)myaddr, len, 1))
  +        return 0;
  +  else
@@ -81,7 +72,7 @@
   */
  int 
 -gdb_readmem_callback(ulong addr, void *buf, int len, int write)
-+gdb_readmem_callback(ulonglong addr, void *buf, int len, int write)
++gdb_readmem_callback(tulong addr, void *buf, int len, int write)
  { 
  	char locbuf[SIZEOF_32BIT], *p1;
  	uint32_t *p2;

@@ -33,32 +33,33 @@ while (<>) {
 	    $gdb_on = -1;
 	}
     }
-    if ($gdb_common) {
-	print;
-	next;
+
+    if (!$gdb_common) {
+	# long long types
+	s/\bunsigned long long\b/tulonglong/g;
+	s/\blong long int\b/tlonglong/g;
+	s/\blong long\b/tlonglong/g;
+	s/\blonglong\b/tlonglong/g;
+	s/\bulonglong\b/tulonglong/g;
     }
 
-    # long long types
-    s/\bunsigned long long\b/tulonglong/g;
-    s/\blong long int\b/tlonglong/g;
-    s/\blong long\b/tlonglong/g;
-    s/\blonglong\b/tlonglong/g;
-    s/\bulonglong\b/tulonglong/g;
-
-    # long types
+    # long types - even GDB_COMMON
     s/\bunsigned long\b/tulong/g;
     s/\blong\b(?!\s*double)/tlong/g;
     s/\bulong\b/tulong/g;
 
-    # short types
-    s/\bshort unsigned int\b/tushort/g;
-    s/\bunsigned short\b/tushort/g;
-    s/\bshort\b/tshort/g;
-    s/\bushort\b/tushort/g;
+    if (!$gdb_common) {
+	# short types
+	s/\bshort unsigned int\b/tushort/g;
+	s/\bunsigned short\b/tushort/g;
+	s/\bshort\b/tshort/g;
+	s/\bushort\b/tushort/g;
 
-    # int types
-    s/\bunsigned int\b/tuint/g;
-    s/\bint\b/tint/g;
-    s/\buint\b/tuint/g;
+	# int types
+	s/\bunsigned int\b/tuint/g;
+	s/\bint\b/tint/g;
+	s/\buint\b/tuint/g;
+    }
+
     print;
 }
