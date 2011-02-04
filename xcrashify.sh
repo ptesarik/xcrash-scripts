@@ -218,3 +218,8 @@ quilt import "$scriptdir"/configure-gdb-conf-flags.patch
 quilt push
 quilt import "$scriptdir"/configure-any-target.patch
 quilt push
+
+################################################################
+# Final manual tweaks
+quilt import "$scriptdir"/manual.patch
+quilt push

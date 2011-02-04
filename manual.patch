@@ -1,0 +1,96 @@
+---
+ defs.h    |    6 +++---
+ memory.c  |    6 +++---
+ symbols.c |    2 +-
+ x86_64.c  |   12 ++++++------
+ 4 files changed, 13 insertions(+), 13 deletions(-)
+
+--- a/memory.c
++++ b/memory.c
+@@ -13222,9 +13222,9 @@ nr_to_section(tulong nr)
+  * a little bit of information.  There should be at least
+  * 3 bits here due to 32-bit alignment.
+  */
+-#define SECTION_MARKED_PRESENT	(1UL<<0)
+-#define SECTION_HAS_MEM_MAP	(1UL<<1)
+-#define SECTION_MAP_LAST_BIT	(1UL<<2)
++#define SECTION_MARKED_PRESENT	(((tulong)1)<<0)
++#define SECTION_HAS_MEM_MAP	(((tulong)1)<<1)
++#define SECTION_MAP_LAST_BIT	(((tulong)1)<<2)
+ #define SECTION_MAP_MASK	(~(SECTION_MAP_LAST_BIT-1))
+ 
+ 
+--- a/x86_64.c
++++ b/x86_64.c
+@@ -1686,13 +1686,13 @@ static tint
+ x86_64_kvtop(struct task_context *tc, tulong kvaddr, physaddr_t *paddr, tint verbose)
+ {
+ 	tulong *pml4;
+-        tulong *pgd;
++        tulong pgd;
+ 	tulong pgd_paddr;
+ 	tulong pgd_pte;
+-	tulong *pmd;
++	tulong pmd;
+ 	tulong pmd_paddr;
+ 	tulong pmd_pte;
+-	tulong *ptep;
++	tulong ptep;
+ 	tulong pte_paddr;
+ 	tulong pte;
+ 	physaddr_t physpage;
+@@ -1744,7 +1744,7 @@ x86_64_kvtop(struct task_context *tc, tu
+ 		goto no_kpage;
+ 	pgd_paddr = (*pml4) & PHYSICAL_PAGE_MASK;
+ 	FILL_PGD(pgd_paddr, PHYSADDR, PAGESIZE());
+-	pgd = ((tulong *)pgd_paddr) + pgd_index(kvaddr); 
++	pgd = pgd_paddr + pgd_index(kvaddr) * sizeof(tulong); 
+ 	pgd_pte = ULONG(machdep->pgd + PAGEOFFSET(pgd));
+         if (verbose) 
+                 fprintf(fp, "   PUD: %"PRIlx" => %"PRIlx"\n", (tulong)pgd, pgd_pte);
+@@ -1756,7 +1756,7 @@ x86_64_kvtop(struct task_context *tc, tu
+ 	 */
+ 	pmd_paddr = pgd_pte & PHYSICAL_PAGE_MASK;
+ 	FILL_PMD(pmd_paddr, PHYSADDR, PAGESIZE());
+-	pmd = ((tulong *)pmd_paddr) + pmd_index(kvaddr);
++	pmd = pmd_paddr + pmd_index(kvaddr) * sizeof(tulong);
+ 	pmd_pte = ULONG(machdep->pmd + PAGEOFFSET(pmd));
+         if (verbose) 
+                 fprintf(fp, "   PMD: %"PRIlx" => %"PRIlx"\n", (tulong)pmd, pmd_pte);
+@@ -1781,7 +1781,7 @@ x86_64_kvtop(struct task_context *tc, tu
+ 	 */
+ 	pte_paddr = pmd_pte & PHYSICAL_PAGE_MASK;
+ 	FILL_PTBL(pte_paddr, PHYSADDR, PAGESIZE());
+-	ptep = ((tulong *)pte_paddr) + pte_index(kvaddr);
++	ptep = pte_paddr + pte_index(kvaddr) * sizeof(tulong);
+ 	pte = ULONG(machdep->ptbl + PAGEOFFSET(ptep));
+         if (verbose) 
+                 fprintf(fp, "   PTE: %"PRIlx" => %"PRIlx"\n", (tulong)ptep, pte);
+--- a/defs.h
++++ b/defs.h
+@@ -2474,11 +2474,11 @@ struct load_module {
+  *  for safety, use the 2.6 values to generate it.
+  */ 
+ #define __PHYSICAL_MASK_SHIFT  40
+-#define __PHYSICAL_MASK        ((1UL << __PHYSICAL_MASK_SHIFT) - 1)
++#define __PHYSICAL_MASK        ((((tulong)1UL) << __PHYSICAL_MASK_SHIFT) - 1)
+ #define __VIRTUAL_MASK_SHIFT   48
+-#define __VIRTUAL_MASK         ((1UL << __VIRTUAL_MASK_SHIFT) - 1)
++#define __VIRTUAL_MASK         ((((tulong)1UL) << __VIRTUAL_MASK_SHIFT) - 1)
+ #define PAGE_SHIFT             12
+-#define PAGE_SIZE              (1UL << PAGE_SHIFT)
++#define PAGE_SIZE              (((tulong)1UL) << PAGE_SHIFT)
+ #define PHYSICAL_PAGE_MASK    (~(PAGE_SIZE-1) & (__PHYSICAL_MASK << PAGE_SHIFT))
+ 
+ #define _PAGE_BIT_NX    63
+--- a/symbols.c
++++ b/symbols.c
+@@ -1296,7 +1296,7 @@ store_module_symbols_v1(tulong total, ti
+ struct kernel_symbol
+ {
+         tulong value;
+-        const char *name;
++        tptr name;
+ };
+ 
+ void
