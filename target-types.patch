@@ -1,10 +1,18 @@
 ---
- defs.h |   36 ++++++++++++++++++++++++++++++++++++
- 1 file changed, 36 insertions(+)
+ defs.h |   27 +++++++++++++++++++++++++++
+ 1 file changed, 27 insertions(+)
 
 --- a/defs.h
 +++ b/defs.h
-@@ -107,6 +107,42 @@
+@@ -48,6 +48,7 @@
+ #include <sys/time.h>
+ #include <execinfo.h> /* backtrace() */
+ #include <endian.h>
++#include "gdb-7.0/bfd/bfd.h" /* bfd_vma types */
+ 
+ #define BASELEVEL_REVISION  "4.0"
+ 
+@@ -107,6 +108,32 @@
  #define NR_CPUS  (4)
  #endif
  
@@ -33,16 +41,6 @@
 +typedef uint64_t tptr __attribute__ ((aligned (8)));
 +
 +#endif
-+
-+#else	/* GDB_COMMON */
-+
-+/* Not quite correct, but seems to work */
-+typedef bfd_vma tulong;
-+typedef bfd_signed_vma tlong;
-+
-+#endif	/* GDB_COMMON */
-+
-+#ifndef GDB_COMMON
 +
  #define BUFSIZE  (1500)
  #define NULLCHAR ('\0')

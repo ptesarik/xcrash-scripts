@@ -1,28 +1,36 @@
 ---
- defs.h          |   24 ++++++++++++------------
- gdb-7.0.patch   |    4 ++--
- gdb_interface.c |    6 +++---
- 3 files changed, 17 insertions(+), 17 deletions(-)
+ defs.h    |   26 +++++++++++++-------------
+ symbols.c |    2 +-
+ 2 files changed, 14 insertions(+), 14 deletions(-)
 
 --- a/defs.h
 +++ b/defs.h
-@@ -4966,26 +4966,26 @@ void display_gdb_banner(void);
+@@ -3702,7 +3702,7 @@ tint text_value_cache_byte(tulong, unsig
+ void dump_text_value_cache(tint);
+ void clear_text_value_cache(void);
+ void dump_numargs_cache(void);
+-tint patch_kernel_symbol(struct gnu_request *);
++int patch_kernel_symbol(struct gnu_request *);
+ struct syment *generic_machdep_value_to_symbol(tulong, tulong *);
+ tlong OFFSET_verify(tlong, char *, char *, tint, char *);
+ tlong SIZE_verify(tlong, char *, char *, tint, char *);
+@@ -4957,26 +4957,26 @@ void display_gdb_banner(void);
  void get_gdb_version(void);
  void gdb_session_init(void);
  void gdb_interface(struct gnu_request *);
 -tint gdb_pass_through(char *, FILE *, tulong);
 -tint gdb_readmem_callback(tulong, void *, tint, tint);
-+int gdb_pass_through(char *, FILE *, ulong);
-+int gdb_readmem_callback(tulong, void *, int, int);
++int gdb_pass_through(char *, FILE *, bfd_vma);
++int gdb_readmem_callback(bfd_vma, void *, int, int);
  void gdb_error_hook(void);
  void restore_gdb_sanity(void);
 -tint is_gdb_command(tint, tulong);
 -char *gdb_command_string(tint, char *, tint);
-+int is_gdb_command(int, ulong);
++int is_gdb_command(int, bfd_vma);
 +char *gdb_command_string(int, char *, tint);
  void dump_gnu_request(struct gnu_request *, tint);
 -tint gdb_CRASHDEBUG(tulong);
-+int gdb_CRASHDEBUG(ulong);
++int gdb_CRASHDEBUG(bfd_vma);
  void dump_gdb_data(void);
  #if defined(GDB_6_0) || defined(GDB_6_1) || defined(GDB_7_0)
  void update_gdb_hooks(void);
@@ -45,52 +53,14 @@
  
  /*
   *  gdb/top.c
---- a/gdb-7.0.patch
-+++ b/gdb-7.0.patch
-@@ -420,7 +420,7 @@
-  target_read_memory (CORE_ADDR memaddr, gdb_byte *myaddr, int len)
-  {
- +#ifdef CRASH_MERGE
--+  extern int gdb_readmem_callback(unsigned long, void *, int, int);
-++  extern int gdb_readmem_callback(tulong, void *, int, int);
- +  if (gdb_readmem_callback(memaddr, (void *)myaddr, len, 0))
- +        return 0;
- +  else
-@@ -434,7 +434,7 @@
-  target_write_memory (CORE_ADDR memaddr, const gdb_byte *myaddr, int len)
-  {
- +#ifdef CRASH_MERGE
--+  extern int gdb_readmem_callback(unsigned long, void *, int, int);
-++  extern int gdb_readmem_callback(tulong, void *, int, int);
- +  if (gdb_readmem_callback(memaddr, (void *)myaddr, len, 1))
- +        return 0;
- +  else
---- a/gdb_interface.c
-+++ b/gdb_interface.c
-@@ -784,7 +784,7 @@ cmd_gdb(void)
-  *  from text disassembly requests, and are diverted to the text cache.
-  */
- int 
--gdb_readmem_callback(ulong addr, void *buf, int len, int write)
-+gdb_readmem_callback(tulong addr, void *buf, int len, int write)
- { 
- 	char locbuf[SIZEOF_32BIT], *p1;
- 	uint32_t *p2;
-@@ -806,7 +806,7 @@ gdb_readmem_callback(ulong addr, void *b
- 			memtype = UVADDR;
- 		} else {
- 			if (CRASHDEBUG(1))
--			        console("gdb_readmem_callback: %lx %d FAILED\n",
-+			        console("gdb_readmem_callback: %llx %d FAILED\n",
- 					addr, len);
- 			return FALSE;
- 		}
-@@ -814,7 +814,7 @@ gdb_readmem_callback(ulong addr, void *b
- 		memtype = KVADDR;
+--- a/symbols.c
++++ b/symbols.c
+@@ -10140,7 +10140,7 @@ clear_text_value_cache(void)
  
- 	if (CRASHDEBUG(1))
--		console("gdb_readmem_callback[%d]: %lx %d\n", 
-+		console("gdb_readmem_callback[%d]: %llx %d\n", 
- 			memtype, addr, len);
+ #define last_sp addr2
  
- 	if (memtype == FILEADDR)
+-tint 
++int 
+ patch_kernel_symbol(struct gnu_request *req)
+ {
+ 	tint i, c;

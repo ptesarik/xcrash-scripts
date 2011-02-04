@@ -74,11 +74,15 @@ quilt push
 rm -f cscope.files cscope.out
 make cscope < /dev/null
 quilt new target-types-use.patch
-files=`cat cscope.files`
+files=`cat cscope.files`" gdb-7.0.patch"
 quilt add $files
 for f in $files; do
-	if [ "$f" != configure.c -a "${f#va}" == "$f" -a "${f#qemu}" == "$f" -a "$f" != kvmdump.h -a "$f" != gdb_interface.c ]; then
-		"$scriptdir"/target-types.pl "$f" > "$f".new
+	if [ "$f" != configure.c -a "${f#va}" == "$f" -a "${f#qemu}" == "$f" -a "$f" != kvmdump.h ]; then
+		opt=
+		[ "$f" == defs.h ] && opt=-g
+		[ "$f" == gdb_interface.c ] && opt=-g
+		[ "$f" == gdb-7.0.patch ] && opt=-p
+		"$scriptdir"/target-types.pl $opt "$f" > "$f".new
 		mv "$f".new "$f"
 	fi
 done

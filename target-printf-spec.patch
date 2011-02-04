@@ -4,17 +4,17 @@
 
 --- a/defs.h
 +++ b/defs.h
-@@ -48,6 +48,7 @@
- #include <sys/time.h>
+@@ -49,6 +49,7 @@
  #include <execinfo.h> /* backtrace() */
  #include <endian.h>
+ #include "gdb-7.0/bfd/bfd.h" /* bfd_vma types */
 +#include <inttypes.h>
  
  #define BASELEVEL_REVISION  "4.0"
  
-@@ -118,6 +119,27 @@ typedef uint32_t tulong __attribute__ ((
- typedef  int64_t tlonglong __attribute__ ((aligned (8)));
+@@ -120,6 +121,27 @@ typedef  int64_t tlonglong __attribute__
  typedef uint64_t tulonglong __attribute__ ((aligned (8)));
+ typedef uint32_t tptr __attribute__ ((aligned (4)));
  
 +/* tint and tuint format specifiers: */
 +#define PRId	PRId32
@@ -40,9 +40,9 @@
  #elif defined(_64BIT_)
  
  typedef  int16_t tshort __attribute__ ((aligned (2)));
-@@ -129,6 +151,27 @@ typedef uint64_t tulong __attribute__ ((
- typedef  int64_t tlonglong __attribute__ ((aligned (8)));
+@@ -132,6 +154,27 @@ typedef  int64_t tlonglong __attribute__
  typedef uint64_t tulonglong __attribute__ ((aligned (8)));
+ typedef uint64_t tptr __attribute__ ((aligned (8)));
  
 +/* tint and tuint format specifiers: */
 +#define PRId	PRId32
