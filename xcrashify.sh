@@ -84,10 +84,26 @@ for f in $files; do
 done
 quilt refresh -p ab --no-timestamp
 
+# Target pointer types are trickier, but let's change the size
+# where they are read and find out later where the size of the
+# variable needs adjustment
+rm -f cscope.files cscope.out
+make cscope < /dev/null
+quilt new sizeof-target-ptr.patch
+old='\bsizeof\((void|char)\s*\*\)'
+new='sizeof(tptr)'
+files=`cat cscope.files`
+quilt add $files
+for f in $files; do
+	if [ "$f" !=  cmdline.c -a "$f" != filesys.c -a "$f" != help.c ]; then
+	    $subst -r "$old" "$new" "$f" > "$f".new
+	    mv "$f".new "$f"
+	fi
+done
+quilt refresh -p ab --no-timestamp
+
 # Type change needs some further fixups
 quilt import "$scriptdir"/unwind-x86-cleanups.patch
-quilt push
-quilt import "$scriptdir"/target-ptr-fixup.patch
 quilt push
 quilt import "$scriptdir"/gdb_interface-fixups.patch
 quilt push
