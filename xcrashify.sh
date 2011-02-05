@@ -214,7 +214,7 @@ quilt refresh -p ab --no-timestamp
 # Build-time changes
 
 # Allow configuring for any target
-quilt import "$scriptdir"/configure-gdb-conf-flags.patch
+quilt import "$scriptdir"/configure-cross-gdb-conf-flags.patch
 quilt push
 quilt import "$scriptdir"/configure-any-target.patch
 quilt push
