@@ -43,6 +43,37 @@ quilt add *.c *.h
 quilt refresh -p ab --no-timestamp
 
 ################################################################
+# Remove unused #ifdef'd code
+
+rm -f cscope.files cscope.out
+make cscope < /dev/null
+files=`cat cscope.files`
+
+quilt new ifdef-REDHAT.patch
+quilt add $files
+for f in $files; do
+	"$scriptdir"/cleanup-ifdefs.pl REDHAT "$f" > "$f".new
+	mv "$f".new "$f"
+done
+quilt refresh -p ab --no-timestamp
+
+quilt new ifdef-MCLX.patch
+quilt add $files
+for f in $files; do
+	"$scriptdir"/cleanup-ifdefs.pl MCLX "$f" > "$f".new
+	mv "$f".new "$f"
+done
+quilt refresh -p ab --no-timestamp
+
+quilt new remove-if-0.patch
+quilt add $files
+for f in $files; do
+	"$scriptdir"/cleanup-ifdefs.pl 0 "$f" > "$f".new
+	mv "$f".new "$f"
+done
+quilt refresh -p ab --no-timestamp
+
+################################################################
 # Endianity-related problems
 
 # Re-generate cscope.files and cscope.out
