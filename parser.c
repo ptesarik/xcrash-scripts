@@ -528,6 +528,13 @@ static void dump_tree(decl_t *tree)
 	--depth;
 }
 
+static void dump_contents(struct list_head *contents)
+{
+	struct dynstr *ds;
+	list_for_each_entry(ds, contents, list)
+		fwrite(ds->text, 1, ds->len, stdout);
+}
+
 static int parse_file(const char *name)
 {
 	int ret;
@@ -542,6 +549,7 @@ static int parse_file(const char *name)
 	if (ret) {
 		fprintf(stderr, "Parser failed with %d\n", ret);
 	} else {
+		dump_contents(&raw_contents);
 		dump_tree(parsed_tree);
 	}
 

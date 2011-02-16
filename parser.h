@@ -2,6 +2,15 @@
 
 #include "lists.h"
 
+/* Stored file contents */
+struct dynstr {
+	struct list_head list;
+	size_t len, alloc;
+	char text[];
+};
+
+extern struct list_head raw_contents;
+
 /* Parsed types */
 
 enum type_category {

@@ -19,8 +19,9 @@
 #include "parser.h"
 #include "clang.tab.h"
 
-static void count(const char *s);
-#define YY_USER_ACTION	count(yytext);
+struct list_head raw_contents;
+static void store_yytext(const char *s);
+#define YY_USER_ACTION	store_yytext(yytext);
 
 static void init_vars(void);
 #define YY_USER_INIT	init_vars();
@@ -163,7 +164,7 @@ L?\'(?s:\\.|[^\\'])*\'	{ /* fix highlight: ' */
 L?\"(?s:\\.|[^\\"])*\"	{ /* fix highlight: " */
 			yylval.str = strdup(yytext); return STRING_CONST;
 			}
-[ \t\v\n\f]		/* skip whitespace */
+[ \t\v\n\f]+		/* skip whitespace */
 .			/* ignore bad characters */
 
 %%
@@ -181,6 +182,8 @@ int typedef_ign;
 
 static void init_vars(void)
 {
+	INIT_LIST_HEAD(&raw_contents);
+
 	linenum = 1;
 	colnum = 0;
 	linestart = NULL;
@@ -188,8 +191,9 @@ static void init_vars(void)
 	typedef_ign = 0;
 }
 
-static void count(const char *s)
+static void store_yytext(const char *s)
 {
+	struct dynstr *ds;
 	int i;
 	if (!linestart)
 		linestart = s;
@@ -203,4 +207,9 @@ static void count(const char *s)
 		else
 			colnum++;
 	}
+
+	ds = malloc(sizeof(struct dynstr) + yyleng);
+	ds->len = ds->alloc = yyleng;
+	memcpy(ds->text, s, yyleng);
+	list_add_tail(&ds->list, &raw_contents);
 }
