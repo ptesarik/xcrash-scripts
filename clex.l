@@ -182,12 +182,7 @@ int typedef_ign;
 static void init_vars(void)
 {
 	INIT_LIST_HEAD(&raw_contents);
-
 	linestart = NULL;
-	yylloc.first_line = yylloc.last_line = 1;
-	yylloc.first_column = yylloc.last_column = 0;
-	yylloc.first_text = yylloc.last_text = NULL;
-
 	typedef_ign = 0;
 }
 

@@ -146,6 +146,12 @@ static void hidedecls(decl_t *);
 %locations
 %glr-parser
 %start translation_unit
+%initial-action
+{
+	@$.first_line   = @$.last_line   = 1;
+	@$.first_column = @$.last_column = 0;
+	@$.first_text   = @$.last_text   = NULL;
+}
 %%
 
 translation_unit	: /* empty */
