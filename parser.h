@@ -149,17 +149,6 @@ typedef struct decl {
 	expr_t *body;
 } decl_t;
 
-typedef struct{
-	union {
-		long num;
-		char *str;
-		type_t *type;
-		var_t *var;
-		expr_t *expr;
-		decl_t *decl;
-	};
-} unit_t;
-
 /* When yyparse() succeeds, the resulting tree is here: */
 extern decl_t *parsed_tree;
 
