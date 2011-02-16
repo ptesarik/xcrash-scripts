@@ -899,14 +899,20 @@ string_const		: STRING_CONST
 void
 yyerror(const char *s)
 {
+	int first_column;
 	int i;
+
+	first_column = (yylloc.first_line == yylloc.last_line)
+		? yylloc.first_column
+		: 0;
+
 	fflush(stdout);
 	fprintf(stderr, "%s\n%*s",
-		linestart, yylloc.first_column + 1, "^");
-	for (i = 1; i < yylloc.last_column - yylloc.first_column; ++i)
+		linestart, first_column + 1, "^");
+	for (i = 1; i < yylloc.last_column - first_column; ++i)
 		putc('^', stderr);
 	fprintf(stderr, "\n%*s on line %d\n",
-		yylloc.first_column + 1, s, yylloc.first_line);
+		first_column + 1, s, yylloc.last_line);
 }
 
 decl_t *parsed_tree;
