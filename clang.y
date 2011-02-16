@@ -81,7 +81,7 @@ static void hidedecls(decl_t *);
 
 /* precedence */
 %left TYPEID ID
-%left IF THEN ELSE
+%left IF ELSE
 
 %type <token> assign_op eq_op rel_op shift_op add_op mul_op
 %type <token> unary_op unary_lval_op
@@ -650,11 +650,6 @@ stat			: ID ':' stat
 			{ $$ = newexpr1($1, $3); }
 			| IF '(' expr ')' stat ELSE stat
 			{ $$ = newexpr3($1, $3, $5, $7); }
-			| IF '(' expr ')' stat ELSE stat ELSE stat
-			{ /* HACK to cope with #ifdef'd else clauses */
-				list_add_tail(&$9->list, &$7->list);
-				$$ = newexpr3($1, $3, $5, $7);
-			}
 			| IF '(' expr ')' stat
 			{ $$ = newexpr2($1, $3, $5); }
 			| SWITCH '(' expr ')' stat
