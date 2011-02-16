@@ -1,2 +1,7 @@
+*.o
+*~
+parser
+*.tab.[ch]
+*.yy.c
 crash-5.1.1.tar.gz
 crash-5.1.1
