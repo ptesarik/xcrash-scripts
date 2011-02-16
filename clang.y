@@ -1265,12 +1265,10 @@ hidefnparams(declarator_t *first)
 	declarator_t *decl = first;
 	do {
 		type_t *type = decl->abstract.tree;
-		if (type->category != type_func) {
+		if (!type || type->category != type_func) {
 			fprintf(stderr, "Ouch! %s is not a function!\n",
 				decl->var->name);
-			continue;
-		}
-		if (type->f.param)
+		} else if (type->f.param)
 			hidedecls(type->f.param);
 
 		decl = list_entry(decl->list.next, declarator_t, list);
