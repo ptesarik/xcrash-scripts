@@ -68,7 +68,16 @@ quilt refresh -p ab --no-timestamp
 quilt new remove-if-0.patch
 quilt add $files
 for f in $files; do
-	"$scriptdir"/cleanup-ifdefs.pl 0 "$f" > "$f".new
+	"$scriptdir"/cleanup-ifdefs.pl -r 0 "$f" > "$f".new
+	mv "$f".new "$f"
+done
+quilt refresh -p ab --no-timestamp
+
+# This is necessary to remove multiple else clauses in kernel.c
+quilt new remove-if-MODULES_IN_CWD.patch
+quilt add $files
+for f in $files; do
+	"$scriptdir"/cleanup-ifdefs.pl -r MODULES_IN_CWD "$f" > "$f".new
 	mv "$f".new "$f"
 done
 quilt refresh -p ab --no-timestamp

@@ -1,13 +1,25 @@
 #! /usr/bin/perl
 
+my $reverse = 0;
 my $macro = shift @ARGV;
+if ($macro eq "-r") {
+    $reverse = 1;
+    $macro = shift @ARGV;
+}
+
 my $rxtrue, my $rxfalse;
 if ($macro eq "0") {
-    $rxtrue = "^\\s*#if\\s+\\b1\\b";
-    $rxfalse = "^\\s*#if\\s+\\b0\\b";
+    $rxtrue = "^\\s*#if\\s+\\b0\\b";
+    $rxfalse = "^\\s*#if\\s+\\b1\\b";
 } else {
     $rxtrue = "^\\s*#ifdef\\s+\\b$macro\\b";
     $rxfalse = "^\\s*#ifndef\\s+\\b$macro\\b";
+}
+
+if ($reverse) {
+    my $rx = $rxtrue;
+    $rxtrue = $rxfalse;
+    $rxfalse = $rx;
 }
 
 my $output = 1;
