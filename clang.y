@@ -32,7 +32,7 @@ static void hidedecls(decl_t *);
 	  (Current).first_text   = YYRHSLOC(Rhs, 1).first_text;		\
 	  (Current).last_line	 = YYRHSLOC(Rhs, N).last_line;		\
 	  (Current).last_column	 = YYRHSLOC(Rhs, N).last_column;	\
-	  (Current).last_text    = YYRHSLOC(Rhs, 1).last_text;		\
+	  (Current).last_text    = YYRHSLOC(Rhs, N).last_text;		\
 	}								\
       else								\
 	{								\
