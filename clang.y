@@ -23,6 +23,28 @@ static void unhidetypedefs(void);
 static void hidefnparams(declarator_t *);
 static void hidedecls(decl_t *);
 
+# define YYLLOC_DEFAULT(Current, Rhs, N)				\
+    do									\
+      if (N)								\
+	{								\
+	  (Current).first_line	 = YYRHSLOC(Rhs, 1).first_line;		\
+	  (Current).first_column = YYRHSLOC(Rhs, 1).first_column;	\
+	  (Current).first_text   = YYRHSLOC(Rhs, 1).first_text;		\
+	  (Current).last_line	 = YYRHSLOC(Rhs, N).last_line;		\
+	  (Current).last_column	 = YYRHSLOC(Rhs, N).last_column;	\
+	  (Current).last_text    = YYRHSLOC(Rhs, 1).last_text;		\
+	}								\
+      else								\
+	{								\
+	  (Current).first_line	 = (Current).last_line	 =		\
+	    YYRHSLOC(Rhs, 0).last_line;					\
+	  (Current).first_column = (Current).last_column =		\
+	    YYRHSLOC(Rhs, 0).last_column;				\
+	  (Current).first_text   = (Current).last_text   =		\
+	    YYRHSLOC(Rhs, 0).last_text;					\
+	}								\
+    while (0)
+
 %}
 
 %union {
@@ -121,6 +143,7 @@ static void hidedecls(decl_t *);
 
 %error-verbose
 %debug
+%locations
 %glr-parser
 %start translation_unit
 %%
@@ -876,9 +899,14 @@ string_const		: STRING_CONST
 void
 yyerror(const char *s)
 {
+	int i;
 	fflush(stdout);
-	fprintf(stderr, "%s\n%*s\n%*s at line %d\n",
-		linestart, colnum, "^", colnum, s, linenum);
+	fprintf(stderr, "%s\n%*s",
+		linestart, yylloc.first_column + 1, "^");
+	for (i = 1; i < yylloc.last_column - yylloc.first_column; ++i)
+		putc('^', stderr);
+	fprintf(stderr, "\n%*s on line %d\n",
+		yylloc.first_column + 1, s, yylloc.first_line);
 }
 
 decl_t *parsed_tree;

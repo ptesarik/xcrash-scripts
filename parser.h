@@ -11,6 +11,15 @@ struct dynstr {
 
 extern struct list_head raw_contents;
 
+typedef struct {
+	int first_line;
+	int first_column;
+	int last_line;
+	int last_column;
+	struct dynstr *first_text, *last_text;
+} loc_t;
+#define YYLTYPE	loc_t
+
 /* Parsed types */
 
 enum type_category {
@@ -156,6 +165,7 @@ extern decl_t *parsed_tree;
 
 /* Parser/lexer interface */
 extern FILE *yyin;
+extern YYLTYPE yylloc;
 
 void yyerror(const char *);
 int yyparse(void);
@@ -164,7 +174,6 @@ int yylex_destroy(void);
 
 /* Location handling */
 extern int tabsize;
-extern int linenum, colnum;
 extern const char *linestart;
 
 /* Typedef hash */

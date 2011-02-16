@@ -175,7 +175,6 @@ int yywrap(void)
 }
 
 int tabsize = 8;
-int linenum, colnum;
 const char *linestart;
 
 int typedef_ign;
@@ -184,9 +183,10 @@ static void init_vars(void)
 {
 	INIT_LIST_HEAD(&raw_contents);
 
-	linenum = 1;
-	colnum = 0;
 	linestart = NULL;
+	yylloc.first_line = yylloc.last_line = 1;
+	yylloc.first_column = yylloc.last_column = 0;
+	yylloc.first_text = yylloc.last_text = NULL;
 
 	typedef_ign = 0;
 }
@@ -197,19 +197,23 @@ static void store_yytext(const char *s)
 	int i;
 	if (!linestart)
 		linestart = s;
+	yylloc.first_line = yylloc.last_line;
+	yylloc.first_column = yylloc.last_column;
 	for (i = 0; i < yyleng; ++i) {
 		if (yytext[i] == '\n') {
-			linenum++;
+			yylloc.last_line++;
 			linestart = yytext + i + 1;
-			colnum = 0;
+			yylloc.last_column = 0;
 		} else if (yytext[i] == '\t')
-			colnum += tabsize - (colnum % tabsize);
+			yylloc.last_column += tabsize -
+				(yylloc.last_column % tabsize);
 		else
-			colnum++;
+			yylloc.last_column++;
 	}
 
 	ds = malloc(sizeof(struct dynstr) + yyleng);
 	ds->len = ds->alloc = yyleng;
 	memcpy(ds->text, s, yyleng);
 	list_add_tail(&ds->list, &raw_contents);
+	yylloc.first_text = yylloc.last_text = ds;
 }
