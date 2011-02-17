@@ -148,9 +148,12 @@ static void hidedecls(decl_t *);
 %start translation_unit
 %initial-action
 {
+	struct dynstr *ds = newdynstr(NULL, 0);
+	INIT_LIST_HEAD(&raw_contents);
+	list_add_tail(&ds->list, &raw_contents);
 	@$.first_line   = @$.last_line   = 1;
 	@$.first_column = @$.last_column = 0;
-	@$.first_text   = @$.last_text   = NULL;
+	@$.first_text   = @$.last_text   = ds;
 }
 %%
 

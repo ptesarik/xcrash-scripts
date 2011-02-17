@@ -9,6 +9,8 @@ struct dynstr {
 	char text[];
 };
 
+struct dynstr *newdynstr(const char *, size_t);
+
 extern struct list_head raw_contents;
 
 typedef struct {

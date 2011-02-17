@@ -181,9 +181,16 @@ int typedef_ign;
 
 static void init_vars(void)
 {
-	INIT_LIST_HEAD(&raw_contents);
 	linestart = NULL;
 	typedef_ign = 0;
+}
+
+struct dynstr *newdynstr(const char *s, size_t len)
+{
+	struct dynstr *ds = malloc(sizeof(struct dynstr) + len);
+	ds->len = ds->alloc = len;
+	memcpy(ds->text, s, len);
+	return ds;
 }
 
 static void store_yytext(const char *s)
@@ -206,9 +213,7 @@ static void store_yytext(const char *s)
 			yylloc.last_column++;
 	}
 
-	ds = malloc(sizeof(struct dynstr) + yyleng);
-	ds->len = ds->alloc = yyleng;
-	memcpy(ds->text, s, yyleng);
+	ds = newdynstr(s, yyleng);
 	list_add_tail(&ds->list, &raw_contents);
 	yylloc.first_text = yylloc.last_text = ds;
 }
