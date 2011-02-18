@@ -70,28 +70,6 @@ typedef struct expr {
 		long num;
 		double f;
 		char *str;
-		type_t *type;
-		struct expr *expr;
-		struct node *decl;
-		struct {
-			type_t *type;
-			struct expr *expr;
-		} typecast;
-		struct {
-			struct expr *left;
-			struct expr *right;
-		} binary;
-		struct {
-			struct expr *cond;
-			struct expr *ontrue;
-			struct expr *onfalse;
-		} ternary;	/* for ternary ?: */
-		struct {
-			struct expr *init;
-			struct expr *cond;
-			struct expr *iter;
-			struct expr *body;
-		} forloop;
 	};
 } expr_t;
 
@@ -217,16 +195,16 @@ node_t *newvar(YYLTYPE *, const char *);
 
 node_t *newdecl(YYLTYPE *, node_t *, declarator_t *);
 
-expr_t *newexpr(YYLTYPE *, int);
-expr_t *newexprnum(YYLTYPE *, char *);
-expr_t *newexprfloat(YYLTYPE *, char *);
-expr_t *newexprstr(YYLTYPE *, char *);
-expr_t *newexprchar(YYLTYPE *, char *);
-expr_t *newexprid(YYLTYPE *, char *);
-expr_t *newexprtype(YYLTYPE *, int, node_t *);
-expr_t *newexprtypecast(YYLTYPE *, int, node_t *, expr_t *);
-expr_t *newexprdecl(YYLTYPE *, node_t *);
-expr_t *newexpr1(YYLTYPE *, int, expr_t *);
-expr_t *newexpr2(YYLTYPE *, int, expr_t *, expr_t *);
-expr_t *newexpr3(YYLTYPE *, int, expr_t *, expr_t *, expr_t *);
-expr_t *newexpr4(YYLTYPE *, int, expr_t *, expr_t *, expr_t *, expr_t *);
+node_t *newexpr(YYLTYPE *, int);
+node_t *newexprnum(YYLTYPE *, char *);
+node_t *newexprfloat(YYLTYPE *, char *);
+node_t *newexprstr(YYLTYPE *, char *);
+node_t *newexprchar(YYLTYPE *, char *);
+node_t *newexprid(YYLTYPE *, char *);
+node_t *newexprtype(YYLTYPE *, int, node_t *);
+node_t *newexprtypecast(YYLTYPE *, int, node_t *, node_t *);
+node_t *newexprdecl(YYLTYPE *, node_t *);
+node_t *newexpr1(YYLTYPE *, int, node_t *);
+node_t *newexpr2(YYLTYPE *, int, node_t *, node_t *);
+node_t *newexpr3(YYLTYPE *, int, node_t *, node_t *, node_t *);
+node_t *newexpr4(YYLTYPE *, int, node_t *, node_t *, node_t *, node_t *);

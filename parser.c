@@ -232,6 +232,7 @@ static void dump_op(int op)
 	case '?':	fputs("?:", stdout); break;
 	case RANGE:	fputs("...", stdout); break;
 	case PTR_OP:	fputs("=>", stdout); break;
+	case SIZEOF_TYPE:
 	case SIZEOF:	fputs("sizeof", stdout); break;
 	case FUNC:	fputs("call", stdout); break;
 	case ARRAY:	fputs("idx", stdout); break;
@@ -277,142 +278,8 @@ static void dump_expr(expr_t *expr)
 	case CHAR_CONST:
 		fputs(expr->str, stdout);
 		break;
-	case SIZEOF_TYPE:
-		fputs("sizeof(", stdout);
-		dump_type(expr->type, 1);
-		putchar(')');
-		break;
-	case TYPECAST:
-	case OFFSETOF:
-		dump_op(expr->op);
-		putchar('(');
-		dump_type(expr->typecast.type, 1);
-		putchar(',');
-		dump_exprlist(expr->typecast.expr);
-		putchar(')');
-		break;
-	case FRAME_REG:
-		dump_op(expr->op);
-		putchar('(');
-		dump_exprlist(expr->typecast.expr);
-		putchar(',');
-		dump_type(expr->typecast.type, 1);
-		putchar(')');
-		break;
-	case DECL:
-		dump_tree(expr->decl);
-		break;
-
-	case ELLIPSIS:
-	case CONTINUE:
-	case BREAK:
-		dump_op(expr->op);
-		break;
-
-	case SIZEOF:
-	case LABEL:
-	case DEFAULT:
-	case GOTO:
-	case RETURN:
-		dump_op(expr->op);
-		if (expr->expr) {
-			putchar('(');
-			dump_exprlist(expr->expr);
-			putchar(')');
-		}
-		break;
-
-	case '~':
-	case '!':
-	case '=':
-	case SHR_ASSIGN:
-	case SHL_ASSIGN:
-	case ADD_ASSIGN:
-	case SUB_ASSIGN:
-	case MUL_ASSIGN:
-	case DIV_ASSIGN:
-	case MOD_ASSIGN:
-	case AND_ASSIGN:
-	case XOR_ASSIGN:
-	case OR_ASSIGN:
-	case OR_OP:
-	case AND_OP:
-	case '|':
-	case '^':
-	case '&':
-	case EQ_OP:
-	case NE_OP:
-	case LE_OP:
-	case GE_OP:
-	case '<':
-	case '>':
-	case SHL_OP:
-	case SHR_OP:
-	case INC_OP:
-	case DEC_OP:
-	case '+':
-	case '-':
-	case '*':
-	case '/':
-	case '%':
-	case ',':
-	case '.':
-	case PTR_OP:
-	case FUNC:
-	case ARRAY:
-	case SWITCH:
-	case WHILE:
-	case DO:
-	case CASE:
-	case RANGE:
-		dump_op(expr->op);
-		putchar('(');
-		if (expr->binary.right) {
-			dump_exprlist(expr->binary.left);
-			putchar(',');
-			dump_exprlist(expr->binary.right);
-		} else {
-			/* Some operators are both binary and unary */
-			dump_exprlist(expr->expr);
-		}
-		putchar(')');
-		break;
-
-	case '?':
-	case IF:
-	case FOR_CPU_INDEXES:
-		dump_op(expr->op);
-		putchar('(');
-		dump_exprlist(expr->ternary.cond);
-		putchar(',');
-		dump_exprlist(expr->ternary.ontrue);
-		if (expr->ternary.onfalse) {
-			putchar(',');
-			dump_exprlist(expr->ternary.onfalse);
-		}
-		putchar(')');
-		break;
-
-	case FOR:
-		dump_op(expr->op);
-		putchar('(');
-		if (expr->forloop.init)
-			dump_exprlist(expr->forloop.init);
-		putchar(',');
-		if (expr->forloop.cond)
-			dump_exprlist(expr->forloop.cond);
-		putchar(',');
-		if (expr->forloop.iter)
-			dump_exprlist(expr->forloop.iter);
-		putchar(',');
-		if (expr->forloop.body)
-			dump_exprlist(expr->forloop.body);
-		putchar(',');
-		putchar(')');
-		break;
-
 	default:
-		fputs("UNKNOWN!", stdout);
+		dump_op(expr->op);
 	}
 }
 
