@@ -126,19 +126,6 @@ typedef struct var {
 	char *name;
 } var_t;
 
-/* This type is used only temporarily during parsing */
-typedef struct abstract {
-	type_t *tree;
-	type_t **stub;	
-} abstract_t;
-
-/* This type is used only temporarily during parsing */
-typedef struct declarator {
-	struct list_head list;
-	var_t *var;
-	abstract_t abstract;
-} declarator_t;
-
 enum {
 	cht_expr = 0,
 	cht_body = 0,		/* struct_type and enum_type */
@@ -206,6 +193,19 @@ typedef struct node {
         const var_t *__ptr = (ptr);	\
         (node_t *)( (char *)__ptr - offsetof(node_t,v) );})
 
+/* This type is used only temporarily during parsing */
+typedef struct abstract {
+	type_t *tree;
+	type_t **stub;	
+} abstract_t;
+
+/* This type is used only temporarily during parsing */
+typedef struct declarator {
+	struct list_head list;
+	node_t *var;
+	abstract_t abstract;
+} declarator_t;
+
 /* When yyparse() succeeds, the resulting tree is here: */
 extern node_t *parsed_tree;
 
@@ -241,7 +241,7 @@ type_t *newtype_name(YYLTYPE *, const char *);
 type_t *newtype_int(YYLTYPE *);
 void type_merge(type_t *, type_t *);
 
-var_t *newvar(YYLTYPE *, const char *);
+node_t *newvar(YYLTYPE *, const char *);
 
 node_t *newdecl(YYLTYPE *, type_t *, declarator_t *);
 

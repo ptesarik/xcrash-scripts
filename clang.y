@@ -20,7 +20,7 @@
 static declarator_t *newdeclarator(void);
 static void link_abstract(declarator_t *, const abstract_t *);
 
-static void addvartypedefs(var_t *);
+static void addtypedeflist(node_t *);
 static void hidetypedef(const char *);
 static void unhidetypedefs(void);
 static void hidefnparams(declarator_t *);
@@ -140,9 +140,11 @@ static void hidedecls(node_t *);
 %type <expr> compound_stat compound_body stat argument_expr_list
 %type <expr> opt_attr attr_spec attr_list attribute attr_param_list
 
-%type <var> enum_body enumerator_list enumerator
-%type <var> id_list
+/* var type */
+%type <node> enum_body enumerator_list enumerator
+%type <node> id_list
 
+/* decl type */
 %type <node> external_decl func_def decl_list decl
 %type <node> param_decl _param_decl param_list param_type_list
 %type <node> param_type_or_idlist
@@ -236,7 +238,7 @@ decl			: type_decl init_declarator_list ';'
 			{
 				$$ = newdecl(&@$, $1, $2);
 				if ($1->flags & TF_TYPEDEF)
-					addvartypedefs($2->var);
+					addtypedeflist($2->var);
 			}
 			| type_decl                      ';'
 			{ typedef_ign = 0; $$ = newdecl(&@$, $1, NULL); }
@@ -403,8 +405,7 @@ struct_decl		: spec_qualifier_list struct_declarator_list ';'
 struct_declarator_list	: struct_declarator
 			| struct_declarator_list ',' struct_declarator
 			{
-				list_add_tail(&var_node($3->var)->list,
-					      &var_node($1->var)->list);
+				list_add_tail(&$3->var->list, &$1->var->list);
 				$$ = $1;
 			}
 			;
@@ -412,15 +413,13 @@ struct_declarator_list	: struct_declarator
 struct_declarator	: declarator ':' const_expr
 			{
 				$$ = $1;
-				var_node($$->var)->child[chv_bitsize] =
-					expr_node($3);
+				$$->var->child[chv_bitsize] = expr_node($3);
 			}
 			|            ':' const_expr
 			{
 				$$ = newdeclarator();
 				$$->var = newvar(&@$, NULL);
-				var_node($$->var)->child[chv_bitsize] =
-					expr_node($2);
+				$$->var->child[chv_bitsize] = expr_node($2);
 			}
 			| declarator
 			;
@@ -436,9 +435,9 @@ enum_spec		: ENUM { typedef_ign = 1; } opt_attr enum_desc
 			;
 
 enum_desc		: ID enum_body
-			{ $$ = newtype_name(&@$, $1); $$->e.body = $2; }
+			{ $$ = newtype_name(&@$, $1); $$->e.body = &$2->v; }
 			|    enum_body
-			{ $$ = newtype(&@$); $$->e.body = $1; }
+			{ $$ = newtype(&@$); $$->e.body = &$1->v; }
 			| ID
 			{ $$ = newtype_name(&@$, $1); }
 			;
@@ -452,8 +451,7 @@ enum_body		: '{' enumerator_list ',' '}'
 enumerator_list		: enumerator
 			| enumerator_list ',' enumerator
 			{
-				list_add_tail(&var_node($3)->list,
-					      &var_node($1)->list);
+				list_add_tail(&$3->list, &$1->list);
 				$$ = $1;
 			}
 			;
@@ -463,7 +461,7 @@ enumerator		: ID
 			| ID '=' const_expr
 			{
 				$$ = newvar(&@$, $1);
-				var_node($$)->child[chv_init] = expr_node($3);
+				$$->child[chv_init] = expr_node($3);
 			}
 			;
 
@@ -490,8 +488,7 @@ init_declarator_list	: init_declarator
 init_declarator		: declarator '=' initializer
 			{
 				$$ = $1;
-				var_node($$->var)->child[chv_init] =
-					expr_node($3);
+				$$->var->child[chv_init] = expr_node($3);
 			}
 			| declarator
 			;
@@ -505,21 +502,19 @@ declarator		: pointer direct_declarator opt_attr
 				$$ = $2;
 				link_abstract($$, &$1);
 				if ($3)
-					var_node($$->var)->child[chv_attr] =
-						expr_node($3);
+					$$->var->child[chv_attr] = expr_node($3);
 			}
 			|         direct_declarator opt_attr
 			{
 				$$ = $1;
 				if ($2)
-					var_node($$->var)->child[chv_attr] =
-						expr_node($2);
+					$$->var->child[chv_attr] = expr_node($2);
 			}
 			;
 
 direct_declarator	: ID
 			{
-				var_t *var = newvar(&@$, $1);
+				node_t *var = newvar(&@$, $1);
 				$$ = newdeclarator();
 				$$->var = var;
 			}
@@ -550,7 +545,7 @@ param_type_or_idlist	: param_type_list
 			| id_list
 			{
 				$$ = newdecl(&@$, NULL, NULL);
-				$$->child[chd_var] = var_node($1);
+				$$->child[chd_var] = $1;
 			}
 			;
 
@@ -601,9 +596,8 @@ id_list			: ID
 			{ $$ = newvar(&@$, $1); }
 			| id_list ',' ID
 			{
-				var_t *var = newvar(&@$, $3);
-				list_add_tail(&var_node(var)->list,
-					      &var_node($1)->list);
+				node_t *var = newvar(&@$, $3);
+				list_add_tail(&var->list, &$1->list);
 				$$ = $1;
 			}
 			;
@@ -1022,7 +1016,7 @@ type_merge(type_t *merger, type_t *other)
 	free(type_node(other));
 }
 
-var_t *
+node_t *
 newvar(YYLTYPE *loc, const char *name)
 {
 	size_t extra = name ? strlen(name) + 1 : 0;
@@ -1032,7 +1026,7 @@ newvar(YYLTYPE *loc, const char *name)
 		node->v.name = node_extra(node);
 		strcpy(node->v.name, name);
 	}
-	return &node->v;
+	return node;
 }
 
 static declarator_t *
@@ -1057,14 +1051,14 @@ node_t *
 newdecl(YYLTYPE *loc, type_t *type, declarator_t *declarator)
 {
 	node_t *node = newnode(loc, nt_decl, chd_max);
-	var_t *var, *lastvar;
+	node_t *var, *lastvar;
 	declarator_t *d, *nextd;
 
 	node->child[chd_type] = type ? type_node(type) : NULL;
 	if (!declarator)
 		return node;
 
-	node->child[chd_var] = var_node(declarator->var);
+	node->child[chd_var] = declarator->var;
 
 	lastvar = list_entry(declarator->list.prev, declarator_t, list)->var;
 	nextd = declarator;
@@ -1072,17 +1066,17 @@ newdecl(YYLTYPE *loc, type_t *type, declarator_t *declarator)
 		d = nextd;
 		var = d->var;
 		if (var) {
-			var_node(lastvar)->list.next = &var_node(var)->list;
-			var_node(var)->list.prev = &var_node(lastvar)->list;
+			lastvar->list.next = &var->list;
+			var->list.prev = &lastvar->list;
 
 			if (d->abstract.stub) {
 				*d->abstract.stub = type;
-				var_node(var)->child[chv_type] =
+				var->child[chv_type] =
 					type_node(d->abstract.tree);
-				var_node(var)->child[chv_type]->t.flags =
+				var->child[chv_type]->t.flags =
 					type->flags;
 			} else
-				var_node(var)->child[chv_type] =
+				var->child[chv_type] =
 					type_node(type);
 		} else if (d->abstract.stub) {
 			*d->abstract.stub = type;
@@ -1269,13 +1263,14 @@ addtypedef(const char *name)
 }
 
 static void
-addvartypedefs(var_t *varlist)
+addtypedeflist(node_t *first)
 {
-	var_t *var = varlist;
+	node_t *node = first;
 	do {
-		addtypedef(var->name);
-		var = &list_entry(var_node(var)->list.next, node_t, list)->v;
-	} while (var != varlist);
+		if (node->type == nt_var)
+			addtypedef(node->v.name);
+		node = list_entry(node->list.next, node_t, list);
+	} while (node != first);
 }
 
 static void
@@ -1303,25 +1298,25 @@ unhidetypedefs(void)
 }
 
 static void
-hidevars(var_t *first)
+hidevars(node_t *first)
 {
-	var_t *var = first;
+	node_t *node = first;
 	do {
-		if (var->name)
-			hidetypedef(var->name);
-		var = &list_entry(var_node(var)->list.next, node_t, list)->v;
-	} while (var != first);
+		if (node->type == nt_var && node->v.name)
+			hidetypedef(node->v.name);
+		node = list_entry(node->list.next, node_t, list);
+	} while (node != first);
 }
 
 static void
 hidedecls(node_t *first)
 {
-	node_t *decl = first;
+	node_t *node = first;
 	do {
-		if (decl->child[chd_var])
-			hidevars(&decl->child[chd_var]->v);
-		decl = list_entry(decl->list.next, node_t, list);
-	} while (decl != first);
+		if (node->type == nt_decl && node->child[chd_var])
+			hidevars(node->child[chd_var]);
+		node = list_entry(node->list.next, node_t, list);
+	} while (node != first);
 }
 
 static void
@@ -1332,7 +1327,7 @@ hidefnparams(declarator_t *first)
 		type_t *type = decl->abstract.tree;
 		if (!type || type->category != type_func) {
 			fprintf(stderr, "Ouch! %s is not a function!\n",
-				decl->var->name);
+				decl->var->v.name);
 		} else if (type->f.param)
 			hidedecls(type->f.param);
 
