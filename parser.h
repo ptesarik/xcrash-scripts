@@ -86,18 +86,10 @@ enum {
 	cht_attr,
 	cht_max,
 
-	che_type = 0,		/* type and typecast */
-	che_expr,		/* expr and typecast */
-	che_decl = 0,
-	che_left = 0,
-	che_right,
-	che_cond = 0,
-	che_ontrue,
-	che_onfalse,
-	che_forinit = 0,
-	che_forcond,
-	che_foriter,
-	che_forbody,
+	che_arg1 = 0,
+	che_arg2,
+	che_arg3,
+	che_arg4,
 	che_max,
 
 	chv_type = 0,
@@ -201,9 +193,6 @@ node_t *newexprfloat(YYLTYPE *, char *);
 node_t *newexprstr(YYLTYPE *, char *);
 node_t *newexprchar(YYLTYPE *, char *);
 node_t *newexprid(YYLTYPE *, char *);
-node_t *newexprtype(YYLTYPE *, int, node_t *);
-node_t *newexprtypecast(YYLTYPE *, int, node_t *, node_t *);
-node_t *newexprdecl(YYLTYPE *, node_t *);
 node_t *newexpr1(YYLTYPE *, int, node_t *);
 node_t *newexpr2(YYLTYPE *, int, node_t *, node_t *);
 node_t *newexpr3(YYLTYPE *, int, node_t *, node_t *, node_t *);

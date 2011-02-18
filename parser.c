@@ -84,7 +84,6 @@ const char *predef_types[] = {
 static void dump_basic_type(type_t *type);
 static void dump_type(type_t *type, int showflags);
 static void dump_expr(expr_t *expr);
-static void dump_exprlist(expr_t *list);
 static void dump_var(var_t *var);
 static void dump_tree(node_t *tree);
 
@@ -198,7 +197,7 @@ static void dump_type(type_t *type, int showflags)
 		break;
 
 	case type_typeof:
-		fputs("typeof(\n", stdout);
+		fputs("typeof\n", stdout);
 		break;
 
 	default:
@@ -283,14 +282,9 @@ static void dump_expr(expr_t *expr)
 	}
 }
 
-static void dump_exprlist(expr_t *list)
-{
-	dump_tree(expr_node(list));
-}
-
 static void dump_var(var_t *var)
 {
-	printf("%*sname: %s\n", indent*depth, "", var->name);
+	printf("name: %s", var->name);
 }
 
 static void dump_tree(node_t *tree)
@@ -303,20 +297,23 @@ static void dump_tree(node_t *tree)
 
 	++depth;
 	do {
+		printf("%*s(", depth*indent, "");
 		dump_chunk(item->first_text, item->last_text);
+		printf("%*s", depth*indent, "");
 		switch (item->type) {
 		case nt_type: dump_type(&item->t, 1); break;
 		case nt_expr: dump_expr(&item->e); break;
 		case nt_var:  dump_var (&item->v); break;
-		case nt_decl: /* nothing special */ break;
+		case nt_decl: fputs("decl", stdout); break;
 		}
+		putchar('\n');
 
 		for (i = 0; i < item->nchild; ++i) {
 			if (!item->child[i])
 				continue;
-			printf("%*schild[%d]: ", indent*depth, "", i);
 			dump_tree(item->child[i]);
 		}
+		printf("%*s)\n", depth*indent, "");
 
 		item = list_entry(item->list.next, node_t, list);
 	} while (item != tree);

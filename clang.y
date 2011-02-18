@@ -279,12 +279,7 @@ notype_decl		: attr_spec
 			| type_qualifier
 			{ $$ = newtype(&@$); $$->t.flags = $1; }
 			| notype_decl attr_spec
-			{
-				struct list_head *last = $2->list.prev;
-				$$ = $1;
-				list_splice(&$$->child[cht_attr]->list, last);
-				list_add(&$$->child[cht_attr]->list, last);
-			}
+			{ $$ = $1; type_add_attr($$, $2); }
 			| notype_decl storage_class_spec
 			{ $$ = $1; $$->t.flags |= $2; }
 			| notype_decl type_qualifier
@@ -523,9 +518,8 @@ declarator		: pointer direct_declarator opt_attr
 
 direct_declarator	: ID
 			{
-				node_t *var = newvar(&@$, $1);
 				$$ = newdeclarator();
-				$$->var = var;
+				$$->var = newvar(&@$, $1);
 			}
 			| '(' declarator ')'
 			{ $$ = $2; }
@@ -750,7 +744,7 @@ compound_body		: /* empty */
 			{ $$ = NULL; }
 			| compound_body decl
 			{
-				node_t *expr = newexprdecl(&@$, $2);
+				node_t *expr = newexpr1(&@$, DECL, $2);
 				if ($1) {
 					list_add_tail(&expr->list, &$1->list);
 					$$ = $1;
@@ -858,7 +852,7 @@ mul_op			: '*' | '/' | '%'
 
 cast_expr		: unary_expr
 			| '(' type_name ')' cast_expr
-			{ $$ = newexprtypecast(&@$, TYPECAST, $2, $4); }
+			{ $$ = newexpr2(&@$, TYPECAST, $2, $4); }
 			;
 
 unary_expr		: postfix_expr
@@ -867,13 +861,13 @@ unary_expr		: postfix_expr
 			| unary_op cast_expr
 			{ $$ = newexpr1(&@$, $1, $2); }
 			| SIZEOF '(' type_name  ')'
-			{ $$ = newexprtype(&@$, SIZEOF_TYPE, $3); }
+			{ $$ = newexpr1(&@$, SIZEOF_TYPE, $3); }
 			/* HACK: defined as a preprocessor macro */
 			| OFFSETOF '(' type_name ',' unary_expr ')'
-			{ $$ = newexprtypecast(&@$, $1, $3, $5); }
+			{ $$ = newexpr2(&@$, $1, $3, $5); }
 			/* HACK */
 			| FRAME_REG '(' opt_expr ',' type_name ')'
-			{ $$ = newexprtypecast(&@$, $1, $5, $3); }
+			{ $$ = newexpr2(&@$, $1, $5, $3); }
 			;
 unary_op		: '&' | '*' | '+' | '-' | '~' | '!'
 			;
@@ -1161,66 +1155,41 @@ newexprid(YYLTYPE *loc, char *id)
 }
 
 node_t *
-newexprtype(YYLTYPE *loc, int op, node_t *type)
+newexpr1(YYLTYPE *loc, int op, node_t *arg1)
 {
 	node_t *ret = newexpr(loc, op);
-	ret->child[che_type] = type;
+	ret->child[che_arg1] = arg1;
 	return ret;
 }
 
 node_t *
-newexprtypecast(YYLTYPE *loc, int op, node_t *type, node_t *expr)
+newexpr2(YYLTYPE *loc, int op, node_t *arg1, node_t *arg2)
 {
 	node_t *ret = newexpr(loc, op);
-	ret->child[che_type] = type;
-	ret->child[che_expr] = expr;
+	ret->child[che_arg1] = arg1;
+	ret->child[che_arg2] = arg2;
 	return ret;
 }
 
 node_t *
-newexprdecl(YYLTYPE *loc, node_t *decl)
-{
-	node_t *ret = newexpr(loc,DECL);
-	ret->child[che_decl] = decl;
-	return ret;
-}
-
-node_t *
-newexpr1(YYLTYPE *loc, int op, node_t *expr)
-{
-	node_t *ret = newexpr(loc, op);
-	ret->child[che_expr] = expr;
-	return ret;
-}
-
-node_t *
-newexpr2(YYLTYPE *loc, int op, node_t *left, node_t *right)
-{
-	node_t *ret = newexpr(loc, op);
-	ret->child[che_left] = left;
-	ret->child[che_right] = right;
-	return ret;
-}
-
-node_t *
-newexpr3(YYLTYPE *loc, int op, node_t *cond, node_t *ontrue, node_t *onfalse)
+newexpr3(YYLTYPE *loc, int op, node_t *arg1, node_t *arg2, node_t *arg3)
 {
 	node_t * ret = newexpr(loc, op);
-	ret->child[che_cond] = cond;
-	ret->child[che_ontrue] = ontrue;
-	ret->child[che_onfalse] = onfalse;
+	ret->child[che_arg1] = arg1;
+	ret->child[che_arg2] = arg2;
+	ret->child[che_arg3] = arg3;
 	return ret;
 }
 
 node_t *
 newexpr4(YYLTYPE *loc, int op,
-	 node_t *init, node_t *cond, node_t *iter, node_t *body)
+	 node_t *arg1, node_t *arg2, node_t *arg3, node_t *arg4)
 {
 	node_t * ret = newexpr(loc, op);
-	ret->child[che_forinit] = init;
-	ret->child[che_forcond] = cond;
-	ret->child[che_foriter] = iter;
-	ret->child[che_forbody] = body;
+	ret->child[che_arg1] = arg1;
+	ret->child[che_arg2] = arg2;
+	ret->child[che_arg3] = arg3;
+	ret->child[che_arg4] = arg4;
 	return ret;
 }
 
