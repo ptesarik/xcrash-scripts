@@ -87,6 +87,7 @@ static void dump_expr(expr_t *expr);
 static void dump_exprlist(expr_t *list);
 static void dump_var(var_t *var);
 static void dump_varlist(var_t *list);
+static void dump_decl(decl_t *decl);
 static void dump_tree(node_t *tree);
 
 static int indent = 2;
@@ -510,6 +511,27 @@ static void dump_varlist(var_t *list)
 	--depth;
 }
 
+static void dump_decl(decl_t *decl)
+{
+	if (decl->var)
+		dump_varlist(decl->var);
+	else if (decl->type) {
+		++depth;
+		printf("%*stype: ", indent*depth, "");
+		dump_type(decl->type, 1);
+		putchar('\n');
+		--depth;
+	}
+
+	if (decl->body) {
+		++depth;
+		printf("%*sbody: ", indent*depth, "");
+		dump_exprlist(decl->body);
+		putchar('\n');
+		--depth;
+	}
+}
+
 static void dump_tree(node_t *tree)
 {
 	node_t *item = tree;
@@ -519,25 +541,8 @@ static void dump_tree(node_t *tree)
 
 	++depth;
 	do {
-		printf("%*selement: %p\n", indent*depth, "", item);
 		dump_chunk(item->first_text, item->last_text);
-		if (item->d.var)
-			dump_varlist(item->d.var);
-		else if (item->d.type) {
-			++depth;
-			printf("%*stype: ", indent*depth, "");
-			dump_type(item->d.type, 1);
-			putchar('\n');
-			--depth;
-		}
-
-		if (item->d.body) {
-			++depth;
-			printf("%*sbody: ", indent*depth, "");
-			dump_exprlist(item->d.body);
-			putchar('\n');
-			--depth;
-		}
+		dump_decl(&item->d);
 		item = list_entry(item->list.next, node_t, list);
 	} while (item != tree);
 	--depth;
