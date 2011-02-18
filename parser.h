@@ -46,7 +46,7 @@ typedef struct basic_type {
 
 typedef struct struct_type {
 	char *name;
-	struct decl *body;
+	struct node *body;
 } struct_type_t;
 
 typedef struct enum_type {
@@ -61,7 +61,7 @@ typedef struct array_type {
 
 typedef struct func_type {
 	struct type *type;	/* return type */
-	struct decl *param;
+	struct node *param;
 } func_type_t;
 
 typedef struct type {
@@ -99,7 +99,7 @@ typedef struct expr {
 		char *str;
 		type_t *type;
 		struct expr *expr;
-		struct decl *decl;
+		struct node *decl;
 		struct {
 			type_t *type;
 			struct expr *expr;
@@ -142,12 +142,6 @@ typedef struct declarator {
 	var_t *var;
 	abstract_t abstract;
 } declarator_t;
-
-typedef struct decl {
-	type_t *type;
-	var_t *var;
-	struct decl *decl;
-} decl_t;
 
 enum {
 	cht_expr = 0,
@@ -199,7 +193,6 @@ typedef struct node {
 		type_t t;
 		expr_t e;
 		var_t v;
-		decl_t d;
 	};
 	struct dynstr *first_text, *last_text;
 	size_t nchild;
@@ -216,9 +209,6 @@ typedef struct node {
 #define var_node(ptr) ({	\
         const var_t *__ptr = (ptr);	\
         (node_t *)( (char *)__ptr - offsetof(node_t,v) );})
-#define decl_node(ptr) ({	\
-        const decl_t *__ptr = (ptr);	\
-        (node_t *)( (char *)__ptr - offsetof(node_t,d) );})
 
 /* When yyparse() succeeds, the resulting tree is here: */
 extern node_t *parsed_tree;
@@ -257,7 +247,7 @@ void type_merge(type_t *, type_t *);
 
 var_t *newvar(YYLTYPE *, const char *);
 
-decl_t *newdecl(YYLTYPE *, type_t *, declarator_t *);
+node_t *newdecl(YYLTYPE *, type_t *, declarator_t *);
 
 expr_t *newexpr(YYLTYPE *, int);
 expr_t *newexprnum(YYLTYPE *, char *);
@@ -267,7 +257,7 @@ expr_t *newexprchar(YYLTYPE *, char *);
 expr_t *newexprid(YYLTYPE *, char *);
 expr_t *newexprtype(YYLTYPE *, int, type_t *);
 expr_t *newexprtypecast(YYLTYPE *, int, type_t *, expr_t *);
-expr_t *newexprdecl(YYLTYPE *, decl_t *);
+expr_t *newexprdecl(YYLTYPE *, node_t *);
 expr_t *newexpr1(YYLTYPE *, int, expr_t *);
 expr_t *newexpr2(YYLTYPE *, int, expr_t *, expr_t *);
 expr_t *newexpr3(YYLTYPE *, int, expr_t *, expr_t *, expr_t *);

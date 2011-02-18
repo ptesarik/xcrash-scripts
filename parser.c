@@ -87,7 +87,6 @@ static void dump_expr(expr_t *expr);
 static void dump_exprlist(expr_t *list);
 static void dump_var(var_t *var);
 static void dump_varlist(var_t *list);
-static void dump_decl(decl_t *decl);
 static void dump_tree(node_t *tree);
 
 static int indent = 2;
@@ -179,7 +178,7 @@ static void dump_type(type_t *type, int showflags)
 		printf("struct %s", type->s.name);
 		if (type->s.body) {
 			fputs(" {\n", stdout);
-			dump_tree(decl_node(type->s.body));
+			dump_tree(type->s.body);
 			putchar('}');
 		}
 		break;
@@ -188,7 +187,7 @@ static void dump_type(type_t *type, int showflags)
 		printf("union %s", type->s.name);
 		if (type->s.body) {
 			fputs(" {\n", stdout);
-			dump_tree(decl_node(type->s.body));
+			dump_tree(type->s.body);
 			putchar('}');
 		}
 		break;
@@ -222,7 +221,7 @@ static void dump_type(type_t *type, int showflags)
 		fputs("func", stdout);
 		if (type->f.param) {
 			fputs(" (\n", stdout);
-			dump_tree(decl_node(type->f.param));
+			dump_tree(type->f.param);
 			putchar(')');
 		}
 		fputs(" returning ", stdout);
@@ -345,7 +344,7 @@ static void dump_expr(expr_t *expr)
 		putchar(')');
 		break;
 	case DECL:
-		dump_tree(decl_node(expr->decl));
+		dump_tree(expr->decl);
 		break;
 
 	case ELLIPSIS:
@@ -494,25 +493,6 @@ static void dump_varlist(var_t *list)
 	dump_tree(var_node(list));
 }
 
-static void dump_decl(decl_t *decl)
-{
-	if (decl->var)
-		dump_varlist(decl->var);
-	else if (decl->type) {
-		++depth;
-		printf("%*stype: ", indent*depth, "");
-		dump_type(decl->type, 1);
-		putchar('\n');
-		--depth;
-	}
-}
-
-static const char *child_name(node_t *node, int idx)
-{
-	/* TBD */
-	return "body";
-}
-
 static void dump_tree(node_t *tree)
 {
 	node_t *item = tree;
@@ -528,14 +508,13 @@ static void dump_tree(node_t *tree)
 		case nt_type: dump_type(&item->t, 1); break;
 		case nt_expr: dump_expr(&item->e); break;
 		case nt_var:  dump_var (&item->v); break;
-		case nt_decl: dump_decl(&item->d); break;
+		case nt_decl: /* nothing special */ break;
 		}
 
 		for (i = 0; i < item->nchild; ++i) {
 			if (!item->child[i])
 				continue;
-			printf("%*s%s: ", indent*depth, "",
-			       child_name(item, i));
+			printf("%*schild[%d]: ", indent*depth, "", i);
 			dump_tree(item->child[i]);
 		}
 

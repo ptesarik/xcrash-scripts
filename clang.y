@@ -24,7 +24,7 @@ static void addvartypedefs(var_t *);
 static void hidetypedef(const char *);
 static void unhidetypedefs(void);
 static void hidefnparams(declarator_t *);
-static void hidedecls(decl_t *);
+static void hidedecls(node_t *);
 
 # define YYLLOC_DEFAULT(Current, Rhs, N)				\
     do									\
@@ -63,7 +63,6 @@ static void hidedecls(decl_t *);
 	declarator_t *declarator;
 	expr_t *expr;
 	var_t *var;
-	decl_t *decl;
 	node_t *node;
 }
 
@@ -144,10 +143,10 @@ static void hidedecls(decl_t *);
 %type <var> enum_body enumerator_list enumerator
 %type <var> id_list
 
-%type <decl> external_decl func_def decl_list decl
-%type <decl> param_decl _param_decl param_list param_type_list
-%type <decl> param_type_or_idlist
-%type <decl> struct_body struct_decl_list struct_decl
+%type <node> external_decl func_def decl_list decl
+%type <node> param_decl _param_decl param_list param_type_list
+%type <node> param_type_or_idlist
+%type <node> struct_body struct_decl_list struct_decl
 
 %type <node> translation_unit
 
@@ -172,11 +171,10 @@ translation_unit	: /* empty */
 			| translation_unit external_decl
 			{
 				if ($1) {
-					list_add_tail(&decl_node($2)->list,
-						      &$1->list);
+					list_add_tail(&$2->list, &$1->list);
 					parsed_tree = $$ = $1;
 				} else
-					parsed_tree = $$ = decl_node($2);
+					parsed_tree = $$ = $2;
 			}
 			;
 
@@ -188,27 +186,27 @@ func_def		: type_decl declarator_list decl_list compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, $1, $2);
-				$$->decl = $3;
-				decl_node($$)->child[chd_body] = expr_node($4);
+				$$->child[chd_decl] = $3;
+				$$->child[chd_body] = expr_node($4);
 			}
 			| type_decl declarator_list           compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, $1, $2);
-				decl_node($$)->child[chd_body] = expr_node($3);
+				$$->child[chd_body] = expr_node($3);
 			}
 			|           declarator_list decl_list compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, newtype_int(&@$), $1);
-				$$->decl = $2;
-				decl_node($$)->child[chd_body] = expr_node($3);
+				$$->child[chd_decl] = $2;
+				$$->child[chd_body] = expr_node($3);
 			}
 			|           declarator_list           compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, newtype_int(&@$), $1);
-				decl_node($$)->child[chd_body] = expr_node($2);
+				$$->child[chd_body] = expr_node($2);
 			}
 			;
 
@@ -229,8 +227,7 @@ declarator_list		: declarator
 decl_list		: decl
 			| decl_list decl
 			{
-				list_add_tail(&decl_node($2)->list,
-					      &decl_node($1)->list);
+				list_add_tail(&$2->list, &$1->list);
 				$$ = $1;
 			}
 			;
@@ -393,8 +390,7 @@ struct_body		: '{' { typedef_ign = 0; } struct_decl_list '}'
 struct_decl_list	: struct_decl
 			| struct_decl_list struct_decl
 			{
-				list_add_tail(&decl_node($2)->list,
-					      &decl_node($1)->list);
+				list_add_tail(&$2->list, &$1->list);
 				$$ = $1;
 			}
 			;
@@ -548,7 +544,7 @@ param_type_or_idlist	: param_type_list
 			| id_list
 			{
 				$$ = newdecl(&@$, NULL, NULL);
-				$$->var = $1;
+				$$->child[chd_var] = var_node($1);
 			}
 			;
 
@@ -579,8 +575,7 @@ param_type_list		: param_list ',' "..."
 param_list		: param_decl
 			| param_list ',' param_decl
 			{
-				list_add_tail(&decl_node($3)->list,
-					      &decl_node($1)->list);
+				list_add_tail(&$3->list, &$1->list);
 				$$ = $1;
 			}
 			;
@@ -1053,18 +1048,18 @@ link_abstract(declarator_t *declarator, const abstract_t *abstract)
 		declarator->abstract = *abstract;
 }
 
-decl_t *
+node_t *
 newdecl(YYLTYPE *loc, type_t *type, declarator_t *declarator)
 {
 	node_t *node = newnode(loc, nt_decl, chd_max);
 	var_t *var, *lastvar;
 	declarator_t *d, *nextd;
 
-	node->d.type = type;
+	node->child[chd_type] = type ? type_node(type) : NULL;
 	if (!declarator)
-		return &node->d;
+		return node;
 
-	node->d.var = declarator->var;
+	node->child[chd_var] = var_node(declarator->var);
 
 	lastvar = list_entry(declarator->list.prev, declarator_t, list)->var;
 	nextd = declarator;
@@ -1083,8 +1078,8 @@ newdecl(YYLTYPE *loc, type_t *type, declarator_t *declarator)
 				var->type = type;
 		} else if (d->abstract.stub) {
 			*d->abstract.stub = type;
-			node->d.type = d->abstract.tree;
-			node->d.type->flags = type->flags;
+			node->child[chd_type] = type_node(d->abstract.tree);
+			node->child[chd_type]->t.flags = type->flags;
 		}
 
 		lastvar = var;
@@ -1092,7 +1087,7 @@ newdecl(YYLTYPE *loc, type_t *type, declarator_t *declarator)
 		free(d);
 	} while(nextd != declarator);
 
-	return &node->d;
+	return node;
 }
 
 expr_t *
@@ -1168,7 +1163,7 @@ newexprtypecast(YYLTYPE *loc, int op, type_t *type, expr_t *expr)
 }
 
 expr_t *
-newexprdecl(YYLTYPE *loc, decl_t *decl)
+newexprdecl(YYLTYPE *loc, node_t *decl)
 {
 	expr_t *ret = newexpr(loc,DECL);
 	ret->decl = decl;
@@ -1311,13 +1306,13 @@ hidevars(var_t *first)
 }
 
 static void
-hidedecls(decl_t *first)
+hidedecls(node_t *first)
 {
-	decl_t *decl = first;
+	node_t *decl = first;
 	do {
-		if (decl->var)
-			hidevars(decl->var);
-		decl = &list_entry(decl_node(decl)->list.next, node_t, list)->d;
+		if (decl->child[chd_var])
+			hidevars(&decl->child[chd_var]->v);
+		decl = list_entry(decl->list.next, node_t, list);
 	} while (decl != first);
 }
 
