@@ -44,38 +44,12 @@ typedef struct basic_type {
 	int count;
 } basic_type_t;
 
-typedef struct struct_type {
-	char *name;
-	struct node *body;
-} struct_type_t;
-
-typedef struct enum_type {
-	char *name;
-	struct var *body;
-} enum_type_t;
-
-typedef struct array_type {
-	struct node *type;	/* type of elements */
-	struct expr *size;
-} array_type_t;
-
-typedef struct func_type {
-	struct node *type;	/* return type */
-	struct node *param;
-} func_type_t;
-
 typedef struct type {
 	enum type_category category;
 	unsigned flags;		/* see TF_xxx macros below */
 	union {
 		basic_type_t b;
 		char *name;
-		struct_type_t s;
-		enum_type_t e;
-		struct node *t;
-		array_type_t a;
-		func_type_t f;
-		struct expr *expr;
 	};
 	struct list_head attr;
 } type_t;

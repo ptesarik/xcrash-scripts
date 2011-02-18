@@ -86,7 +86,6 @@ static void dump_type(type_t *type, int showflags);
 static void dump_expr(expr_t *expr);
 static void dump_exprlist(expr_t *list);
 static void dump_var(var_t *var);
-static void dump_varlist(var_t *list);
 static void dump_tree(node_t *tree);
 
 static int indent = 2;
@@ -175,63 +174,31 @@ static void dump_type(type_t *type, int showflags)
 		break;
 
 	case type_struct:
-		printf("struct %s", type->s.name);
-		if (type->s.body) {
-			fputs(" {\n", stdout);
-			dump_tree(type->s.body);
-			putchar('}');
-		}
+		printf("struct %s", type->name);
 		break;
 
 	case type_union:
-		printf("union %s", type->s.name);
-		if (type->s.body) {
-			fputs(" {\n", stdout);
-			dump_tree(type->s.body);
-			putchar('}');
-		}
+		printf("union %s", type->name);
 		break;
 
 	case type_enum:
-		printf("enum %s", type->e.name);
-		if (type->e.body) {
-			fputs(" {\n", stdout);
-			dump_varlist(type->e.body);
-			putchar('}');
-		}
+		printf("enum %s", type->name);
 		break;
 
 	case type_pointer:
 		fputs("ptr to ", stdout);
-		dump_tree(type->t);
 		break;
 
 	case type_array:
 		fputs("array", stdout);
-		if (type->a.size) {
-			fputs("[\n", stdout);
-			dump_exprlist(type->a.size);
-			putchar(']');
-		}
-		fputs(" of ", stdout);
-		dump_tree(type->a.type);
 		break;
 
 	case type_func:
 		fputs("func", stdout);
-		if (type->f.param) {
-			fputs(" (\n", stdout);
-			dump_tree(type->f.param);
-			putchar(')');
-		}
-		fputs(" returning ", stdout);
-		dump_tree(type->f.type);
 		break;
 
 	case type_typeof:
 		fputs("typeof(\n", stdout);
-		dump_exprlist(type->expr);
-		putchar(')');
 		break;
 
 	default:
@@ -468,11 +435,6 @@ static void dump_exprlist(expr_t *list)
 static void dump_var(var_t *var)
 {
 	printf("%*sname: %s\n", indent*depth, "", var->name);
-}
-
-static void dump_varlist(var_t *list)
-{
-	dump_tree(var_node(list));
 }
 
 static void dump_tree(node_t *tree)
