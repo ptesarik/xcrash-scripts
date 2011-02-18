@@ -124,10 +124,6 @@ typedef struct expr {
 
 typedef struct var {
 	char *name;
-	type_t *type;
-	expr_t *bitsize;	/* used for struct members */
-	struct list_head attr;
-	expr_t *init;
 } var_t;
 
 /* This type is used only temporarily during parsing */

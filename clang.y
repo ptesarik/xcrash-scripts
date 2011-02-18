@@ -412,13 +412,15 @@ struct_declarator_list	: struct_declarator
 struct_declarator	: declarator ':' const_expr
 			{
 				$$ = $1;
-				$$->var->bitsize = $3;
+				var_node($$->var)->child[chv_bitsize] =
+					expr_node($3);
 			}
 			|            ':' const_expr
 			{
 				$$ = newdeclarator();
 				$$->var = newvar(&@$, NULL);
-				$$->var->bitsize = $2;
+				var_node($$->var)->child[chv_bitsize] =
+					expr_node($2);
 			}
 			| declarator
 			;
@@ -459,7 +461,10 @@ enumerator_list		: enumerator
 enumerator		: ID
 			{ $$ = newvar(&@$, $1); }
 			| ID '=' const_expr
-			{ $$ = newvar(&@$, $1); $$->init = $3; }
+			{
+				$$ = newvar(&@$, $1);
+				var_node($$)->child[chv_init] = expr_node($3);
+			}
 			;
 
 type_qualifier_list	: type_qualifier
@@ -485,7 +490,8 @@ init_declarator_list	: init_declarator
 init_declarator		: declarator '=' initializer
 			{
 				$$ = $1;
-				$$->var->init = $3;
+				var_node($$->var)->child[chv_init] =
+					expr_node($3);
 			}
 			| declarator
 			;
@@ -499,15 +505,15 @@ declarator		: pointer direct_declarator opt_attr
 				$$ = $2;
 				link_abstract($$, &$1);
 				if ($3)
-					list_add_tail(&expr_node($3)->list,
-						      &$$->var->attr);
+					var_node($$->var)->child[chv_attr] =
+						expr_node($3);
 			}
 			|         direct_declarator opt_attr
 			{
 				$$ = $1;
 				if ($2)
-					list_add_tail(&expr_node($2)->list,
-						      &$$->var->attr);
+					var_node($$->var)->child[chv_attr] =
+						expr_node($2);
 			}
 			;
 
@@ -1022,7 +1028,6 @@ newvar(YYLTYPE *loc, const char *name)
 	size_t extra = name ? strlen(name) + 1 : 0;
 	node_t *node = newnode_extra(loc, nt_var, chv_max, extra);
 
-	INIT_LIST_HEAD(&node->v.attr);
 	if (name) {
 		node->v.name = node_extra(node);
 		strcpy(node->v.name, name);
@@ -1072,10 +1077,13 @@ newdecl(YYLTYPE *loc, type_t *type, declarator_t *declarator)
 
 			if (d->abstract.stub) {
 				*d->abstract.stub = type;
-				var->type = d->abstract.tree;
-				var->type->flags = type->flags;
+				var_node(var)->child[chv_type] =
+					type_node(d->abstract.tree);
+				var_node(var)->child[chv_type]->t.flags =
+					type->flags;
 			} else
-				var->type = type;
+				var_node(var)->child[chv_type] =
+					type_node(type);
 		} else if (d->abstract.stub) {
 			*d->abstract.stub = type;
 			node->child[chd_type] = type_node(d->abstract.tree);

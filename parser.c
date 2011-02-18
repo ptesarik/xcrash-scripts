@@ -468,24 +468,6 @@ static void dump_exprlist(expr_t *list)
 static void dump_var(var_t *var)
 {
 	printf("%*sname: %s\n", indent*depth, "", var->name);
-	if (var->type) {
-		printf("%*stype: ", indent*depth, "");
-		dump_type(var->type, 1);
-		putchar('\n');
-	}
-	if (!list_empty(&var->attr)) {
-		node_t *attr;
-		list_for_each_entry(attr, &var->attr, list) {
-			printf("%*sattribute: ", indent*depth, "");
-			dump_expr(&attr->e);
-			putchar('\n');
-		}
-	}
-	if (var->init) {
-		printf("%*sinit: ", indent*depth, "");
-		dump_exprlist(var->init);
-		putchar('\n');
-	}
 }
 
 static void dump_varlist(var_t *list)
