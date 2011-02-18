@@ -463,17 +463,7 @@ static void dump_expr(expr_t *expr)
 
 static void dump_exprlist(expr_t *list)
 {
-	expr_t *expr = list;
-
-	if (!expr)
-		return;
-
-	do {
-		if (expr != list)
-			putchar('\n');
-		dump_expr(expr);
-		expr = &list_entry(expr_node(expr)->list.next, node_t, list)->e;
-	} while(expr != list);
+	dump_tree(expr_node(list));
 }
 
 static void dump_var(var_t *var)
@@ -501,14 +491,7 @@ static void dump_var(var_t *var)
 
 static void dump_varlist(var_t *list)
 {
-	var_t *var = list;
-
-	++depth;
-	do {
-		dump_var(var);
-		var = &list_entry(var_node(var)->list.next, node_t, list)->v;
-	} while(var != list);
-	--depth;
+	dump_tree(var_node(list));
 }
 
 static void dump_decl(decl_t *decl)
@@ -542,7 +525,12 @@ static void dump_tree(node_t *tree)
 	++depth;
 	do {
 		dump_chunk(item->first_text, item->last_text);
-		dump_decl(&item->d);
+		switch (item->type) {
+		case nt_type: dump_type(&item->t, 1); break;
+		case nt_expr: dump_expr(&item->e); break;
+		case nt_var:  dump_var (&item->v); break;
+		case nt_decl: dump_decl(&item->d); break;
+		}
 		item = list_entry(item->list.next, node_t, list);
 	} while (item != tree);
 	--depth;
