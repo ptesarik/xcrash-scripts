@@ -189,26 +189,26 @@ func_def		: type_decl declarator_list decl_list compound_stat
 				unhidetypedefs();
 				$$ = newdecl(&@$, $1, $2);
 				$$->decl = $3;
-				$$->body = $4;
+				decl_node($$)->child[chd_body] = expr_node($4);
 			}
 			| type_decl declarator_list           compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, $1, $2);
-				$$->body = $3;
+				decl_node($$)->child[chd_body] = expr_node($3);
 			}
 			|           declarator_list decl_list compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, newtype_int(&@$), $1);
 				$$->decl = $2;
-				$$->body = $3;
+				decl_node($$)->child[chd_body] = expr_node($3);
 			}
 			|           declarator_list           compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, newtype_int(&@$), $1);
-				$$->body = $2;
+				decl_node($$)->child[chd_body] = expr_node($2);
 			}
 			;
 

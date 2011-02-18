@@ -505,19 +505,18 @@ static void dump_decl(decl_t *decl)
 		putchar('\n');
 		--depth;
 	}
+}
 
-	if (decl->body) {
-		++depth;
-		printf("%*sbody: ", indent*depth, "");
-		dump_exprlist(decl->body);
-		putchar('\n');
-		--depth;
-	}
+static const char *child_name(node_t *node, int idx)
+{
+	/* TBD */
+	return "body";
 }
 
 static void dump_tree(node_t *tree)
 {
 	node_t *item = tree;
+	int i;
 
 	if (!tree)
 		return;
@@ -531,6 +530,15 @@ static void dump_tree(node_t *tree)
 		case nt_var:  dump_var (&item->v); break;
 		case nt_decl: dump_decl(&item->d); break;
 		}
+
+		for (i = 0; i < item->nchild; ++i) {
+			if (!item->child[i])
+				continue;
+			printf("%*s%s: ", indent*depth, "",
+			       child_name(item, i));
+			dump_tree(item->child[i]);
+		}
+
 		item = list_entry(item->list.next, node_t, list);
 	} while (item != tree);
 	--depth;

@@ -147,7 +147,6 @@ typedef struct decl {
 	type_t *type;
 	var_t *var;
 	struct decl *decl;
-	expr_t *body;
 } decl_t;
 
 enum {
