@@ -17,6 +17,9 @@
 
 #include "parser.h"
 
+static void type_add_attr(node_t *, node_t *);
+static void type_merge(node_t *, node_t *);
+
 static declarator_t *newdeclarator(void);
 static void link_abstract(declarator_t *, const abstract_t *);
 
@@ -268,8 +271,7 @@ opt_notype_decl		: /* empty */
 notype_decl		: attr_spec
 			{
 				$$ = newtype(&@$);
-				list_add_tail(&$$->t.attr,
-					      &expr_node($1)->list);
+				$$->child[cht_attr] = expr_node($1);
 			}
 			| storage_class_spec
 			{ $$ = newtype(&@$); $$->t.flags = $1; }
@@ -279,8 +281,8 @@ notype_decl		: attr_spec
 			{
 				struct list_head *last = expr_node($2)->list.prev;
 				$$ = $1;
-				list_splice(&$$->t.attr, last);
-				list_add(&$$->t.attr, last);
+				list_splice(&$$->child[cht_attr]->list, last);
+				list_add(&$$->child[cht_attr]->list, last);
 			}
 			| notype_decl storage_class_spec
 			{ $$ = $1; $$->t.flags |= $2; }
@@ -369,8 +371,7 @@ struct_or_union_spec	: struct_or_union { typedef_ign = 1; }
 				$$ = $4;
 				$$->t.category = $1;
 				if ($3)
-					list_add_tail(&expr_node($3)->list,
-						      &$$->t.attr);
+					type_add_attr($$, expr_node($3));
 			}
 			;
 
@@ -436,8 +437,7 @@ enum_spec		: ENUM { typedef_ign = 1; } opt_attr enum_desc
 				$$ = $4;
 				$$->t.category = type_enum;
 				if ($3)
-					list_add_tail(&expr_node($3)->list,
-						      &$$->t.attr);
+					type_add_attr($$, expr_node($3));
 			}
 			;
 
@@ -996,7 +996,6 @@ newtype_name(YYLTYPE *loc, const char *name)
 	int len = name ? strlen(name) + 1 : 0;
 	node_t *node = newnode_extra(loc, nt_type, cht_max, len);
 
-	INIT_LIST_HEAD(&node->t.attr);
 	if (name) {
 		node->t.name = node_extra(node);
 		strcpy(node->t.name, name);
@@ -1019,12 +1018,25 @@ newtype_int(YYLTYPE *loc)
 	return ret;
 }
 
+/* Append @attr (if any) to @merger */
+static void
+type_add_attr(node_t *merger, node_t *attr)
+{
+	if (!merger->child[cht_attr]) {
+		merger->child[cht_attr] = attr;
+	} else if (attr) {
+		struct list_head *last = merger->child[cht_attr]->list.prev;
+		list_splice(&attr->list, last);
+		list_add(&attr->list, last);
+	}
+}
+
 /* Merge the flags and attributes from @other into @merger */
-void
+static void
 type_merge(node_t *merger, node_t *other)
 {
 	merger->t.flags |= other->t.flags;
-	list_splice(&other->t.attr, &merger->t.attr);
+	type_add_attr(merger, other->child[cht_attr]);
 	free(other);
 }
 

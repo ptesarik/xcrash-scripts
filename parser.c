@@ -204,17 +204,6 @@ static void dump_type(type_t *type, int showflags)
 	default:
 		fputs("UNKNOWN!", stdout);
 	}
-
-	if (!list_empty(&type->attr)) {
-		node_t *attr;
-		fputs(" attr(", stdout);
-		list_for_each_entry(attr, &type->attr, list) {
-			if (&attr->list != type->attr.next)
-				putchar(',');
-			dump_expr(&attr->e);
-		}
-		putchar(')');
-	}
 }
 
 static void dump_op(int op)

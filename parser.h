@@ -51,7 +51,6 @@ typedef struct type {
 		basic_type_t b;
 		char *name;
 	};
-	struct list_head attr;
 } type_t;
 
 /* storage type flag bitmask: */
@@ -213,7 +212,6 @@ newnode(YYLTYPE *loc, enum node_type type, int nchild)
 node_t *newtype(YYLTYPE *);
 node_t *newtype_name(YYLTYPE *, const char *);
 node_t *newtype_int(YYLTYPE *);
-void type_merge(node_t *, node_t *);
 
 node_t *newvar(YYLTYPE *, const char *);
 
