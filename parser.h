@@ -92,7 +92,6 @@ typedef struct type {
 #define TF_VOLATILE	(1U << 7)
 
 typedef struct expr {
-	struct list_head list;
 	int op;
 	union {
 		long num;
@@ -124,7 +123,6 @@ typedef struct expr {
 } expr_t;
 
 typedef struct var {
-	struct list_head list;
 	char *name;
 	type_t *type;
 	expr_t *bitsize;	/* used for struct members */
@@ -132,11 +130,13 @@ typedef struct var {
 	expr_t *init;
 } var_t;
 
+/* This type is used only temporarily during parsing */
 typedef struct abstract {
 	type_t *tree;
 	type_t **stub;	
 } abstract_t;
 
+/* This type is used only temporarily during parsing */
 typedef struct declarator {
 	struct list_head list;
 	var_t *var;
@@ -144,15 +144,85 @@ typedef struct declarator {
 } declarator_t;
 
 typedef struct decl {
-	struct list_head list;
 	type_t *type;
 	var_t *var;
 	struct decl *decl;
 	expr_t *body;
 } decl_t;
 
+enum {
+	cht_expr = 0,
+	cht_body = 0,		/* struct_type and enum_type */
+	cht_type = 0,		/* array_type and func_type */
+	cht_size,		/* array_type */
+	cht_param = 1,		/* func_type */
+	cht_attr,
+	cht_max,
+
+	che_type = 0,		/* type and typecast */
+	che_expr,		/* expr and typecast */
+	che_decl = 0,
+	che_left = 0,
+	che_right,
+	che_cond = 0,
+	che_ontrue,
+	che_onfalse,
+	che_forinit = 0,
+	che_forcond,
+	che_foriter,
+	che_forbody,
+	che_max,
+
+	chv_type = 0,
+	chv_bitsize,
+	chv_init,
+	chv_attr,
+	chv_max,
+
+	chd_type = 0,
+	chd_var,
+	chd_decl,
+	chd_body,
+	chd_max,
+};
+
+enum node_type {
+	nt_type,
+	nt_expr,
+	nt_var,
+	nt_decl,
+};
+
+typedef struct node {
+	struct list_head list;
+	enum node_type type;
+	union {
+		type_t t;
+		expr_t e;
+		var_t v;
+		decl_t d;
+	};
+	struct dynstr *first_text, *last_text;
+	size_t nchild;
+	struct node *child[];
+} node_t;
+
+/* Macros to get the address of the containing node_t */
+#define type_node(ptr) ({	\
+        const type_t *__ptr = (ptr);	\
+        (node_t *)( (char *)__ptr - offsetof(node_t,t) );})
+#define expr_node(ptr) ({	\
+        const expr_t *__ptr = (ptr);	\
+        (node_t *)( (char *)__ptr - offsetof(node_t,e) );})
+#define var_node(ptr) ({	\
+        const var_t *__ptr = (ptr);	\
+        (node_t *)( (char *)__ptr - offsetof(node_t,v) );})
+#define decl_node(ptr) ({	\
+        const decl_t *__ptr = (ptr);	\
+        (node_t *)( (char *)__ptr - offsetof(node_t,d) );})
+
 /* When yyparse() succeeds, the resulting tree is here: */
-extern decl_t *parsed_tree;
+extern node_t *parsed_tree;
 
 /* Parser/lexer interface */
 extern FILE *yyin;
@@ -174,28 +244,32 @@ int istypedef(const char *name);
 extern int typedef_ign;		/* treat typedefs as regular identifiers */
 
 /* Parse tree */
-type_t *newtype(void);
-type_t *newtype_name(const char *);
-type_t *newtype_int(void);
+node_t *newnode_extra(YYLTYPE *, enum node_type, int, size_t);
+static inline node_t *
+newnode(YYLTYPE *loc, enum node_type type, int nchild)
+{
+	return newnode_extra(loc, type, nchild, 0);
+}
+
+type_t *newtype(YYLTYPE *);
+type_t *newtype_name(YYLTYPE *, const char *);
+type_t *newtype_int(YYLTYPE *);
 void type_merge(type_t *, type_t *);
 
-var_t *newvar(const char *);
+var_t *newvar(YYLTYPE *, const char *);
 
-declarator_t *newdeclarator(void);
-void link_abstract(declarator_t *, const abstract_t *);
+decl_t *newdecl(YYLTYPE *, type_t *, declarator_t *);
 
-decl_t *newdecl(type_t *, declarator_t *);
-
-expr_t *newexpr(int);
-expr_t *newexprnum(char *);
-expr_t *newexprfloat(char *);
-expr_t *newexprstr(char *);
-expr_t *newexprchar(char *);
-expr_t *newexprid(char *);
-expr_t *newexprtype(int, type_t *);
-expr_t *newexprtypecast(int, type_t *, expr_t *);
-expr_t *newexprdecl(decl_t *);
-expr_t *newexpr1(int, expr_t *);
-expr_t *newexpr2(int, expr_t *, expr_t *);
-expr_t *newexpr3(int, expr_t *, expr_t *, expr_t *);
-expr_t *newexpr4(int, expr_t *, expr_t *, expr_t *, expr_t *);
+expr_t *newexpr(YYLTYPE *, int);
+expr_t *newexprnum(YYLTYPE *, char *);
+expr_t *newexprfloat(YYLTYPE *, char *);
+expr_t *newexprstr(YYLTYPE *, char *);
+expr_t *newexprchar(YYLTYPE *, char *);
+expr_t *newexprid(YYLTYPE *, char *);
+expr_t *newexprtype(YYLTYPE *, int, type_t *);
+expr_t *newexprtypecast(YYLTYPE *, int, type_t *, expr_t *);
+expr_t *newexprdecl(YYLTYPE *, decl_t *);
+expr_t *newexpr1(YYLTYPE *, int, expr_t *);
+expr_t *newexpr2(YYLTYPE *, int, expr_t *, expr_t *);
+expr_t *newexpr3(YYLTYPE *, int, expr_t *, expr_t *, expr_t *);
+expr_t *newexpr4(YYLTYPE *, int, expr_t *, expr_t *, expr_t *, expr_t *);

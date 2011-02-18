@@ -17,6 +17,9 @@
 
 #include "parser.h"
 
+static declarator_t *newdeclarator(void);
+static void link_abstract(declarator_t *, const abstract_t *);
+
 static void addvartypedefs(var_t *);
 static void hidetypedef(const char *);
 static void unhidetypedefs(void);
@@ -61,6 +64,7 @@ static void hidedecls(decl_t *);
 	expr_t *expr;
 	var_t *var;
 	decl_t *decl;
+	node_t *node;
 }
 
 /* operators */
@@ -140,10 +144,12 @@ static void hidedecls(decl_t *);
 %type <var> enum_body enumerator_list enumerator
 %type <var> id_list
 
-%type <decl> translation_unit external_decl func_def decl_list decl
+%type <decl> external_decl func_def decl_list decl
 %type <decl> param_decl _param_decl param_list param_type_list
 %type <decl> param_type_or_idlist
 %type <decl> struct_body struct_decl_list struct_decl
+
+%type <node> translation_unit
 
 %error-verbose
 %debug
@@ -166,10 +172,11 @@ translation_unit	: /* empty */
 			| translation_unit external_decl
 			{
 				if ($1) {
-					list_add_tail(&$2->list, &$1->list);
+					list_add_tail(&decl_node($2)->list,
+						      &$1->list);
 					parsed_tree = $$ = $1;
 				} else
-					parsed_tree = $$ = $2;
+					parsed_tree = $$ = decl_node($2);
 			}
 			;
 
@@ -180,27 +187,27 @@ external_decl		: func_def
 func_def		: type_decl declarator_list decl_list compound_stat
 			{
 				unhidetypedefs();
-				$$ = newdecl($1, $2);
+				$$ = newdecl(&@$, $1, $2);
 				$$->decl = $3;
 				$$->body = $4;
 			}
 			| type_decl declarator_list           compound_stat
 			{
 				unhidetypedefs();
-				$$ = newdecl($1, $2);
+				$$ = newdecl(&@$, $1, $2);
 				$$->body = $3;
 			}
 			|           declarator_list decl_list compound_stat
 			{
 				unhidetypedefs();
-				$$ = newdecl(newtype_int(), $1);
+				$$ = newdecl(&@$, newtype_int(&@$), $1);
 				$$->decl = $2;
 				$$->body = $3;
 			}
 			|           declarator_list           compound_stat
 			{
 				unhidetypedefs();
-				$$ = newdecl(newtype_int(), $1);
+				$$ = newdecl(&@$, newtype_int(&@$), $1);
 				$$->body = $2;
 			}
 			;
@@ -222,19 +229,20 @@ declarator_list		: declarator
 decl_list		: decl
 			| decl_list decl
 			{
-				list_add_tail(&$2->list, &$1->list);
+				list_add_tail(&decl_node($2)->list,
+					      &decl_node($1)->list);
 				$$ = $1;
 			}
 			;
 
 decl			: type_decl init_declarator_list ';'
 			{
-				$$ = newdecl($1, $2);
+				$$ = newdecl(&@$, $1, $2);
 				if ($1->flags & TF_TYPEDEF)
 					addvartypedefs($2->var);
 			}
 			| type_decl                      ';'
-			{ typedef_ign = 0; $$ = newdecl($1, NULL); }
+			{ typedef_ign = 0; $$ = newdecl(&@$, $1, NULL); }
 			;
 
 type_decl		: notype_decl
@@ -259,16 +267,17 @@ opt_notype_decl		: /* empty */
 
 notype_decl		: attr_spec
 			{
-				$$ = newtype();
-				list_add_tail(&$$->attr, &$1->list);
+				$$ = newtype(&@$);
+				list_add_tail(&$$->attr,
+					      &expr_node($1)->list);
 			}
 			| storage_class_spec
-			{ $$ = newtype(); $$->flags = $1; }
+			{ $$ = newtype(&@$); $$->flags = $1; }
 			| type_qualifier
-			{ $$ = newtype(); $$->flags = $1; }
+			{ $$ = newtype(&@$); $$->flags = $1; }
 			| notype_decl attr_spec
 			{
-				struct list_head *last = $2->list.prev;
+				struct list_head *last = expr_node($2)->list.prev;
 				$$ = $1;
 				list_splice(&$$->attr, last);
 				list_add(&$$->attr, last);
@@ -291,20 +300,21 @@ attr_spec		: ATTRIBUTE '(' '(' attr_list ')' ')'
 attr_list		: attribute
 			| attr_list ',' attribute
 			{
-				list_add_tail(&$3->list, &$1->list);
+				list_add_tail(&expr_node($3)->list,
+					      &expr_node($1)->list);
 				$$ = $1;
 			}
 			;
 
 attribute		: /* empty */
-			{ $$ = newexpr(ATTRIBUTE); }
+			{ $$ = newexpr(&@$, ATTRIBUTE); }
 			| ID '(' attr_param_list ')'
-			{ $$ = newexpr2(FUNC, newexprid($1), $3); }
+			{ $$ = newexpr2(&@$, FUNC, newexprid(&@$, $1), $3); }
 			| ID
-			{ $$ = newexprid($1); }
+			{ $$ = newexprid(&@$, $1); }
 			/* HACK: should change context in lexer... */
 			| CONST
-			{ $$ = newexprid(strdup("const")); }
+			{ $$ = newexprid(&@$, strdup("const")); }
 			;
 
 attr_param_list		: /* empty */
@@ -312,7 +322,8 @@ attr_param_list		: /* empty */
 			| const_expr
 			| attr_param_list ',' const_expr
 			{
-				list_add_tail(&$3->list, &$1->list);
+				list_add_tail(&expr_node($3)->list,
+					      &expr_node($1)->list);
 				$$ = $1;
 			}
 			;
@@ -333,7 +344,7 @@ type_spec		: basic_type_list
 
 basic_type_list		: basic_type
 			{
-				$$ = newtype();
+				$$ = newtype(&@$);
 				$$->category = type_basic;
 				$$->b.list[$$->b.count++] = $1;
 			}
@@ -358,7 +369,8 @@ struct_or_union_spec	: struct_or_union { typedef_ign = 1; }
 				$$ = $4;
 				$$->category = $1;
 				if ($3)
-					list_add_tail(&$3->list, &$$->attr);
+					list_add_tail(&expr_node($3)->list,
+						      &$$->attr);
 			}
 			;
 
@@ -367,11 +379,11 @@ struct_or_union		: STRUCT	{ $$ = type_struct; }
 			;
 
 struct_desc		: ID     struct_body
-			{ $$ = newtype_name($1); $$->s.body = $2; }
+			{ $$ = newtype_name(&@$, $1); $$->s.body = $2; }
 			|        struct_body
-			{ $$ = newtype(); $$->s.body = $1; }
+			{ $$ = newtype(&@$); $$->s.body = $1; }
 			| ID
-			{ $$ = newtype_name($1); }
+			{ $$ = newtype_name(&@$, $1); }
 			;
 
 struct_body		: '{' { typedef_ign = 0; } struct_decl_list '}'
@@ -381,20 +393,22 @@ struct_body		: '{' { typedef_ign = 0; } struct_decl_list '}'
 struct_decl_list	: struct_decl
 			| struct_decl_list struct_decl
 			{
-				list_add_tail(&$2->list, &$1->list);
+				list_add_tail(&decl_node($2)->list,
+					      &decl_node($1)->list);
 				$$ = $1;
 			}
 			;
 
 struct_decl		: spec_qualifier_list struct_declarator_list ';'
-			{ $$ = newdecl($1, $2); }
+			{ $$ = newdecl(&@$, $1, $2); }
 			;
 
 
 struct_declarator_list	: struct_declarator
 			| struct_declarator_list ',' struct_declarator
 			{
-				list_add_tail(&$3->var->list, &$1->var->list);
+				list_add_tail(&var_node($3->var)->list,
+					      &var_node($1->var)->list);
 				$$ = $1;
 			}
 			;
@@ -407,7 +421,7 @@ struct_declarator	: declarator ':' const_expr
 			|            ':' const_expr
 			{
 				$$ = newdeclarator();
-				$$->var = newvar(NULL);
+				$$->var = newvar(&@$, NULL);
 				$$->var->bitsize = $2;
 			}
 			| declarator
@@ -418,16 +432,17 @@ enum_spec		: ENUM { typedef_ign = 1; } opt_attr enum_desc
 				$$ = $4;
 				$$->category = type_enum;
 				if ($3)
-					list_add_tail(&$3->list, &$$->attr);
+					list_add_tail(&expr_node($3)->list,
+						      &$$->attr);
 			}
 			;
 
 enum_desc		: ID enum_body
-			{ $$ = newtype_name($1); $$->e.body = $2; }
+			{ $$ = newtype_name(&@$, $1); $$->e.body = $2; }
 			|    enum_body
-			{ $$ = newtype(); $$->e.body = $1; }
+			{ $$ = newtype(&@$); $$->e.body = $1; }
 			| ID
-			{ $$ = newtype_name($1); }
+			{ $$ = newtype_name(&@$, $1); }
 			;
 
 enum_body		: '{' enumerator_list ',' '}'
@@ -439,15 +454,16 @@ enum_body		: '{' enumerator_list ',' '}'
 enumerator_list		: enumerator
 			| enumerator_list ',' enumerator
 			{
-				list_add_tail(&$3->list, &$1->list);
+				list_add_tail(&var_node($3)->list,
+					      &var_node($1)->list);
 				$$ = $1;
 			}
 			;
 
 enumerator		: ID
-			{ $$ = newvar($1); }
+			{ $$ = newvar(&@$, $1); }
 			| ID '=' const_expr
-			{ $$ = newvar($1); $$->init = $3; }
+			{ $$ = newvar(&@$, $1); $$->init = $3; }
 			;
 
 type_qualifier_list	: type_qualifier
@@ -487,21 +503,21 @@ declarator		: pointer direct_declarator opt_attr
 				$$ = $2;
 				link_abstract($$, &$1);
 				if ($3)
-					list_add_tail(&$3->list,
+					list_add_tail(&expr_node($3)->list,
 						      &$$->var->attr);
 			}
 			|         direct_declarator opt_attr
 			{
 				$$ = $1;
 				if ($2)
-					list_add_tail(&$2->list,
+					list_add_tail(&expr_node($2)->list,
 						      &$$->var->attr);
 			}
 			;
 
 direct_declarator	: ID
 			{
-				var_t *var = newvar($1);
+				var_t *var = newvar(&@$, $1);
 				$$ = newdeclarator();
 				$$->var = var;
 			}
@@ -520,7 +536,7 @@ direct_suffix_declarator: array_declarator
 
 param_declarator	: '(' param_type_or_idlist ')'
 			{
-				type_t *type = newtype();
+				type_t *type = newtype(&@$);
 				type->category = type_func;
 				type->f.param = $2;
 				$$.tree = type;
@@ -531,21 +547,21 @@ param_declarator	: '(' param_type_or_idlist ')'
 param_type_or_idlist	: param_type_list
 			| id_list
 			{
-				$$ = newdecl(NULL, NULL);
+				$$ = newdecl(&@$, NULL, NULL);
 				$$->var = $1;
 			}
 			;
 
 pointer			: '*'
 			{
-				type_t *ptr = newtype();
+				type_t *ptr = newtype(&@$);
 				ptr->category = type_pointer;
 				$$.tree = ptr;
 				$$.stub = &ptr->t;
 			}
 			| pointer '*'
 			{
-				type_t *ptr = newtype();
+				type_t *ptr = newtype(&@$);
 				ptr->category = type_pointer;
 				ptr->t = $1.tree;
 				$$ = $1;
@@ -563,7 +579,8 @@ param_type_list		: param_list ',' "..."
 param_list		: param_decl
 			| param_list ',' param_decl
 			{
-				list_add_tail(&$3->list, &$1->list);
+				list_add_tail(&decl_node($3)->list,
+					      &decl_node($1)->list);
 				$$ = $1;
 			}
 			;
@@ -572,19 +589,20 @@ param_decl		: _param_decl
 			{ typedef_ign = 0; $$ = $1; }
 			;
 _param_decl		: type_decl declarator
-			{ $$ = newdecl($1, $2); }
+			{ $$ = newdecl(&@$, $1, $2); }
 			| type_decl abstract_declarator
-			{ $$ = newdecl($1, $2); }
+			{ $$ = newdecl(&@$, $1, $2); }
 			| type_decl
-			{ $$ = newdecl($1, NULL); }
+			{ $$ = newdecl(&@$, $1, NULL); }
 			;
 
 id_list			: ID
-			{ $$ = newvar($1); }
+			{ $$ = newvar(&@$, $1); }
 			| id_list ',' ID
 			{
-				var_t *var = newvar($3);
-				list_add_tail(&var->list, &$1->list);
+				var_t *var = newvar(&@$, $3);
+				list_add_tail(&var_node(var)->list,
+					      &var_node($1)->list);
 				$$ = $1;
 			}
 			;
@@ -592,21 +610,22 @@ id_list			: ID
 initializer		: assign_expr
 			| '.' ID '=' assign_expr
 			{
-				$$ = newexpr2($3,
-					      newexpr2($1, NULL,
-						       newexprid($2)),
+				$$ = newexpr2(&@$, $3,
+					      newexpr2(&@$, $1, NULL,
+						       newexprid(&@$, $2)),
 					      $4);
 			}
 			| '{' initializer_list ',' '}'
-			{ $$ = newexpr1(ARRAY, $2); }
+			{ $$ = newexpr1(&@$, ARRAY, $2); }
 			| '{' initializer_list     '}'
-			{ $$ = newexpr1(ARRAY, $2); }
+			{ $$ = newexpr1(&@$, ARRAY, $2); }
 			;
 
 initializer_list	: initializer
 			| initializer_list ',' initializer
 			{
-				list_add_tail(&$3->list, &$1->list);
+				list_add_tail(&expr_node($3)->list,
+					      &expr_node($1)->list);
 				$$ = $1;
 			}
 			;
@@ -618,7 +637,7 @@ _type_name		: spec_qualifier_list
 			| spec_qualifier_list abstract_declarator
 			| TYPEOF '(' expr ')'
 			{
-				$$ = newtype();
+				$$ = newtype(&@$);
 				$$->category = type_typeof;
 				$$->expr = $3;
 			}
@@ -646,7 +665,7 @@ direct_abstract_declarator
 
 array_declarator	: '[' array_size ']'
 			{
-				type_t *type = newtype();
+				type_t *type = newtype(&@$);
 				type->category = type_array;
 				type->a.size = $2;
 				$$.tree = type;
@@ -662,7 +681,7 @@ array_size		: /* empty */
 abstract_param_declarator:
 			'(' param_type_list ')'
 			{
-				type_t *type = newtype();
+				type_t *type = newtype(&@$);
 				type->category = type_func;
 				type->f.param = $2;
 				$$.tree = type;
@@ -672,41 +691,45 @@ abstract_param_declarator:
 
 typedef_name		: TYPEID
 			{
-				$$ = newtype_name($1);
+				$$ = newtype_name(&@$, $1);
 				$$->category = type_typedef;
 			}
 
 stat			: ID ':' stat
-			{ $$ = newexpr1(LABEL, $3); }
+			{ $$ = newexpr1(&@$, LABEL, $3); }
 			| CASE const_expr ':' stat
-			{ $$ = newexpr2($1, $2, $4); }
+			{ $$ = newexpr2(&@$, $1, $2, $4); }
 			| CASE const_expr "..." const_expr ':' stat
-			{ $$ = newexpr2($1, newexpr2(RANGE, $2, $4), $6); }
+			{
+				$$ = newexpr2(&@$, $1,
+					      newexpr2(&@$, RANGE, $2, $4),
+					      $6);
+			}
 			| DEFAULT ':' stat
-			{ $$ = newexpr1($1, $3); }
+			{ $$ = newexpr1(&@$, $1, $3); }
 			| IF '(' expr ')' stat ELSE stat
-			{ $$ = newexpr3($1, $3, $5, $7); }
+			{ $$ = newexpr3(&@$, $1, $3, $5, $7); }
 			| IF '(' expr ')' stat
-			{ $$ = newexpr2($1, $3, $5); }
+			{ $$ = newexpr2(&@$, $1, $3, $5); }
 			| SWITCH '(' expr ')' stat
-			{ $$ = newexpr2($1, $3, $5); }
+			{ $$ = newexpr2(&@$, $1, $3, $5); }
 			| WHILE '(' expr ')' stat
-			{ $$ = newexpr2($1, $3, $5); }
+			{ $$ = newexpr2(&@$, $1, $3, $5); }
 			| DO stat WHILE '(' expr ')' ';'
-			{ $$ = newexpr2($1, $2, $5); }
+			{ $$ = newexpr2(&@$, $1, $2, $5); }
 			| FOR '(' opt_expr ';' opt_expr ';' opt_expr ')' stat
-			{ $$ = newexpr4($1, $3, $5, $7, $9); }
+			{ $$ = newexpr4(&@$, $1, $3, $5, $7, $9); }
 			| GOTO ID ';'
-			{ $$ = newexpr1($1, newexprid($2)); }
+			{ $$ = newexpr1(&@$, $1, newexprid(&@$, $2)); }
 			| CONTINUE ';'
-			{ $$ = newexpr($1); }
+			{ $$ = newexpr(&@$, $1); }
 			| BREAK ';'
-			{ $$ = newexpr($1); }
+			{ $$ = newexpr(&@$, $1); }
 			| RETURN opt_expr ';'
-			{ $$ = newexpr1($1, $2); }
+			{ $$ = newexpr1(&@$, $1, $2); }
 			/* HACK */
 			| FOR_CPU_INDEXES '(' opt_expr ',' opt_expr ')' stat
-			{ $$ = newexpr3($1, $3, $5, $7); }
+			{ $$ = newexpr3(&@$, $1, $3, $5, $7); }
 			| compound_stat
 			| opt_expr ';'
 			;
@@ -724,9 +747,10 @@ compound_body		: /* empty */
 			{ $$ = NULL; }
 			| compound_body decl
 			{
-				expr_t *expr = newexprdecl($2);
+				expr_t *expr = newexprdecl(&@$, $2);
 				if ($1) {
-					list_add_tail(&expr->list, &$1->list);
+					list_add_tail(&expr_node(expr)->list,
+						      &expr_node($1)->list);
 					$$ = $1;
 				} else
 					$$ = expr;
@@ -737,7 +761,8 @@ compound_body		: /* empty */
 				if (!$2) {
 					$$ = $1;
 				} else if ($1) {
-					list_add_tail(&$2->list, &$1->list);
+					list_add_tail(&expr_node($2)->list,
+						      &expr_node($1)->list);
 					$$ = $1;
 				} else
 					$$ = $2;
@@ -746,17 +771,17 @@ compound_body		: /* empty */
 
 expr			: assign_expr
 			| expr ',' assign_expr
-			{ $$ = newexpr2(',', $1, $3); }
+			{ $$ = newexpr2(&@$, ',', $1, $3); }
 			;
 
 argument_expr_list	: assign_expr
 			| argument_expr_list ',' assign_expr
-			{ $$ = newexpr2(',', $1, $3); }
+			{ $$ = newexpr2(&@$, ',', $1, $3); }
 			;
 
 assign_expr		: cond_expr
 			| unary_expr assign_op assign_expr
-			{ $$ = newexpr2($2, $1, $3); }
+			{ $$ = newexpr2(&@$, $2, $1, $3); }
 			;
 assign_op		: '=' | ">>=" | "<<=" | "+=" | "-="
 			| "*=" | "/=" | "%=" | "&=" | "^=" | "|="
@@ -764,7 +789,7 @@ assign_op		: '=' | ">>=" | "<<=" | "+=" | "-="
 
 cond_expr		: logical_or_expr
 			| logical_or_expr '?' expr ':' cond_expr
-			{ $$ = newexpr3('?', $1, $3, $5); }
+			{ $$ = newexpr3(&@$, '?', $1, $3, $5); }
 			;
 
 const_expr		: cond_expr
@@ -772,82 +797,82 @@ const_expr		: cond_expr
 
 logical_or_expr		: logical_and_expr
 			| logical_or_expr "||" logical_and_expr
-			{ $$ = newexpr2(OR_OP, $1, $3); }
+			{ $$ = newexpr2(&@$, OR_OP, $1, $3); }
 			;
 
 logical_and_expr	: or_expr
 			| logical_and_expr "&&" or_expr
-			{ $$ = newexpr2(AND_OP, $1, $3); }
+			{ $$ = newexpr2(&@$, AND_OP, $1, $3); }
 			;
 
 or_expr			: xor_expr
 			| or_expr '|' xor_expr
-			{ $$ = newexpr2('|', $1, $3); }
+			{ $$ = newexpr2(&@$, '|', $1, $3); }
 			;
 
 xor_expr		: and_expr
 			| xor_expr '^' and_expr
-			{ $$ = newexpr2('^', $1, $3); }
+			{ $$ = newexpr2(&@$, '^', $1, $3); }
 			;
 
 and_expr		: eq_expr
 			| and_expr '&' eq_expr
-			{ $$ = newexpr2('&', $1, $3); }
+			{ $$ = newexpr2(&@$, '&', $1, $3); }
 			;
 
 eq_expr			: rel_expr
 			| eq_expr eq_op rel_expr
-			{ $$ = newexpr2($2, $1, $3); }
+			{ $$ = newexpr2(&@$, $2, $1, $3); }
 			;
 eq_op			: "==" | "!="
 			;
 
 rel_expr		: shift_expr
 			| rel_expr rel_op shift_expr
-			{ $$ = newexpr2($2, $1, $3); }
+			{ $$ = newexpr2(&@$, $2, $1, $3); }
 			;
 rel_op			: "<=" | ">=" | '<' | '>'
 			;
 
 shift_expr		: add_expr
 			| shift_expr shift_op add_expr
-			{ $$ = newexpr2($2, $1, $3); }
+			{ $$ = newexpr2(&@$, $2, $1, $3); }
 			;
 shift_op		: "<<" | ">>"
 			;
 
 add_expr		: mul_expr
 			| add_expr add_op mul_expr
-			{ $$ = newexpr2($2, $1, $3); }
+			{ $$ = newexpr2(&@$, $2, $1, $3); }
 			;
 add_op			: '+' | '-'
 			;
 
 mul_expr		: cast_expr
 			| mul_expr mul_op cast_expr
-			{ $$ = newexpr2($2, $1, $3); }
+			{ $$ = newexpr2(&@$, $2, $1, $3); }
 			;
 mul_op			: '*' | '/' | '%'
 			;
 
 cast_expr		: unary_expr
 			| '(' type_name ')' cast_expr
-			{ $$ = newexprtypecast(TYPECAST, $2, $4); }
+			{ $$ = newexprtypecast(&@$, TYPECAST, $2, $4); }
 			;
 
 unary_expr		: postfix_expr
 			| unary_lval_op unary_expr
-			{ $$ = newexpr1($1, $2); }
+			{ $$ = newexpr1(&@$, $1, $2); }
 			| unary_op cast_expr
-			{ $$ = newexpr1($1, $2); }
+			{ $$ = newexpr1(&@$, $1, $2); }
 			| SIZEOF '(' type_name  ')'
-			{ $$ = newexprtype(SIZEOF_TYPE, $3); }
+			{ $$ = newexprtype(&@$, SIZEOF_TYPE, $3); }
 			/* HACK: defined as a preprocessor macro */
 			| OFFSETOF '(' type_name ',' unary_expr ')'
-			{ $$ = newexprtypecast($1, $3, $5); }
+			{ $$ = newexprtypecast(&@$, $1, $3, $5); }
 			/* HACK */
 			| FRAME_REG '(' opt_expr ',' type_name ')'
-			{ $$ = newexprtypecast($1, $5, $3); }
+			{ $$ = newexprtypecast(&@$, $1, $5, $3); }
 			;
 unary_op		: '&' | '*' | '+' | '-' | '~' | '!'
 			;
@@ -856,53 +881,55 @@ unary_lval_op		: "++" | "--" | SIZEOF
 
 postfix_expr		: primary_expr
 			| postfix_expr '[' expr ']'
-			{ $$ = newexpr2(ARRAY, $1, $3); }
+			{ $$ = newexpr2(&@$, ARRAY, $1, $3); }
 			| postfix_expr '(' argument_expr_list ')'
-			{ $$ = newexpr2(FUNC, $1, $3); }
+			{ $$ = newexpr2(&@$, FUNC, $1, $3); }
 			| postfix_expr '('                    ')'
-			{ $$ = newexpr2(FUNC, $1, NULL); }
+			{ $$ = newexpr2(&@$, FUNC, $1, NULL); }
 			| postfix_expr '.' { typedef_ign = 1; } ID
 			{
 				typedef_ign = 0;
-				$$ = newexpr2($2, $1, newexprid($4));
+				$$ = newexpr2(&@$, $2, $1, newexprid(&@$, $4));
 			}
 			| postfix_expr "->" { typedef_ign = 1; } ID
 			{
 				typedef_ign = 0;
-				$$ = newexpr2($2, $1, newexprid($4));
+				$$ = newexpr2(&@$, $2, $1, newexprid(&@$, $4));
 			}
 			| postfix_expr "++"
-			{ $$ = newexpr1($2, $1); }
+			{ $$ = newexpr1(&@$, $2, $1); }
 			| postfix_expr "--"
-			{ $$ = newexpr1($2, $1); }
+			{ $$ = newexpr1(&@$, $2, $1); }
 			;
 
 primary_expr		: ID
-			{ $$ = newexprid($1); }
+			{ $$ = newexprid(&@$, $1); }
 			| INT_CONST
-			{ $$ = newexprnum($1); }
+			{ $$ = newexprnum(&@$, $1); }
 			| CHAR_CONST
-			{ $$ = newexprchar($1); }
+			{ $$ = newexprchar(&@$, $1); }
 			| FLOAT_CONST
-			{ $$ = newexprfloat($1); }
+			{ $$ = newexprfloat(&@$, $1); }
 			| string_const
 			| '(' expr ')'
 			{ $$ = $2; }
 			;
 
 string_const		: STRING_CONST
-			{ $$ = newexprstr($1); }
+			{ $$ = newexprstr(&@$, $1); }
 			| string_const STRING_CONST 
 			{
-				expr_t *expr = newexprstr($2);
-				list_add_tail(&expr->list, &$1->list);
+				expr_t *expr = newexprstr(&@$, $2);
+				list_add_tail(&expr_node(expr)->list,
+					      &expr_node($1)->list);
 				$$ = $1;
 			}
 			/* HACK for concatenation with macros */
 			| string_const ID
 			{
-				expr_t *expr = newexprid($2);
-				list_add_tail(&expr->list, &$1->list);
+				expr_t *expr = newexprid(&@$, $2);
+				list_add_tail(&expr_node(expr)->list,
+					      &expr_node($1)->list);
 				$$ = $1;
 			}
 			;
@@ -928,32 +955,58 @@ yyerror(const char *s)
 		first_column + 1, s, yylloc.last_line);
 }
 
-decl_t *parsed_tree;
+node_t *parsed_tree;
 
-type_t *
-newtype_name(const char *name)
+/* Initialize a new node of type @type, room for @nchild children
+ * and @extra bytes.
+ */
+node_t *
+newnode_extra(YYLTYPE *loc, enum node_type type, int nchild, size_t extra)
 {
-	int len = name ? strlen(name) + 1 : 0;
-	type_t *ret = calloc(sizeof(type_t) + len, 1);
+	size_t allocextra = nchild * sizeof(node_t *) + extra;
+	node_t *ret = calloc(sizeof(node_t) + allocextra, 1);
 
-	INIT_LIST_HEAD(&ret->attr);
-	if (name) {
-		ret->name = (char*)(ret + 1);
-		strcpy(ret->name, name);
-	}
+	INIT_LIST_HEAD(&ret->list);
+	ret->type = type;
+	ret->nchild = nchild;
+
+	ret->first_text = loc->first_text;
+	ret->last_text = loc->last_text;
+
 	return ret;
 }
 
-type_t *
-newtype(void)
+/* Return a pointer to the extra allocated space */
+static void *
+node_extra(node_t *node)
 {
-	return newtype_name(NULL);
+	return (char*)(node + 1) + node->nchild * sizeof(node_t *);
 }
 
 type_t *
-newtype_int(void)
+newtype_name(YYLTYPE *loc, const char *name)
 {
-	type_t *ret = newtype();
+	int len = name ? strlen(name) + 1 : 0;
+	node_t *node = newnode_extra(loc, nt_type, cht_max, len);
+
+	INIT_LIST_HEAD(&node->t.attr);
+	if (name) {
+		node->t.name = node_extra(node);
+		strcpy(node->t.name, name);
+	}
+	return &node->t;
+}
+
+type_t *
+newtype(YYLTYPE *loc)
+{
+	return newtype_name(loc, NULL);
+}
+
+type_t *
+newtype_int(YYLTYPE *loc)
+{
+	type_t *ret = newtype(loc);
 	ret->category = type_basic;
 	ret->b.list[ret->b.count++] = INT;
 	return ret;
@@ -965,25 +1018,24 @@ type_merge(type_t *merger, type_t *other)
 {
 	merger->flags |= other->flags;
 	list_splice(&other->attr, &merger->attr);
-	free(other);
+	free(type_node(other));
 }
 
 var_t *
-newvar(const char *name)
+newvar(YYLTYPE *loc, const char *name)
 {
 	size_t extra = name ? strlen(name) + 1 : 0;
-	var_t *ret = calloc(sizeof(var_t) + extra, 1);
+	node_t *node = newnode_extra(loc, nt_var, chv_max, extra);
 
-	INIT_LIST_HEAD(&ret->list);
-	INIT_LIST_HEAD(&ret->attr);
+	INIT_LIST_HEAD(&node->v.attr);
 	if (name) {
-		ret->name = (char*)(ret + 1);
-		strcpy(ret->name, name);
+		node->v.name = node_extra(node);
+		strcpy(node->v.name, name);
 	}
-	return ret;
+	return &node->v;
 }
 
-declarator_t *
+static declarator_t *
 newdeclarator(void)
 {
 	declarator_t *ret = calloc(sizeof(declarator_t), 1);
@@ -991,7 +1043,7 @@ newdeclarator(void)
 	return ret;
 }
 
-void
+static void
 link_abstract(declarator_t *declarator, const abstract_t *abstract)
 {
 	if (declarator->abstract.stub) {
@@ -1002,19 +1054,17 @@ link_abstract(declarator_t *declarator, const abstract_t *abstract)
 }
 
 decl_t *
-newdecl(type_t *type, declarator_t *declarator)
+newdecl(YYLTYPE *loc, type_t *type, declarator_t *declarator)
 {
-	decl_t *ret = calloc(sizeof(decl_t), 1);
+	node_t *node = newnode(loc, nt_decl, chd_max);
 	var_t *var, *lastvar;
 	declarator_t *d, *nextd;
 
-	INIT_LIST_HEAD(&ret->list);
-
-	ret->type = type;
+	node->d.type = type;
 	if (!declarator)
-		return ret;
+		return &node->d;
 
-	ret->var = declarator->var;
+	node->d.var = declarator->var;
 
 	lastvar = list_entry(declarator->list.prev, declarator_t, list)->var;
 	nextd = declarator;
@@ -1022,8 +1072,8 @@ newdecl(type_t *type, declarator_t *declarator)
 		d = nextd;
 		var = d->var;
 		if (var) {
-			lastvar->list.next = &var->list;
-			var->list.prev = &lastvar->list;
+			var_node(lastvar)->list.next = &var_node(var)->list;
+			var_node(var)->list.prev = &var_node(lastvar)->list;
 
 			if (d->abstract.stub) {
 				*d->abstract.stub = type;
@@ -1033,8 +1083,8 @@ newdecl(type_t *type, declarator_t *declarator)
 				var->type = type;
 		} else if (d->abstract.stub) {
 			*d->abstract.stub = type;
-			ret->type = d->abstract.tree;
-			ret->type->flags = type->flags;
+			node->d.type = d->abstract.tree;
+			node->d.type->flags = type->flags;
 		}
 
 		lastvar = var;
@@ -1042,112 +1092,110 @@ newdecl(type_t *type, declarator_t *declarator)
 		free(d);
 	} while(nextd != declarator);
 
-	return ret;
+	return &node->d;
 }
 
 expr_t *
-newexpr(int op)
+newexpr(YYLTYPE *loc, int op)
 {
-	expr_t *ret = calloc(sizeof(expr_t), 1);
-	ret->op = op;
-	INIT_LIST_HEAD(&ret->list);
-	return ret;
+	node_t *node = newnode(loc, nt_expr, che_max);
+	node->e.op = op;
+	return &node->e;
 }
 
 expr_t *
-newexprnum(char *str)
+newexprnum(YYLTYPE *loc, char *str)
 {
-	expr_t *ret = newexpr(INT_CONST);
+	expr_t *ret = newexpr(loc, INT_CONST);
 	ret->num = strtol(str, (char**)NULL, 0);
 	free(str);
 	return ret;
 }
 
 expr_t *
-newexprfloat(char *str)
+newexprfloat(YYLTYPE *loc, char *str)
 {
-	expr_t *ret = newexpr(FLOAT_CONST);
+	expr_t *ret = newexpr(loc, FLOAT_CONST);
 	ret->f = strtod(str, (char**)NULL);
 	free(str);
 	return ret;
 }
 
 expr_t *
-newexprstr(char *str)
+newexprstr(YYLTYPE *loc, char *str)
 {
 	size_t len = strlen(str) + 1;
-	expr_t *ret = malloc(sizeof(expr_t) + len);
+	node_t *node = newnode_extra(loc, nt_expr, che_max, len);
 
-	ret->op = STRING_CONST;
-	INIT_LIST_HEAD(&ret->list);
-	ret->str = (char*)(ret + 1);
-	strcpy(ret->str, str);
+	node->e.op = STRING_CONST;
+	node->e.str = node_extra(node);
+	strcpy(node->e.str, str);
 	free(str);
-	return ret;
+	return &node->e;
 }
 
 expr_t *
-newexprchar(char *str)
+newexprchar(YYLTYPE *loc, char *str)
 {
-	expr_t *ret = newexprstr(str);
+	expr_t *ret = newexprstr(loc, str);
 	ret->op = CHAR_CONST;
 	return ret;
 }
 
 expr_t *
-newexprid(char *id)
+newexprid(YYLTYPE *loc, char *id)
 {
-	expr_t *ret = newexprstr(id);
+	expr_t *ret = newexprstr(loc, id);
 	ret->op = ID;
 	return ret;
 }
 
 expr_t *
-newexprtype(int op, type_t *type)
+newexprtype(YYLTYPE *loc, int op, type_t *type)
 {
-	expr_t *ret = newexpr(op);
+	expr_t *ret = newexpr(loc, op);
 	ret->type = type;
 	return ret;
 }
 
 expr_t *
-newexprtypecast(int op, type_t *type, expr_t *expr)
+newexprtypecast(YYLTYPE *loc, int op, type_t *type, expr_t *expr)
 {
-	expr_t *ret = newexpr(op);
+	expr_t *ret = newexpr(loc, op);
 	ret->typecast.type = type;
 	ret->typecast.expr = expr;
 	return ret;
 }
 
 expr_t *
-newexprdecl(decl_t *decl)
+newexprdecl(YYLTYPE *loc, decl_t *decl)
 {
-	expr_t *ret = newexpr(DECL);
+	expr_t *ret = newexpr(loc,DECL);
 	ret->decl = decl;
 	return ret;
 }
 
 expr_t *
-newexpr1(int op, expr_t *expr)
+newexpr1(YYLTYPE *loc, int op, expr_t *expr)
 {
-	expr_t *ret = newexpr(op);
+	expr_t *ret = newexpr(loc, op);
 	ret->expr = expr;
 	return ret;
 }
 
 expr_t *
-newexpr2(int op, expr_t *left, expr_t *right)
+newexpr2(YYLTYPE *loc, int op, expr_t *left, expr_t *right)
 {
-	expr_t *ret = newexpr(op);
+	expr_t *ret = newexpr(loc, op);
 	ret->binary.left = left;
 	ret->binary.right = right;
 	return ret;
 }
 
 expr_t *
-newexpr3(int op, expr_t *cond, expr_t *ontrue, expr_t *onfalse)
+newexpr3(YYLTYPE *loc, int op, expr_t *cond, expr_t *ontrue, expr_t *onfalse)
 {
-	expr_t * ret = newexpr(op);
+	expr_t * ret = newexpr(loc, op);
 	ret->ternary.cond = cond;
 	ret->ternary.ontrue = ontrue;
 	ret->ternary.onfalse = onfalse;
@@ -1155,9 +1203,10 @@ newexpr3(int op, expr_t *cond, expr_t *ontrue, expr_t *onfalse)
 }
 
 expr_t *
-newexpr4(int op, expr_t *init, expr_t *cond, expr_t *iter, expr_t *body)
+newexpr4(YYLTYPE *loc, int op,
+	 expr_t *init, expr_t *cond, expr_t *iter, expr_t *body)
 {
-	expr_t * ret = newexpr(op);
+	expr_t * ret = newexpr(loc, op);
 	ret->forloop.init = init;
 	ret->forloop.cond = cond;
 	ret->forloop.iter = iter;
@@ -1222,7 +1271,7 @@ addvartypedefs(var_t *varlist)
 	var_t *var = varlist;
 	do {
 		addtypedef(var->name);
-		var = list_entry(var->list.next, var_t, list);
+		var = &list_entry(var_node(var)->list.next, node_t, list)->v;
 	} while (var != varlist);
 }
 
@@ -1257,7 +1306,7 @@ hidevars(var_t *first)
 	do {
 		if (var->name)
 			hidetypedef(var->name);
-		var = list_entry(var->list.next, var_t, list);
+		var = &list_entry(var_node(var)->list.next, node_t, list)->v;
 	} while (var != first);
 }
 
@@ -1268,7 +1317,7 @@ hidedecls(decl_t *first)
 	do {
 		if (decl->var)
 			hidevars(decl->var);
-		decl = list_entry(decl->list.next, decl_t, list);
+		decl = &list_entry(decl_node(decl)->list.next, node_t, list)->d;
 	} while (decl != first);
 }
 

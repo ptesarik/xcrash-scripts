@@ -87,7 +87,7 @@ static void dump_expr(expr_t *expr);
 static void dump_exprlist(expr_t *list);
 static void dump_var(var_t *var);
 static void dump_varlist(var_t *list);
-static void dump_tree(decl_t *tree);
+static void dump_tree(node_t *tree);
 
 static int indent = 2;
 static int depth = -1;
@@ -98,6 +98,20 @@ static void init_types(const char **types)
 		addtypedef(*types);
 		++types;
 	}
+}
+
+static void dump_chunk(struct dynstr *first, struct dynstr *last)
+{
+	struct dynstr *cur = first;
+	fputs(">>>", stdout);
+	for (;;) {
+		fwrite(cur->text, 1, cur->len, stdout);
+
+		if (cur == last)
+			break;
+		cur = list_entry(cur->list.next, struct dynstr, list);
+	}
+	fputs("<<<\n", stdout);
 }
 
 static void dump_basic_type(type_t *type)
@@ -164,7 +178,7 @@ static void dump_type(type_t *type, int showflags)
 		printf("struct %s", type->s.name);
 		if (type->s.body) {
 			fputs(" {\n", stdout);
-			dump_tree(type->s.body);
+			dump_tree(decl_node(type->s.body));
 			putchar('}');
 		}
 		break;
@@ -173,7 +187,7 @@ static void dump_type(type_t *type, int showflags)
 		printf("union %s", type->s.name);
 		if (type->s.body) {
 			fputs(" {\n", stdout);
-			dump_tree(type->s.body);
+			dump_tree(decl_node(type->s.body));
 			putchar('}');
 		}
 		break;
@@ -207,7 +221,7 @@ static void dump_type(type_t *type, int showflags)
 		fputs("func", stdout);
 		if (type->f.param) {
 			fputs(" (\n", stdout);
-			dump_tree(type->f.param);
+			dump_tree(decl_node(type->f.param));
 			putchar(')');
 		}
 		fputs(" returning ", stdout);
@@ -225,12 +239,12 @@ static void dump_type(type_t *type, int showflags)
 	}
 
 	if (!list_empty(&type->attr)) {
-		expr_t *attr;
+		node_t *attr;
 		fputs(" attr(", stdout);
 		list_for_each_entry(attr, &type->attr, list) {
 			if (&attr->list != type->attr.next)
 				putchar(',');
-			dump_expr(attr);
+			dump_expr(&attr->e);
 		}
 		putchar(')');
 	}
@@ -330,7 +344,7 @@ static void dump_expr(expr_t *expr)
 		putchar(')');
 		break;
 	case DECL:
-		dump_tree(expr->decl);
+		dump_tree(decl_node(expr->decl));
 		break;
 
 	case ELLIPSIS:
@@ -457,7 +471,7 @@ static void dump_exprlist(expr_t *list)
 		if (expr != list)
 			putchar('\n');
 		dump_expr(expr);
-		expr = list_entry(expr->list.next, expr_t, list);
+		expr = &list_entry(expr_node(expr)->list.next, node_t, list)->e;
 	} while(expr != list);
 }
 
@@ -470,10 +484,10 @@ static void dump_var(var_t *var)
 		putchar('\n');
 	}
 	if (!list_empty(&var->attr)) {
-		expr_t *attr;
+		node_t *attr;
 		list_for_each_entry(attr, &var->attr, list) {
 			printf("%*sattribute: ", indent*depth, "");
-			dump_expr(attr);
+			dump_expr(&attr->e);
 			putchar('\n');
 		}
 	}
@@ -491,14 +505,14 @@ static void dump_varlist(var_t *list)
 	++depth;
 	do {
 		dump_var(var);
-		var = list_entry(var->list.next, var_t, list);
+		var = &list_entry(var_node(var)->list.next, node_t, list)->v;
 	} while(var != list);
 	--depth;
 }
 
-static void dump_tree(decl_t *tree)
+static void dump_tree(node_t *tree)
 {
-	decl_t *item = tree;
+	node_t *item = tree;
 
 	if (!tree)
 		return;
@@ -506,24 +520,25 @@ static void dump_tree(decl_t *tree)
 	++depth;
 	do {
 		printf("%*selement: %p\n", indent*depth, "", item);
-		if (item->var)
-			dump_varlist(item->var);
-		else if (item->type) {
+		dump_chunk(item->first_text, item->last_text);
+		if (item->d.var)
+			dump_varlist(item->d.var);
+		else if (item->d.type) {
 			++depth;
 			printf("%*stype: ", indent*depth, "");
-			dump_type(item->type, 1);
+			dump_type(item->d.type, 1);
 			putchar('\n');
 			--depth;
 		}
 
-		if (item->body) {
+		if (item->d.body) {
 			++depth;
 			printf("%*sbody: ", indent*depth, "");
-			dump_exprlist(item->body);
+			dump_exprlist(item->d.body);
 			putchar('\n');
 			--depth;
 		}
-		item = list_entry(item->list.next, decl_t, list);
+		item = list_entry(item->list.next, node_t, list);
 	} while (item != tree);
 	--depth;
 }
