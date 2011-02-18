@@ -203,7 +203,7 @@ static void dump_type(type_t *type, int showflags)
 
 	case type_pointer:
 		fputs("ptr to ", stdout);
-		dump_type(type->t, 0);
+		dump_tree(type->t);
 		break;
 
 	case type_array:
@@ -214,7 +214,7 @@ static void dump_type(type_t *type, int showflags)
 			putchar(']');
 		}
 		fputs(" of ", stdout);
-		dump_type(type->a.type, 0);
+		dump_tree(type->a.type);
 		break;
 
 	case type_func:
@@ -225,7 +225,7 @@ static void dump_type(type_t *type, int showflags)
 			putchar(')');
 		}
 		fputs(" returning ", stdout);
-		dump_type(type->f.type, 0);
+		dump_tree(type->f.type);
 		break;
 
 	case type_typeof:

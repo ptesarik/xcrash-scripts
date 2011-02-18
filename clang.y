@@ -561,7 +561,7 @@ pointer			: '*'
 			{
 				node_t *ptr = newtype(&@$);
 				ptr->t.category = type_pointer;
-				ptr->t.t = &$1.tree->t;
+				ptr->t.t = $1.tree;
 				$$ = $1;
 				$$.tree = ptr;
 			}
@@ -1042,7 +1042,7 @@ static void
 link_abstract(declarator_t *declarator, const abstract_t *abstract)
 {
 	if (declarator->abstract.stub) {
-		*declarator->abstract.stub = &abstract->tree->t;
+		*declarator->abstract.stub = abstract->tree;
 		declarator->abstract.stub = abstract->stub;
 	} else
 		declarator->abstract = *abstract;
@@ -1071,13 +1071,13 @@ newdecl(YYLTYPE *loc, node_t *type, declarator_t *declarator)
 			var->list.prev = &lastvar->list;
 
 			if (d->abstract.stub) {
-				*d->abstract.stub = &type->t;
+				*d->abstract.stub = type;
 				var->child[chv_type] = d->abstract.tree;
 				var->child[chv_type]->t.flags = type->t.flags;
 			} else
 				var->child[chv_type] = type;
 		} else if (d->abstract.stub) {
-			*d->abstract.stub = &type->t;
+			*d->abstract.stub = type;
 			node->child[chd_type] = d->abstract.tree;
 			node->child[chd_type]->t.flags = type->t.flags;
 		}

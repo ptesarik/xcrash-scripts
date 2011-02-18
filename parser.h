@@ -55,12 +55,12 @@ typedef struct enum_type {
 } enum_type_t;
 
 typedef struct array_type {
-	struct type *type;	/* type of elements */
+	struct node *type;	/* type of elements */
 	struct expr *size;
 } array_type_t;
 
 typedef struct func_type {
-	struct type *type;	/* return type */
+	struct node *type;	/* return type */
 	struct node *param;
 } func_type_t;
 
@@ -72,7 +72,7 @@ typedef struct type {
 		char *name;
 		struct_type_t s;
 		enum_type_t e;
-		struct type *t;
+		struct node *t;
 		array_type_t a;
 		func_type_t f;
 		struct expr *expr;
@@ -196,7 +196,7 @@ typedef struct node {
 /* This type is used only temporarily during parsing */
 typedef struct abstract {
 	node_t *tree;
-	type_t **stub;	
+	node_t **stub;	
 } abstract_t;
 
 /* This type is used only temporarily during parsing */
