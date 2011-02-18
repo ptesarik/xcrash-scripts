@@ -7,6 +7,7 @@ void (*signal(int sig, void (*func)(int handler_sig)))(int oldhandler_sig);
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "parser.h"
 #include "clang.tab.h"
 
@@ -81,6 +82,8 @@ const char *predef_types[] = {
 	NULL,
 };
 
+#if DEBUG
+
 static void dump_basic_type(type_t *type);
 static void dump_type(type_t *type, int showflags);
 static void dump_expr(expr_t *expr);
@@ -90,6 +93,8 @@ static void dump_tree(node_t *tree);
 static int indent = 2;
 static int depth = -1;
 
+#endif	/* DEBUG */
+
 static void init_types(const char **types)
 {
 	while (*types) {
@@ -97,6 +102,8 @@ static void init_types(const char **types)
 		++types;
 	}
 }
+
+#if DEBUG
 
 static void dump_chunk(struct dynstr *first, struct dynstr *last)
 {
@@ -320,6 +327,55 @@ static void dump_tree(node_t *tree)
 	--depth;
 }
 
+#endif	/* DEBUG */
+
+static void replace_text(node_t *node, const char *text)
+{
+	struct list_head *it;
+	struct dynstr *ds = newdynstr(text, strlen(text));
+	ds->list.prev = node->first_text->list.prev;
+	ds->list.prev->next = &ds->list;
+	ds->list.next = node->last_text->list.next;
+	ds->list.next->prev = &ds->list;
+
+	it = &node->first_text->list;
+	for (;;) {
+		free(list_entry(it, struct dynstr, list)); 
+		if (it == &node->last_text->list)
+			break;
+		it = it->next;
+	}
+
+	node->first_text = node->last_text = ds;
+}
+
+/* Example transformation: ulong -> tulong */
+static void xform_tree(node_t *tree)
+{
+	node_t *item = tree;
+	int i;
+
+	if (!tree)
+		return;
+	do {
+		if (item->type == nt_type &&
+		    item->t.category == type_typedef &&
+		    !strcmp(item->t.name, "ulong")) {
+			replace_text(item, "tulong");
+
+			/* not really needed, but if omitted, this node
+			 * confuse a later transformation */
+			item->t.name = "tulong";
+		}
+
+		for (i = 0; i < item->nchild; ++i)
+			if (item->child[i])
+				xform_tree(item->child[i]);
+
+		item = list_entry(item->list.next, node_t, list);
+	} while (item != tree);
+}
+
 static void dump_contents(struct list_head *contents)
 {
 	struct dynstr *ds;
@@ -336,13 +392,16 @@ static int parse_file(const char *name)
 	else
 		yyin = fopen(name, "r");
 
-	printf("Parsing file %s:\n", name);
+	fprintf(stderr, "Parsing file %s:\n", name);
 	ret = yyparse();
 	if (ret) {
 		fprintf(stderr, "Parser failed with %d\n", ret);
 	} else {
-		dump_contents(&raw_contents);
+#if DEBUG
 		dump_tree(parsed_tree);
+#endif
+		xform_tree(parsed_tree);
+		dump_contents(&raw_contents);
 	}
 
 	if (yyin != stdin)
@@ -356,10 +415,6 @@ int main(int argc, char **argv)
 {
 	int i;
 	int ret;
-#if DEBUG
-	extern int yydebug;
-	yydebug = 1;
-#endif
 
 	init_types(predef_types);
 

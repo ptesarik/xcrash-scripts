@@ -158,7 +158,6 @@ static void hidedecls(node_t *);
 %type <node> translation_unit
 
 %error-verbose
-%debug
 %locations
 %glr-parser
 %start translation_unit
