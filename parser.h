@@ -195,7 +195,7 @@ typedef struct node {
 
 /* This type is used only temporarily during parsing */
 typedef struct abstract {
-	type_t *tree;
+	node_t *tree;
 	type_t **stub;	
 } abstract_t;
 
@@ -236,14 +236,14 @@ newnode(YYLTYPE *loc, enum node_type type, int nchild)
 	return newnode_extra(loc, type, nchild, 0);
 }
 
-type_t *newtype(YYLTYPE *);
-type_t *newtype_name(YYLTYPE *, const char *);
-type_t *newtype_int(YYLTYPE *);
-void type_merge(type_t *, type_t *);
+node_t *newtype(YYLTYPE *);
+node_t *newtype_name(YYLTYPE *, const char *);
+node_t *newtype_int(YYLTYPE *);
+void type_merge(node_t *, node_t *);
 
 node_t *newvar(YYLTYPE *, const char *);
 
-node_t *newdecl(YYLTYPE *, type_t *, declarator_t *);
+node_t *newdecl(YYLTYPE *, node_t *, declarator_t *);
 
 expr_t *newexpr(YYLTYPE *, int);
 expr_t *newexprnum(YYLTYPE *, char *);
@@ -251,8 +251,8 @@ expr_t *newexprfloat(YYLTYPE *, char *);
 expr_t *newexprstr(YYLTYPE *, char *);
 expr_t *newexprchar(YYLTYPE *, char *);
 expr_t *newexprid(YYLTYPE *, char *);
-expr_t *newexprtype(YYLTYPE *, int, type_t *);
-expr_t *newexprtypecast(YYLTYPE *, int, type_t *, expr_t *);
+expr_t *newexprtype(YYLTYPE *, int, node_t *);
+expr_t *newexprtypecast(YYLTYPE *, int, node_t *, expr_t *);
 expr_t *newexprdecl(YYLTYPE *, node_t *);
 expr_t *newexpr1(YYLTYPE *, int, expr_t *);
 expr_t *newexpr2(YYLTYPE *, int, expr_t *, expr_t *);

@@ -119,10 +119,11 @@ static void hidedecls(node_t *);
 
 %type <tflags> storage_class_spec type_qualifier type_qualifier_list
 
-%type <type> type_decl opt_notype_decl notype_decl
-%type <type> type_name _type_name typedef_name
-%type <type> type_spec basic_type_list spec_qualifier_list
-%type <type> struct_or_union_spec struct_desc enum_spec enum_desc
+/* type type */
+%type <node> type_decl opt_notype_decl notype_decl
+%type <node> type_name _type_name typedef_name
+%type <node> type_spec basic_type_list spec_qualifier_list
+%type <node> struct_or_union_spec struct_desc enum_spec enum_desc
 
 %type <abstract> pointer array_declarator direct_suffix_declarator
 %type <abstract> param_declarator abstract_param_declarator
@@ -237,7 +238,7 @@ decl_list		: decl
 decl			: type_decl init_declarator_list ';'
 			{
 				$$ = newdecl(&@$, $1, $2);
-				if ($1->flags & TF_TYPEDEF)
+				if ($1->t.flags & TF_TYPEDEF)
 					addtypedeflist($2->var);
 			}
 			| type_decl                      ';'
@@ -267,24 +268,24 @@ opt_notype_decl		: /* empty */
 notype_decl		: attr_spec
 			{
 				$$ = newtype(&@$);
-				list_add_tail(&$$->attr,
+				list_add_tail(&$$->t.attr,
 					      &expr_node($1)->list);
 			}
 			| storage_class_spec
-			{ $$ = newtype(&@$); $$->flags = $1; }
+			{ $$ = newtype(&@$); $$->t.flags = $1; }
 			| type_qualifier
-			{ $$ = newtype(&@$); $$->flags = $1; }
+			{ $$ = newtype(&@$); $$->t.flags = $1; }
 			| notype_decl attr_spec
 			{
 				struct list_head *last = expr_node($2)->list.prev;
 				$$ = $1;
-				list_splice(&$$->attr, last);
-				list_add(&$$->attr, last);
+				list_splice(&$$->t.attr, last);
+				list_add(&$$->t.attr, last);
 			}
 			| notype_decl storage_class_spec
-			{ $$ = $1; $$->flags |= $2; }
+			{ $$ = $1; $$->t.flags |= $2; }
 			| notype_decl type_qualifier
-			{ $$ = $1; $$->flags |= $2; }
+			{ $$ = $1; $$->t.flags |= $2; }
 			;
 
 opt_attr		: /* empty */
@@ -344,11 +345,11 @@ type_spec		: basic_type_list
 basic_type_list		: basic_type
 			{
 				$$ = newtype(&@$);
-				$$->category = type_basic;
-				$$->b.list[$$->b.count++] = $1;
+				$$->t.category = type_basic;
+				$$->t.b.list[$$->t.b.count++] = $1;
 			}
 			| basic_type_list basic_type
-			{ $$->b.list[$$->b.count++] = $2; }
+			{ $$->t.b.list[$$->t.b.count++] = $2; }
 			;
 
 basic_type		: VOID
@@ -366,10 +367,10 @@ struct_or_union_spec	: struct_or_union { typedef_ign = 1; }
 				opt_attr struct_desc
 			{
 				$$ = $4;
-				$$->category = $1;
+				$$->t.category = $1;
 				if ($3)
 					list_add_tail(&expr_node($3)->list,
-						      &$$->attr);
+						      &$$->t.attr);
 			}
 			;
 
@@ -378,9 +379,9 @@ struct_or_union		: STRUCT	{ $$ = type_struct; }
 			;
 
 struct_desc		: ID     struct_body
-			{ $$ = newtype_name(&@$, $1); $$->s.body = $2; }
+			{ $$ = newtype_name(&@$, $1); $$->t.s.body = $2; }
 			|        struct_body
-			{ $$ = newtype(&@$); $$->s.body = $1; }
+			{ $$ = newtype(&@$); $$->t.s.body = $1; }
 			| ID
 			{ $$ = newtype_name(&@$, $1); }
 			;
@@ -427,17 +428,17 @@ struct_declarator	: declarator ':' const_expr
 enum_spec		: ENUM { typedef_ign = 1; } opt_attr enum_desc
 			{
 				$$ = $4;
-				$$->category = type_enum;
+				$$->t.category = type_enum;
 				if ($3)
 					list_add_tail(&expr_node($3)->list,
-						      &$$->attr);
+						      &$$->t.attr);
 			}
 			;
 
 enum_desc		: ID enum_body
-			{ $$ = newtype_name(&@$, $1); $$->e.body = &$2->v; }
+			{ $$ = newtype_name(&@$, $1); $$->t.e.body = &$2->v; }
 			|    enum_body
-			{ $$ = newtype(&@$); $$->e.body = &$1->v; }
+			{ $$ = newtype(&@$); $$->t.e.body = &$1->v; }
 			| ID
 			{ $$ = newtype_name(&@$, $1); }
 			;
@@ -533,11 +534,11 @@ direct_suffix_declarator: array_declarator
 
 param_declarator	: '(' param_type_or_idlist ')'
 			{
-				type_t *type = newtype(&@$);
-				type->category = type_func;
-				type->f.param = $2;
+				node_t *type = newtype(&@$);
+				type->t.category = type_func;
+				type->t.f.param = $2;
 				$$.tree = type;
-				$$.stub = &type->f.type;
+				$$.stub = &type->t.f.type;
 			}
 			;
 
@@ -551,21 +552,21 @@ param_type_or_idlist	: param_type_list
 
 pointer			: '*'
 			{
-				type_t *ptr = newtype(&@$);
-				ptr->category = type_pointer;
+				node_t *ptr = newtype(&@$);
+				ptr->t.category = type_pointer;
 				$$.tree = ptr;
-				$$.stub = &ptr->t;
+				$$.stub = &ptr->t.t;
 			}
 			| pointer '*'
 			{
-				type_t *ptr = newtype(&@$);
-				ptr->category = type_pointer;
-				ptr->t = $1.tree;
+				node_t *ptr = newtype(&@$);
+				ptr->t.category = type_pointer;
+				ptr->t.t = &$1.tree->t;
 				$$ = $1;
 				$$.tree = ptr;
 			}
 			| pointer type_qualifier_list
-			{ $$ = $1; $$.tree->flags |= $2; }
+			{ $$ = $1; $$.tree->t.flags |= $2; }
 			;
 
 param_type_list		: param_list ',' "..."
@@ -633,8 +634,8 @@ _type_name		: spec_qualifier_list
 			| TYPEOF '(' expr ')'
 			{
 				$$ = newtype(&@$);
-				$$->category = type_typeof;
-				$$->expr = $3;
+				$$->t.category = type_typeof;
+				$$->t.expr = $3;
 			}
 			;
 
@@ -660,11 +661,11 @@ direct_abstract_declarator
 
 array_declarator	: '[' array_size ']'
 			{
-				type_t *type = newtype(&@$);
-				type->category = type_array;
-				type->a.size = $2;
+				node_t *type = newtype(&@$);
+				type->t.category = type_array;
+				type->t.a.size = $2;
 				$$.tree = type;
-				$$.stub = &type->a.type;
+				$$.stub = &type->t.a.type;
 			}
 			;
 
@@ -676,18 +677,18 @@ array_size		: /* empty */
 abstract_param_declarator:
 			'(' param_type_list ')'
 			{
-				type_t *type = newtype(&@$);
-				type->category = type_func;
-				type->f.param = $2;
+				node_t *type = newtype(&@$);
+				type->t.category = type_func;
+				type->t.f.param = $2;
 				$$.tree = type;
-				$$.stub = &type->f.type;
+				$$.stub = &type->t.f.type;
 			}
 			;
 
 typedef_name		: TYPEID
 			{
 				$$ = newtype_name(&@$, $1);
-				$$->category = type_typedef;
+				$$->t.category = type_typedef;
 			}
 
 stat			: ID ':' stat
@@ -978,7 +979,7 @@ node_extra(node_t *node)
 	return (char*)(node + 1) + node->nchild * sizeof(node_t *);
 }
 
-type_t *
+node_t *
 newtype_name(YYLTYPE *loc, const char *name)
 {
 	int len = name ? strlen(name) + 1 : 0;
@@ -989,31 +990,31 @@ newtype_name(YYLTYPE *loc, const char *name)
 		node->t.name = node_extra(node);
 		strcpy(node->t.name, name);
 	}
-	return &node->t;
+	return node;
 }
 
-type_t *
+node_t *
 newtype(YYLTYPE *loc)
 {
 	return newtype_name(loc, NULL);
 }
 
-type_t *
+node_t *
 newtype_int(YYLTYPE *loc)
 {
-	type_t *ret = newtype(loc);
-	ret->category = type_basic;
-	ret->b.list[ret->b.count++] = INT;
+	node_t *ret = newtype(loc);
+	ret->t.category = type_basic;
+	ret->t.b.list[ret->t.b.count++] = INT;
 	return ret;
 }
 
 /* Merge the flags and attributes from @other into @merger */
 void
-type_merge(type_t *merger, type_t *other)
+type_merge(node_t *merger, node_t *other)
 {
-	merger->flags |= other->flags;
-	list_splice(&other->attr, &merger->attr);
-	free(type_node(other));
+	merger->t.flags |= other->t.flags;
+	list_splice(&other->t.attr, &merger->t.attr);
+	free(other);
 }
 
 node_t *
@@ -1041,20 +1042,20 @@ static void
 link_abstract(declarator_t *declarator, const abstract_t *abstract)
 {
 	if (declarator->abstract.stub) {
-		*declarator->abstract.stub = abstract->tree;
+		*declarator->abstract.stub = &abstract->tree->t;
 		declarator->abstract.stub = abstract->stub;
 	} else
 		declarator->abstract = *abstract;
 }
 
 node_t *
-newdecl(YYLTYPE *loc, type_t *type, declarator_t *declarator)
+newdecl(YYLTYPE *loc, node_t *type, declarator_t *declarator)
 {
 	node_t *node = newnode(loc, nt_decl, chd_max);
 	node_t *var, *lastvar;
 	declarator_t *d, *nextd;
 
-	node->child[chd_type] = type ? type_node(type) : NULL;
+	node->child[chd_type] = type;
 	if (!declarator)
 		return node;
 
@@ -1070,18 +1071,15 @@ newdecl(YYLTYPE *loc, type_t *type, declarator_t *declarator)
 			var->list.prev = &lastvar->list;
 
 			if (d->abstract.stub) {
-				*d->abstract.stub = type;
-				var->child[chv_type] =
-					type_node(d->abstract.tree);
-				var->child[chv_type]->t.flags =
-					type->flags;
+				*d->abstract.stub = &type->t;
+				var->child[chv_type] = d->abstract.tree;
+				var->child[chv_type]->t.flags = type->t.flags;
 			} else
-				var->child[chv_type] =
-					type_node(type);
+				var->child[chv_type] = type;
 		} else if (d->abstract.stub) {
-			*d->abstract.stub = type;
-			node->child[chd_type] = type_node(d->abstract.tree);
-			node->child[chd_type]->t.flags = type->flags;
+			*d->abstract.stub = &type->t;
+			node->child[chd_type] = d->abstract.tree;
+			node->child[chd_type]->t.flags = type->t.flags;
 		}
 
 		lastvar = var;
@@ -1148,18 +1146,18 @@ newexprid(YYLTYPE *loc, char *id)
 }
 
 expr_t *
-newexprtype(YYLTYPE *loc, int op, type_t *type)
+newexprtype(YYLTYPE *loc, int op, node_t *type)
 {
 	expr_t *ret = newexpr(loc, op);
-	ret->type = type;
+	ret->type = &type->t;
 	return ret;
 }
 
 expr_t *
-newexprtypecast(YYLTYPE *loc, int op, type_t *type, expr_t *expr)
+newexprtypecast(YYLTYPE *loc, int op, node_t *type, expr_t *expr)
 {
 	expr_t *ret = newexpr(loc, op);
-	ret->typecast.type = type;
+	ret->typecast.type = &type->t;
 	ret->typecast.expr = expr;
 	return ret;
 }
@@ -1324,7 +1322,7 @@ hidefnparams(declarator_t *first)
 {
 	declarator_t *decl = first;
 	do {
-		type_t *type = decl->abstract.tree;
+		type_t *type = &decl->abstract.tree->t;
 		if (!type || type->category != type_func) {
 			fprintf(stderr, "Ouch! %s is not a function!\n",
 				decl->var->v.name);
