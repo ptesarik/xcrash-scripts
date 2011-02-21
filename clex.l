@@ -44,7 +44,7 @@ IS			(u|U|l|L)*
 
 \\\n?			/* continuation lines */
 
-"#"			BEGIN(cpp);
+("#"|"%:")		BEGIN(cpp);
 <cpp>(.|\\\n)		/* eat up everything and continuation lines */
 <cpp>\n			BEGIN(INITIAL);
 
