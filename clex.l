@@ -83,12 +83,14 @@ IS			(u|U|l|L)*
 <*>\\\n?		/* continuation lines */
 
   /* CPP directive (start) */
-<cpp_dir>[ \t\v\f]+	/* skip whitespace except newline */
-<cpp_dir>"define"	{
+<cpp_dir>{
+[ \t\v\f]+		/* skip whitespace except newline */
+"define"		{
 			BEGIN(cpp_def);
 			return yylval.token = CPP_DEFINE;
 			}
-<cpp_dir>(?s:.)		BEGIN(cpp_ign);
+(?s:.)			BEGIN(cpp_ign);
+}
 
   /* CPP define name */
 <cpp_def>[ \t\v\f]+		/* skip whitespace except newline */
