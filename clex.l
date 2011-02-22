@@ -80,8 +80,6 @@ IS			(u|U|l|L)*
 <*>"/*"([^*]+|\*+[^*/])*\*+\/	/* ignore comments */
 <*>"//".*\n?		/* ignore line comments */
 
-<*>\\\n?		/* continuation lines */
-
   /* CPP directive (start) */
 <cpp_dir>{
 [ \t\v\f]+		/* skip whitespace except newline */
@@ -89,7 +87,10 @@ IS			(u|U|l|L)*
 			BEGIN(cpp_def);
 			return yylval.token = CPP_DEFINE;
 			}
-(?s:.)			BEGIN(cpp_ign);
+(?s:.)			{
+			yylloc.last_text->reuse = 1;
+			BEGIN(cpp_ign);
+			}
 }
 
   /* CPP define name */
@@ -125,12 +126,16 @@ IS			(u|U|l|L)*
 
   /* CPP ignored directive */
 ("#"|"%:")[ \t\v\f]*	BEGIN(cpp_ign);
-<cpp_ign>(.|\\\n)+	{
-	if (!cpp_input)
+<cpp_ign>(.|\\\n)	{
+	if (!cpp_input && !yylloc.last_text->reuse)
 		list_add_tail(&yylloc.last_text->cpp_list, &raw_cpp);
+	yylloc.last_text->reuse = 1;
 	/* and eat up the directive */
 	}
-<cpp_ign>\n		BEGIN(INITIAL);
+<cpp_ign>\n		{
+	yylloc.last_text->reuse = 0;
+	BEGIN(INITIAL);
+	}
 
 "..."			return yylval.token = ELLIPSIS;
 ">>="			return yylval.token = SHR_ASSIGN;
@@ -248,6 +253,7 @@ L?\'(?s:\\.|[^\\'])*\'	{ /* fix highlight: ' */
 L?\"(?s:\\.|[^\\"])*\"	{ /* fix highlight: " */
 			yylval.str = strdup(yytext); return STRING_CONST;
 			}
+<*>\\\n?		/* continuation lines */
 [ \t\v\n\f]+		/* skip whitespace */
 .			/* ignore bad characters */
 
@@ -275,8 +281,44 @@ static void init_vars(void)
 struct dynstr *newdynstr(const char *s, size_t len)
 {
 	struct dynstr *ds = malloc(sizeof(struct dynstr) + len);
+	ds->cpp_list.next = NULL;
 	ds->len = ds->alloc = len;
+	ds->reuse = 0;
 	memcpy(ds->text, s, len);
+	return ds;
+}
+
+#define ALLOC_INC	256
+
+/* Try to reuse existing dynstr */
+static struct dynstr *
+reuse_last_content(const char *s, size_t len)
+{
+	struct dynstr *ds;
+
+	if (list_empty(&raw_contents))
+		return NULL;
+
+	ds = list_entry(raw_contents.prev, struct dynstr, list);
+	if (!ds->reuse)
+		return NULL;
+
+	if (ds->len + len > ds->alloc) {
+		size_t newalloc = ds->len + len + ALLOC_INC;
+		newalloc -= newalloc % ALLOC_INC;
+		ds = realloc(ds, sizeof(struct dynstr) + newalloc);
+		ds->alloc = newalloc;
+
+		/* Fix up list pointers */
+		ds->list.prev->next = &ds->list;
+		ds->list.next->prev = &ds->list;
+		if (ds->cpp_list.next) {
+			ds->cpp_list.prev->next = &ds->cpp_list;
+			ds->cpp_list.next->prev = &ds->cpp_list;
+		}
+	}
+	memcpy(ds->text + ds->len, s, len);
+	ds->len += len;
 	return ds;
 }
 
@@ -297,7 +339,9 @@ static void store_yytext(const char *s)
 			yylloc.last_column++;
 	}
 
-	ds = newdynstr(s, yyleng);
-	list_add_tail(&ds->list, &raw_contents);
+	if (! (ds = reuse_last_content(s, yyleng)) ) {
+		ds = newdynstr(s, yyleng);
+		list_add_tail(&ds->list, &raw_contents);
+	}
 	yylloc.first_text = yylloc.last_text = ds;
 }

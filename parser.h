@@ -7,6 +7,7 @@ struct dynstr {
 	struct list_head list;
 	struct list_head cpp_list;
 	size_t len, alloc;
+	int reuse;
 	char text[];
 };
 
