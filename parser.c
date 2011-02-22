@@ -401,9 +401,9 @@ static void dump_contents(struct list_head *contents)
 
 static void parse_macros(void)
 {
-	struct dynstr *ds;
+	struct dynstr *ds, *next;
 
-	list_for_each_entry(ds, &raw_cpp, cpp_list) {
+	list_for_each_entry_safe(ds, next, &raw_cpp, cpp_list) {
 		struct list_head *tail = raw_contents.prev;
 		int ret;
 
