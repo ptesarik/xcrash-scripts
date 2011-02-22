@@ -25,7 +25,7 @@ static void store_yytext(const char *s);
 #define YY_USER_ACTION	store_yytext(yytext);
 
 static void init_vars(void);
-#define YY_USER_INIT	init_vars();
+#define YY_USER_INIT	init_vars()
 
 %}
 
