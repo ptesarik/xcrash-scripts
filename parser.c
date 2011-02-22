@@ -329,22 +329,29 @@ static void dump_tree(node_t *tree)
 
 #endif	/* DEBUG */
 
-static void replace_text(node_t *node, const char *text)
+static void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
+			      struct dynstr *newfirst, struct dynstr *newlast)
 {
 	struct list_head *it;
-	struct dynstr *ds = newdynstr(text, strlen(text));
-	ds->list.prev = node->first_text->list.prev;
-	ds->list.prev->next = &ds->list;
-	ds->list.next = node->last_text->list.next;
-	ds->list.next->prev = &ds->list;
 
-	it = &node->first_text->list;
+	newfirst->list.prev = oldfirst->list.prev;
+	newfirst->list.prev->next = &newfirst->list;
+	newlast->list.next = oldlast->list.next;
+	newlast->list.next->prev = &newlast->list;
+
+	it = &oldfirst->list;
 	for (;;) {
 		free(list_entry(it, struct dynstr, list)); 
-		if (it == &node->last_text->list)
+		if (it == &oldlast->list)
 			break;
 		it = it->next;
 	}
+}
+
+static void replace_text(node_t *node, const char *text)
+{
+	struct dynstr *ds = newdynstr(text, strlen(text));
+	replace_text_list(node->first_text, node->last_text, ds, ds);
 
 	node->first_text = node->last_text = ds;
 }
