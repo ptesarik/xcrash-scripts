@@ -108,6 +108,11 @@ static void hidedecls(node_t *);
 /* identifiers */
 %token <str> ID TYPEID
 
+/* CPP tokens */
+%token <token> CPP_START CPP_DEFINE
+%token <token> CPP_CONCAT	"##"
+%token <str> CPP_IDARG
+
 /* pseudo-tokens */
 %token ARRAY DECL FUNC LABEL RANGE SIZEOF_TYPE TYPECAST
 
@@ -155,6 +160,9 @@ static void hidedecls(node_t *);
 %type <node> param_type_or_idlist
 %type <node> struct_body struct_decl_list struct_decl
 
+/* CPP types */
+%type <node> directive macro_def macro_declarator macro_param
+
 %type <node> translation_unit
 
 %error-verbose
@@ -180,6 +188,44 @@ translation_unit	: /* empty */
 					parsed_tree = $$ = $1;
 				} else
 					parsed_tree = $$ = $2;
+			}
+			| CPP_START directive
+			{ parsed_tree = $$ = $2; }
+			;
+
+directive		: CPP_DEFINE macro_def
+			{ $$ = $2; }
+			;
+
+macro_def		: macro_declarator compound_body
+			{
+				$$ = newdecl(&@$, NULL, NULL);
+				$$->child[chd_var] = $1;
+				$$->child[chd_body] = $2;
+			}
+			;
+
+macro_declarator	: CPP_IDARG macro_param
+			{
+				node_t *type = newtype(&@$);
+				type->t.category = type_func;
+				type->child[cht_param] = $2;
+				$$ = newvar(&@1, $1);
+				$$->child[chv_type] = type;
+			}
+			| ID
+			{
+				node_t *type = newtype(&@$);
+				type->t.category = type_func;
+				$$ = newvar(&@1, $1);
+				$$->child[chv_type] = type;
+			}
+			;
+
+macro_param		: '(' id_list ')'
+			{
+				$$ = newdecl(&@$, NULL, NULL);
+				$$->child[chd_var] = $2;
 			}
 			;
 

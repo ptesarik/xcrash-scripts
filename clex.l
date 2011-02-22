@@ -23,11 +23,36 @@ int first_token;
 
 struct list_head raw_contents;
 struct list_head raw_cpp;
+struct dynstr *cpp_input;
+
+static int eof_seen;
+static char *cpp_ptr;
+
 static void store_yytext(const char *s);
 #define YY_USER_ACTION	store_yytext(yytext);
 
 static void init_vars(void);
 #define YY_USER_INIT	init_vars()
+
+#define YY_INPUT(buf,result,max_size) \
+	if (cpp_input) { \
+		int n = cpp_input->len - (cpp_ptr - cpp_input->text); \
+		if (n > max_size) \
+			n = max_size; \
+		memcpy(buf, cpp_ptr, n); \
+		cpp_ptr += n; \
+		result = n; \
+	} else { \
+		errno=0; \
+		while ( (result = fread(buf, 1, max_size, yyin))==0 && ferror(yyin)) { \
+			if(errno != EINTR) { \
+				YY_FATAL_ERROR( "input in flex scanner failed" ); \
+				break; \
+			} \
+			errno=0; \
+			clearerr(yyin); \
+		} \
+	}
 
 %}
 
@@ -38,6 +63,9 @@ E			[Ee][+-]?{D}+
 FS			(f|F|l|L)
 IS			(u|U|l|L)*
 
+%s cpp
+%x cpp_dir
+%x cpp_def
 %x cpp_ign
 
 %%
@@ -52,7 +80,46 @@ IS			(u|U|l|L)*
 <*>"/*"([^*]+|\*+[^*/])*\*+\/	/* ignore comments */
 <*>"//".*\n?		/* ignore line comments */
 
-\\\n?			/* continuation lines */
+<*>\\\n?		/* continuation lines */
+
+  /* CPP directive (start) */
+<cpp_dir>[ \t\v\f]+	/* skip whitespace except newline */
+<cpp_dir>"define"	{
+			BEGIN(cpp_def);
+			return yylval.token = CPP_DEFINE;
+			}
+<cpp_dir>(?s:.)		BEGIN(cpp_ign);
+
+  /* CPP define name */
+<cpp_def>[ \t\v\f]+		/* skip whitespace except newline */
+<cpp_def>{L}({L}|{D})*/\(	{
+				BEGIN(cpp);
+				yylval.str = strdup(yytext);
+				return CPP_IDARG;
+				}
+<cpp_def>{L}({L}|{D})*		{
+				BEGIN(cpp);
+				yylval.str = strdup(yytext);
+				return ID;
+				}
+
+  /* CPP directive (during define) */
+<cpp>"##"		return yylval.token = CPP_CONCAT;
+<cpp><<EOF>>		{
+			/* Simulate a terminating semicolon at the end
+			 * of each macro. This is often needed to make
+			 * the macro body a valid statement, because
+			 * a semicolon is assumed after the macro when
+			 * used. And in the worst case we'll add an
+			 * empty expression at the end.
+			 */
+				if (eof_seen)
+					yyterminate();
+				else {
+					eof_seen = 1;
+					return yylval.token = ';';
+				}
+			}
 
   /* CPP ignored directive */
 ("#"|"%:")[ \t\v\f]*	BEGIN(cpp_ign);
@@ -196,6 +263,11 @@ int typedef_ign;
 static void init_vars(void)
 {
 	typedef_ign = 0;
+	eof_seen = 0;
+	if (cpp_input) {
+		cpp_ptr = cpp_input->text;
+		BEGIN(cpp_dir);
+	}
 }
 
 struct dynstr *newdynstr(const char *s, size_t len)

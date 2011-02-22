@@ -18,6 +18,9 @@ extern struct list_head raw_cpp;
 /* If non-zero, this is the first token returned by the lexer */
 extern int first_token;
 
+/* If @cpp_input is non-NULL, then we're parsing CPP code from there */
+extern struct dynstr *cpp_input;
+
 typedef struct {
 	int first_line;
 	int first_column;

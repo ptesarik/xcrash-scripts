@@ -390,6 +390,40 @@ static void dump_contents(struct list_head *contents)
 		fwrite(ds->text, 1, ds->len, stdout);
 }
 
+static void parse_macros(void)
+{
+	struct dynstr *ds;
+
+	list_for_each_entry(ds, &raw_cpp, cpp_list) {
+		struct list_head *tail = raw_contents.prev;
+		int ret;
+
+		cpp_input = ds;
+		first_token = CPP_START;
+		ret = yyparse();
+		if (ret) {
+			struct list_head *it, *next;
+			for (it = tail->next; it != &raw_contents; it = next) {
+				next = it->next;
+				free(list_entry(it, struct dynstr, list));
+			}
+		} else {
+			struct dynstr *first, *last;
+			first = list_entry(tail->next,
+					   struct dynstr, list);
+			last = list_entry(raw_contents.prev,
+					  struct dynstr, list);
+			replace_text_list(ds, ds, first, last);
+		}
+
+		/* Remove the just parsed contents */
+		tail->next = &raw_contents;
+		raw_contents.prev = tail;
+
+		yylex_destroy();
+	}
+}
+
 static int parse_file(const char *name)
 {
 	int ret;
@@ -403,21 +437,23 @@ static int parse_file(const char *name)
 
 	INIT_LIST_HEAD(&raw_contents);
 	INIT_LIST_HEAD(&raw_cpp);
+	cpp_input = NULL;
 	first_token = 0;
 	ret = yyparse();
+	if (yyin != stdin)
+		fclose(yyin);
+	yylex_destroy();
+
 	if (ret) {
 		fprintf(stderr, "Parser failed with %d\n", ret);
 	} else {
+		parse_macros();
 #if DEBUG
 		dump_tree(parsed_tree);
 #endif
 		xform_tree(parsed_tree);
 		dump_contents(&raw_contents);
 	}
-
-	if (yyin != stdin)
-		fclose(yyin);
-	yylex_destroy();
 
 	return ret;
 }
