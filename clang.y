@@ -164,7 +164,6 @@ static void hidedecls(node_t *);
 %initial-action
 {
 	struct dynstr *ds = newdynstr(NULL, 0);
-	INIT_LIST_HEAD(&raw_contents);
 	list_add_tail(&ds->list, &raw_contents);
 	@$.first_line   = @$.last_line   = 1;
 	@$.first_column = @$.last_column = 0;

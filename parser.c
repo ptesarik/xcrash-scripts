@@ -393,6 +393,8 @@ static int parse_file(const char *name)
 		yyin = fopen(name, "r");
 
 	fprintf(stderr, "Parsing file %s:\n", name);
+
+	INIT_LIST_HEAD(&raw_contents);
 	ret = yyparse();
 	if (ret) {
 		fprintf(stderr, "Parser failed with %d\n", ret);
