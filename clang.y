@@ -410,6 +410,7 @@ basic_type_list		: BASIC_TYPE
 				    $$->t.btype & TYPE_LONG)
 					$$->t.btype |= TYPE_LONGLONG;
 				$$->t.btype |= $2;
+				$$->last_text = @2.last_text;
 			}
 			;
 
