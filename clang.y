@@ -294,9 +294,9 @@ decl_list		: decl
 
 decl			: type_decl init_declarator_list ';'
 			{
-				$$ = newdecl(&@$, $1, $2);
 				if ($1->t.flags & TF_TYPEDEF)
 					addtypedeflist($2->var);
+				$$ = newdecl(&@$, $1, $2);
 			}
 			| type_decl                      ';'
 			{ typedef_ign = 0; $$ = newdecl(&@$, $1, NULL); }
