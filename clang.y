@@ -60,6 +60,7 @@ static void hidedecls(node_t *);
 %union {
 	int token;
 	unsigned tflags;	/* type flags */
+	unsigned long btype;
 	char *str;
 	type_t *type;
 	abstract_t abstract;
@@ -94,10 +95,13 @@ static void hidedecls(node_t *);
 %token <token> NE_OP		"!="
 
 /* reserved words */
-%token <token> ATTRIBUTE AUTO BREAK CASE CHAR CONST CONTINUE DEFAULT
-%token <token> DO DOUBLE ELSE ENUM EXTERN FLOAT FOR GOTO IF INLINE INT
-%token <token> LONG REGISTER RETURN SHORT SIGNED SIZEOF STATIC STRUCT
-%token <token> SWITCH TYPEDEF TYPEOF UNION UNSIGNED VOID VOLATILE WHILE
+%token <token> ATTRIBUTE AUTO BREAK CASE CONST CONTINUE DEFAULT
+%token <token> DO ELSE ENUM EXTERN FOR GOTO IF INLINE
+%token <token> REGISTER RETURN SIZEOF STATIC STRUCT
+%token <token> SWITCH TYPEDEF TYPEOF UNION VOLATILE WHILE
+
+/* basic types */
+%token <btype> BASIC_TYPE
 
 /* HACK kludges */
 %token <token> OFFSETOF FOR_CPU_INDEXES FRAME_REG
@@ -123,7 +127,7 @@ static void hidedecls(node_t *);
 %type <token> assign_op eq_op rel_op shift_op add_op mul_op
 %type <token> unary_op unary_lval_op
 %type <token> '=' '&' '!' '~' '-' '+' '*' '/' '%' '<' '>' '^' '|' '.'
-%type <token> basic_type struct_or_union
+%type <token> struct_or_union
 
 %type <tflags> storage_class_spec type_qualifier type_qualifier_list
 
@@ -393,25 +397,20 @@ type_spec		: basic_type_list
 			| typedef_name
 			;
 
-basic_type_list		: basic_type
+basic_type_list		: BASIC_TYPE
 			{
 				$$ = newtype(&@$);
 				$$->t.category = type_basic;
-				$$->t.b.list[$$->t.b.count++] = $1;
+				$$->t.btype = $1;
 			}
-			| basic_type_list basic_type
-			{ $$->t.b.list[$$->t.b.count++] = $2; }
-			;
-
-basic_type		: VOID
-			| CHAR
-			| SHORT
-			| INT
-			| LONG
-			| FLOAT
-			| DOUBLE
-			| SIGNED
-			| UNSIGNED
+			| basic_type_list BASIC_TYPE
+			{
+				/* "long" can be repeated */
+				if ($2 == TYPE_LONG &&
+				    $$->t.btype & TYPE_LONG)
+					$$->t.btype |= TYPE_LONGLONG;
+				$$->t.btype |= $2;
+			}
 			;
 
 struct_or_union_spec	: struct_or_union { typedef_ign = 1; }
@@ -1076,7 +1075,7 @@ newtype_int(const YYLTYPE *loc)
 {
 	node_t *ret = newtype(loc);
 	ret->t.category = type_basic;
-	ret->t.b.list[ret->t.b.count++] = INT;
+	ret->t.btype = TYPE_INT;
 	return ret;
 }
 
@@ -1099,6 +1098,9 @@ type_merge(node_t *merger, node_t *other)
 {
 	merger->t.flags |= other->t.flags;
 	type_add_attr(merger, other->child[cht_attr]);
+	if (merger->t.category == type_basic &&
+	    other->t.category == type_basic)
+		merger->t.btype |= other->t.btype;
 	free(other);
 }
 

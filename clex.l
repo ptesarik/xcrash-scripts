@@ -188,27 +188,20 @@ IS			(u|U|l|L)*
 "auto"			return yylval.token = AUTO;
 "break"			return yylval.token = BREAK;
 "case"			return yylval.token = CASE;
-"char"			return yylval.token = CHAR;
 "const"			return yylval.token = CONST;
 "continue"		return yylval.token = CONTINUE;
 "default"		return yylval.token = DEFAULT;
 "do"			return yylval.token = DO;
-"double"		return yylval.token = DOUBLE;
 "else"			return yylval.token = ELSE;
 "enum"			return yylval.token = ENUM;
 "extern"		return yylval.token = EXTERN;
-"float"			return yylval.token = FLOAT;
 "for"			return yylval.token = FOR;
 "goto"			return yylval.token = GOTO;
 "if"			return yylval.token = IF;
 "inline"		return yylval.token = INLINE;
 "__inline__"		return yylval.token = INLINE;
-"int"			return yylval.token = INT;
-"long"			return yylval.token = LONG;
 "register"		return yylval.token = REGISTER;
 "return"		return yylval.token = RETURN;
-"short"			return yylval.token = SHORT;
-"signed"		return yylval.token = SIGNED;
 "sizeof"		return yylval.token = SIZEOF;
 "static"		return yylval.token = STATIC;
 "struct"		return yylval.token = STRUCT;
@@ -216,10 +209,18 @@ IS			(u|U|l|L)*
 "typedef"		return yylval.token = TYPEDEF;
 "__typeof__"		return yylval.token = TYPEOF;
 "union"			return yylval.token = UNION;
-"unsigned"		return yylval.token = UNSIGNED;
-"void"			return yylval.token = VOID;
 "volatile"		return yylval.token = VOLATILE;
 "while"			return yylval.token = WHILE;
+
+"char"			yylval.btype = TYPE_CHAR;	return BASIC_TYPE;
+"double"		yylval.btype = TYPE_DOUBLE;	return BASIC_TYPE;
+"int"			yylval.btype = TYPE_INT;	return BASIC_TYPE;
+"float"			yylval.btype = TYPE_FLOAT;	return BASIC_TYPE;
+"long"			yylval.btype = TYPE_LONG;	return BASIC_TYPE;
+"short"			yylval.btype = TYPE_SHORT;	return BASIC_TYPE;
+"signed"		yylval.btype = TYPE_SIGNED;	return BASIC_TYPE;
+"unsigned"		yylval.btype = TYPE_UNSIGNED;	return BASIC_TYPE;
+"void"			yylval.btype = TYPE_VOID;	return BASIC_TYPE;
 
 	/* HACKs */
 "FRAME_REG"		return yylval.token = FRAME_REG;

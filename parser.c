@@ -130,22 +130,25 @@ static void dump_chunk(struct dynstr *first, struct dynstr *last)
 
 static void dump_basic_type(type_t *type)
 {
-	int i;
-	for (i = 0; i < type->b.count; ++i) {
-		if (i)
+	static const char *types[] = {
+		[bt_char] = "char",
+		[bt_double] = "double",
+		[bt_float] = "float",
+		[bt_int] = "int",
+		[bt_long] = "long",
+		[bt_longlong] = "long",
+		[bt_short] = "short",
+		[bt_signed] = "signed",
+		[bt_unsigned] = "unsigned",
+		[bt_void] = "void",
+	};
+	int i, n;
+	for (i = n = 0; i < bt_max; ++i) {
+		if (! (type->btype & (1UL << i)) )
+			continue;
+		if (n++)
 			putchar(' ');
-		switch(type->b.list[i]) {
-		case VOID:	fputs("void", stdout); break;
-		case CHAR:	fputs("char", stdout); break;
-		case SHORT:	fputs("short", stdout); break;
-		case INT:	fputs("int", stdout); break;
-		case LONG:	fputs("long", stdout); break;
-		case FLOAT:	fputs("float", stdout); break;
-		case DOUBLE:	fputs("double", stdout); break;
-		case SIGNED:	fputs("signed", stdout); break;
-		case UNSIGNED:	fputs("unsigned", stdout); break;
-		default:	fputs("UNKNOWN!", stdout);
-		}
+		fputs(types[i], stdout);
 	}
 }
 

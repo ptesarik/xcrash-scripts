@@ -46,18 +46,37 @@ enum type_category {
 	type_typeof
 };
 
-#define MAX_BASIC_TYPES 8
+enum basic_type {
+	bt_void = 0,
+	bt_signed,
+	bt_unsigned,
+	bt_char,
+	bt_short,
+	bt_int,
+	bt_long,
+	bt_longlong,
+	bt_float,
+	bt_double,
 
-typedef struct basic_type {
-	int list[MAX_BASIC_TYPES];
-	int count;
-} basic_type_t;
+	bt_max
+};
+
+#define TYPE_VOID	(1UL << bt_void)
+#define TYPE_SIGNED	(1UL << bt_signed)
+#define TYPE_UNSIGNED	(1UL << bt_unsigned)
+#define TYPE_CHAR	(1UL << bt_char)
+#define TYPE_SHORT	(1UL << bt_short)
+#define TYPE_INT	(1UL << bt_int)
+#define TYPE_LONG	(1UL << bt_long)
+#define TYPE_LONGLONG	(1UL << bt_longlong)
+#define TYPE_FLOAT	(1UL << bt_float)
+#define TYPE_DOUBLE	(1UL << bt_double)
 
 typedef struct type {
 	enum type_category category;
 	unsigned flags;		/* see TF_xxx macros below */
 	union {
-		basic_type_t b;
+		unsigned long btype;
 		char *name;
 	};
 } type_t;
