@@ -181,13 +181,11 @@ int yywrap(void)
 }
 
 int tabsize = 8;
-const char *linestart;
 
 int typedef_ign;
 
 static void init_vars(void)
 {
-	linestart = NULL;
 	typedef_ign = 0;
 }
 
@@ -203,14 +201,11 @@ static void store_yytext(const char *s)
 {
 	struct dynstr *ds;
 	int i;
-	if (!linestart)
-		linestart = s;
 	yylloc.first_line = yylloc.last_line;
 	yylloc.first_column = yylloc.last_column;
 	for (i = 0; i < yyleng; ++i) {
 		if (yytext[i] == '\n') {
 			yylloc.last_line++;
-			linestart = yytext + i + 1;
 			yylloc.last_column = 0;
 		} else if (yytext[i] == '\t')
 			yylloc.last_column += tabsize -

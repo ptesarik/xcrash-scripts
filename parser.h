@@ -165,7 +165,6 @@ int yylex_destroy(void);
 
 /* Location handling */
 extern int tabsize;
-extern const char *linestart;
 
 /* Typedef hash */
 void addtypedef(const char *name);
