@@ -20,6 +20,7 @@
 #include "clang.tab.h"
 
 struct list_head raw_contents;
+struct list_head raw_cpp;
 static void store_yytext(const char *s);
 #define YY_USER_ACTION	store_yytext(yytext);
 
@@ -35,7 +36,7 @@ E			[Ee][+-]?{D}+
 FS			(f|F|l|L)
 IS			(u|U|l|L)*
 
-%x cpp
+%x cpp_ign
 
 %%
 
@@ -44,9 +45,14 @@ IS			(u|U|l|L)*
 
 \\\n?			/* continuation lines */
 
-("#"|"%:")		BEGIN(cpp);
-<cpp>(.|\\\n)		/* eat up everything and continuation lines */
-<cpp>\n			BEGIN(INITIAL);
+  /* CPP ignored directive */
+("#"|"%:")		BEGIN(cpp_ign);
+<cpp_ign>(.|\\\n)+	{
+	if (!cpp_input)
+		list_add_tail(&yylloc.last_text->cpp_list, &raw_cpp);
+	/* and eat up the directive */
+	}
+<cpp_ign>\n		BEGIN(INITIAL);
 
 "..."			return yylval.token = ELLIPSIS;
 ">>="			return yylval.token = SHR_ASSIGN;

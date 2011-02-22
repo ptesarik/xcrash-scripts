@@ -5,6 +5,7 @@
 /* Stored file contents */
 struct dynstr {
 	struct list_head list;
+	struct list_head cpp_list;
 	size_t len, alloc;
 	char text[];
 };
@@ -12,6 +13,7 @@ struct dynstr {
 struct dynstr *newdynstr(const char *, size_t);
 
 extern struct list_head raw_contents;
+extern struct list_head raw_cpp;
 
 typedef struct {
 	int first_line;
