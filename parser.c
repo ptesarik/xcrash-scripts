@@ -405,30 +405,31 @@ static void parse_macros(void)
 	struct dynstr *ds, *next;
 
 	list_for_each_entry_safe(ds, next, &raw_cpp, cpp_list) {
-		struct list_head *tail = raw_contents.prev;
+		struct list_head savedraw;
 		int ret;
+
+		/* Save the original raw list and start a new one */
+		list_add(&savedraw, &raw_contents);
+		list_del_init(&raw_contents);
 
 		cpp_input = ds;
 		first_token = CPP_START;
 		ret = yyparse();
 		if (ret) {
-			struct list_head *it, *next;
-			for (it = tail->next; it != &raw_contents; it = next) {
-				next = it->next;
-				free(list_entry(it, struct dynstr, list));
-			}
+			struct dynstr *it, *itnext;
+			list_for_each_entry_safe(it, itnext,
+						 &raw_contents, list)
+				free(it);
 		} else {
 			struct dynstr *first, *last;
-			first = list_entry(tail->next,
+			first = list_entry(raw_contents.next,
 					   struct dynstr, list);
 			last = list_entry(raw_contents.prev,
 					  struct dynstr, list);
 			replace_text_list(ds, ds, first, last);
 		}
-
-		/* Remove the just parsed contents */
-		tail->next = &raw_contents;
-		raw_contents.prev = tail;
+		list_add(&raw_contents, &savedraw);
+		list_del(&savedraw);
 
 		yylex_destroy();
 	}
