@@ -82,6 +82,15 @@ const char *predef_types[] = {
 	NULL,
 };
 
+struct parsed_file {
+	struct list_head list;
+	const char *name;
+	node_t *parsed;
+	struct list_head raw;
+};
+
+LIST_HEAD(files);
+
 #if DEBUG
 
 static void dump_basic_type(type_t *type);
@@ -433,7 +442,7 @@ static int parse_file(const char *name)
 	else
 		yyin = fopen(name, "r");
 
-	fprintf(stderr, "Parsing file %s:\n", name);
+	fprintf(stderr, "Parsing file %s\n", name);
 
 	parsed_tree = NULL;
 	INIT_LIST_HEAD(&raw_contents);
@@ -448,12 +457,20 @@ static int parse_file(const char *name)
 	if (ret) {
 		fprintf(stderr, "Parser failed with %d\n", ret);
 	} else {
+		struct parsed_file *pf;
+		
 		parse_macros();
-#if DEBUG
-		dump_tree(parsed_tree);
-#endif
-		xform_tree(parsed_tree);
-		dump_contents(&raw_contents);
+		if (! (pf = malloc(sizeof(struct parsed_file))) ) {
+			perror("Cannot allocate parsed file");
+			return -1;
+		}
+		pf->name = name;
+		pf->parsed = parsed_tree;
+		pf->raw = raw_contents;
+		pf->raw.prev->next = &pf->raw;
+		pf->raw.next->prev = &pf->raw;
+
+		list_add_tail(&pf->list, &files);
 	}
 
 	return ret;
@@ -472,6 +489,18 @@ int main(int argc, char **argv)
 		for (i = 1; i < argc; ++i)
 			if ( (ret = parse_file(argv[i])) )
 				break;
+	}
+
+	if (!ret) {
+		struct parsed_file *pf;
+		list_for_each_entry(pf, &files, list) {
+			fprintf(stderr, "Output file %s\n", pf->name);
+#if DEBUG
+			dump_tree(pf->parsed);
+#endif
+			xform_tree(pf->parsed);
+			dump_contents(&pf->raw);
+		}
 	}
 
 	return ret;
