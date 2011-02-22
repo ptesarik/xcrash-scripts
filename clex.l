@@ -46,7 +46,7 @@ IS			(u|U|l|L)*
 \\\n?			/* continuation lines */
 
   /* CPP ignored directive */
-("#"|"%:")		BEGIN(cpp_ign);
+("#"|"%:")[ \t\v\f]*	BEGIN(cpp_ign);
 <cpp_ign>(.|\\\n)+	{
 	if (!cpp_input)
 		list_add_tail(&yylloc.last_text->cpp_list, &raw_cpp);
