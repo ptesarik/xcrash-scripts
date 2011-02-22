@@ -236,6 +236,8 @@ macro_param		: '(' id_list ')'
 				$$ = newdecl(&@$, NULL, NULL);
 				$$->child[chd_var] = $2;
 			}
+			| '(' ')'
+			{ $$ = NULL; }
 			;
 
 external_decl		: func_def
