@@ -19,6 +19,8 @@
 #include "parser.h"
 #include "clang.tab.h"
 
+int first_token;
+
 struct list_head raw_contents;
 struct list_head raw_cpp;
 static void store_yytext(const char *s);
@@ -39,6 +41,13 @@ IS			(u|U|l|L)*
 %x cpp_ign
 
 %%
+%{
+	if (first_token) {
+		int ret = first_token;
+		first_token = 0;
+		return ret;
+	}
+%}
 
 <*>"/*"([^*]+|\*+[^*/])*\*+\/	/* ignore comments */
 <*>"//".*\n?		/* ignore line comments */

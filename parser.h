@@ -15,6 +15,9 @@ struct dynstr *newdynstr(const char *, size_t);
 extern struct list_head raw_contents;
 extern struct list_head raw_cpp;
 
+/* If non-zero, this is the first token returned by the lexer */
+extern int first_token;
+
 typedef struct {
 	int first_line;
 	int first_column;

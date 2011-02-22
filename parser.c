@@ -403,6 +403,7 @@ static int parse_file(const char *name)
 
 	INIT_LIST_HEAD(&raw_contents);
 	INIT_LIST_HEAD(&raw_cpp);
+	first_token = 0;
 	ret = yyparse();
 	if (ret) {
 		fprintf(stderr, "Parser failed with %d\n", ret);
