@@ -974,7 +974,7 @@ string_const		: STRING_CONST
 %%
 
 static void
-print_last_line(YYLTYPE *loc, FILE *f)
+print_last_line(const YYLTYPE *loc, FILE *f)
 {
 	int column = loc->last_column;
 	struct dynstr *ds;
@@ -1018,7 +1018,8 @@ node_t *parsed_tree;
  * and @extra bytes.
  */
 node_t *
-newnode_extra(YYLTYPE *loc, enum node_type type, int nchild, size_t extra)
+newnode_extra(const YYLTYPE *loc, enum node_type type,
+	      int nchild, size_t extra)
 {
 	size_t allocextra = nchild * sizeof(node_t *) + extra;
 	node_t *ret = calloc(sizeof(node_t) + allocextra, 1);
@@ -1041,7 +1042,7 @@ node_extra(node_t *node)
 }
 
 node_t *
-newtype_name(YYLTYPE *loc, const char *name)
+newtype_name(const YYLTYPE *loc, const char *name)
 {
 	int len = name ? strlen(name) + 1 : 0;
 	node_t *node = newnode_extra(loc, nt_type, cht_max, len);
@@ -1054,13 +1055,13 @@ newtype_name(YYLTYPE *loc, const char *name)
 }
 
 node_t *
-newtype(YYLTYPE *loc)
+newtype(const YYLTYPE *loc)
 {
 	return newtype_name(loc, NULL);
 }
 
 node_t *
-newtype_int(YYLTYPE *loc)
+newtype_int(const YYLTYPE *loc)
 {
 	node_t *ret = newtype(loc);
 	ret->t.category = type_basic;
@@ -1091,7 +1092,7 @@ type_merge(node_t *merger, node_t *other)
 }
 
 node_t *
-newvar(YYLTYPE *loc, const char *name)
+newvar(const YYLTYPE *loc, const char *name)
 {
 	size_t extra = name ? strlen(name) + 1 : 0;
 	node_t *node = newnode_extra(loc, nt_var, chv_max, extra);
@@ -1122,7 +1123,7 @@ link_abstract(declarator_t *declarator, const abstract_t *abstract)
 }
 
 node_t *
-newdecl(YYLTYPE *loc, node_t *type, declarator_t *declarator)
+newdecl(const YYLTYPE *loc, node_t *type, declarator_t *declarator)
 {
 	node_t *node = newnode(loc, nt_decl, chd_max);
 	node_t *var, *lastvar;
@@ -1164,7 +1165,7 @@ newdecl(YYLTYPE *loc, node_t *type, declarator_t *declarator)
 }
 
 node_t *
-newexpr(YYLTYPE *loc, int op)
+newexpr(const YYLTYPE *loc, int op)
 {
 	node_t *node = newnode(loc, nt_expr, che_max);
 	node->e.op = op;
@@ -1172,7 +1173,7 @@ newexpr(YYLTYPE *loc, int op)
 }
 
 node_t *
-newexprnum(YYLTYPE *loc, char *str)
+newexprnum(const YYLTYPE *loc, char *str)
 {
 	node_t *ret = newexpr(loc, INT_CONST);
 	ret->e.num = strtol(str, (char**)NULL, 0);
@@ -1181,7 +1182,7 @@ newexprnum(YYLTYPE *loc, char *str)
 }
 
 node_t *
-newexprfloat(YYLTYPE *loc, char *str)
+newexprfloat(const YYLTYPE *loc, char *str)
 {
 	node_t *ret = newexpr(loc, FLOAT_CONST);
 	ret->e.f = strtod(str, (char**)NULL);
@@ -1190,7 +1191,7 @@ newexprfloat(YYLTYPE *loc, char *str)
 }
 
 node_t *
-newexprstr(YYLTYPE *loc, char *str)
+newexprstr(const YYLTYPE *loc, char *str)
 {
 	size_t len = strlen(str) + 1;
 	node_t *node = newnode_extra(loc, nt_expr, che_max, len);
@@ -1203,7 +1204,7 @@ newexprstr(YYLTYPE *loc, char *str)
 }
 
 node_t *
-newexprchar(YYLTYPE *loc, char *str)
+newexprchar(const YYLTYPE *loc, char *str)
 {
 	node_t *ret = newexprstr(loc, str);
 	ret->e.op = CHAR_CONST;
@@ -1211,7 +1212,7 @@ newexprchar(YYLTYPE *loc, char *str)
 }
 
 node_t *
-newexprid(YYLTYPE *loc, char *id)
+newexprid(const YYLTYPE *loc, char *id)
 {
 	node_t *ret = newexprstr(loc, id);
 	ret->e.op = ID;
@@ -1219,7 +1220,7 @@ newexprid(YYLTYPE *loc, char *id)
 }
 
 node_t *
-newexpr1(YYLTYPE *loc, int op, node_t *arg1)
+newexpr1(const YYLTYPE *loc, int op, node_t *arg1)
 {
 	node_t *ret = newexpr(loc, op);
 	ret->child[che_arg1] = arg1;
@@ -1227,7 +1228,7 @@ newexpr1(YYLTYPE *loc, int op, node_t *arg1)
 }
 
 node_t *
-newexpr2(YYLTYPE *loc, int op, node_t *arg1, node_t *arg2)
+newexpr2(const YYLTYPE *loc, int op, node_t *arg1, node_t *arg2)
 {
 	node_t *ret = newexpr(loc, op);
 	ret->child[che_arg1] = arg1;
@@ -1236,7 +1237,7 @@ newexpr2(YYLTYPE *loc, int op, node_t *arg1, node_t *arg2)
 }
 
 node_t *
-newexpr3(YYLTYPE *loc, int op, node_t *arg1, node_t *arg2, node_t *arg3)
+newexpr3(const YYLTYPE *loc, int op, node_t *arg1, node_t *arg2, node_t *arg3)
 {
 	node_t * ret = newexpr(loc, op);
 	ret->child[che_arg1] = arg1;
@@ -1246,7 +1247,7 @@ newexpr3(YYLTYPE *loc, int op, node_t *arg1, node_t *arg2, node_t *arg3)
 }
 
 node_t *
-newexpr4(YYLTYPE *loc, int op,
+newexpr4(const YYLTYPE *loc, int op,
 	 node_t *arg1, node_t *arg2, node_t *arg3, node_t *arg4)
 {
 	node_t * ret = newexpr(loc, op);

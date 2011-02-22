@@ -179,28 +179,28 @@ int istypedef(const char *name);
 extern int typedef_ign;		/* treat typedefs as regular identifiers */
 
 /* Parse tree */
-node_t *newnode_extra(YYLTYPE *, enum node_type, int, size_t);
+node_t *newnode_extra(const YYLTYPE *, enum node_type, int, size_t);
 static inline node_t *
-newnode(YYLTYPE *loc, enum node_type type, int nchild)
+newnode(const YYLTYPE *loc, enum node_type type, int nchild)
 {
 	return newnode_extra(loc, type, nchild, 0);
 }
 
-node_t *newtype(YYLTYPE *);
-node_t *newtype_name(YYLTYPE *, const char *);
-node_t *newtype_int(YYLTYPE *);
+node_t *newtype(const YYLTYPE *);
+node_t *newtype_name(const YYLTYPE *, const char *);
+node_t *newtype_int(const YYLTYPE *);
 
-node_t *newvar(YYLTYPE *, const char *);
+node_t *newvar(const YYLTYPE *, const char *);
 
-node_t *newdecl(YYLTYPE *, node_t *, declarator_t *);
+node_t *newdecl(const YYLTYPE *, node_t *, declarator_t *);
 
-node_t *newexpr(YYLTYPE *, int);
-node_t *newexprnum(YYLTYPE *, char *);
-node_t *newexprfloat(YYLTYPE *, char *);
-node_t *newexprstr(YYLTYPE *, char *);
-node_t *newexprchar(YYLTYPE *, char *);
-node_t *newexprid(YYLTYPE *, char *);
-node_t *newexpr1(YYLTYPE *, int, node_t *);
-node_t *newexpr2(YYLTYPE *, int, node_t *, node_t *);
-node_t *newexpr3(YYLTYPE *, int, node_t *, node_t *, node_t *);
-node_t *newexpr4(YYLTYPE *, int, node_t *, node_t *, node_t *, node_t *);
+node_t *newexpr(const YYLTYPE *, int);
+node_t *newexprnum(const YYLTYPE *, char *);
+node_t *newexprfloat(const YYLTYPE *, char *);
+node_t *newexprstr(const YYLTYPE *, char *);
+node_t *newexprchar(const YYLTYPE *, char *);
+node_t *newexprid(const YYLTYPE *, char *);
+node_t *newexpr1(const YYLTYPE *, int, node_t *);
+node_t *newexpr2(const YYLTYPE *, int, node_t *, node_t *);
+node_t *newexpr3(const YYLTYPE *, int, node_t *, node_t *, node_t *);
+node_t *newexpr4(const YYLTYPE *, int, node_t *, node_t *, node_t *, node_t *);
