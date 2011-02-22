@@ -180,21 +180,30 @@ static void hidedecls(node_t *);
 %%
 
 translation_unit	: /* empty */
-			{ parsed_tree = $$ = NULL; }
+			{ $$ = parsed_tree; }
 			| translation_unit external_decl
 			{
-				if ($1) {
-					list_add_tail(&$2->list, &$1->list);
-					parsed_tree = $$ = $1;
-				} else
+				if ( ($$ = parsed_tree) )
+					list_add_tail(&$2->list, &$$->list);
+				else
 					parsed_tree = $$ = $2;
 			}
 			| CPP_START directive
-			{ parsed_tree = $$ = $2; }
+			{
+				if ($2) {
+					if ( ($$ = parsed_tree) )
+						list_add_tail(&$2->list,
+							      &$$->list);
+					else
+						parsed_tree = $$ = $2;
+				}
+			}
 			;
 
 directive		: CPP_DEFINE macro_def
 			{ $$ = $2; }
+			| /* empty */
+			{ $$ = NULL; }
 			;
 
 macro_def		: macro_declarator compound_body

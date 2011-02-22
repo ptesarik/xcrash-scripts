@@ -435,6 +435,7 @@ static int parse_file(const char *name)
 
 	fprintf(stderr, "Parsing file %s:\n", name);
 
+	parsed_tree = NULL;
 	INIT_LIST_HEAD(&raw_contents);
 	INIT_LIST_HEAD(&raw_cpp);
 	cpp_input = NULL;
