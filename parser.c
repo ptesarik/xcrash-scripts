@@ -341,8 +341,8 @@ static void dump_tree(node_t *tree)
 
 #endif	/* DEBUG */
 
-static void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
-			      struct dynstr *newfirst, struct dynstr *newlast)
+void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
+		       struct dynstr *newfirst, struct dynstr *newlast)
 {
 	struct list_head *it, *next;
 

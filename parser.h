@@ -1,5 +1,6 @@
 /* Common definitions for the C lexer and parser */
 
+#include <stdio.h>		/* for FILE */
 #include "lists.h"
 
 /* Stored file contents */
@@ -224,3 +225,9 @@ node_t *newexpr1(const YYLTYPE *, int, node_t *);
 node_t *newexpr2(const YYLTYPE *, int, node_t *, node_t *);
 node_t *newexpr3(const YYLTYPE *, int, node_t *, node_t *, node_t *);
 node_t *newexpr4(const YYLTYPE *, int, node_t *, node_t *, node_t *, node_t *);
+
+/* Tree transformation functions */
+void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
+		       struct dynstr *newfirst, struct dynstr *newlast);
+
+void xform_tree(node_t *);
