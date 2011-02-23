@@ -361,41 +361,6 @@ void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 	}
 }
 
-static void replace_text(node_t *node, const char *text)
-{
-	struct dynstr *ds = newdynstr(text, strlen(text));
-	replace_text_list(node->first_text, node->last_text, ds, ds);
-
-	node->first_text = node->last_text = ds;
-}
-
-/* Example transformation: ulong -> tulong */
-static void xform_tree(node_t *tree)
-{
-	node_t *item = tree;
-	int i;
-
-	if (!tree)
-		return;
-	do {
-		if (item->type == nt_type &&
-		    item->t.category == type_typedef &&
-		    !strcmp(item->t.name, "ulong")) {
-			replace_text(item, "tulong");
-
-			/* not really needed, but if omitted, this node
-			 * confuse a later transformation */
-			item->t.name = "tulong";
-		}
-
-		for (i = 0; i < item->nchild; ++i)
-			if (item->child[i])
-				xform_tree(item->child[i]);
-
-		item = list_entry(item->list.next, node_t, list);
-	} while (item != tree);
-}
-
 static void dump_contents(struct list_head *contents)
 {
 	struct dynstr *ds;

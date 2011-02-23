@@ -14,5 +14,6 @@ clang.tab.c clang.tab.h: clang.y
 clex.yy.o: clex.yy.c clang.tab.h parser.h
 clang.tab.o: clang.tab.c parser.h
 parser.o: parser.c parser.h clang.tab.h
+xform.o: xform.c parser.h clang.tab.h
 
-parser: clex.yy.o clang.tab.o parser.o
+parser: clex.yy.o clang.tab.o parser.o xform.o
