@@ -150,7 +150,8 @@ typedef struct node {
 		var_t v;
 	};
 	struct dynstr *first_text, *last_text;
-	size_t nchild;
+	int nchild;
+	int seen;		/* used when walking the list */
 	struct node *child[];
 } node_t;
 

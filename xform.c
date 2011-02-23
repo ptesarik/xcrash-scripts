@@ -8,6 +8,8 @@ static void
 walk_tree_rec(node_t *tree, walkfn *fn, void *data)
 {
 	node_t *item = tree;
+	if (item->seen)
+		return;
 	do {
 		if (fn(item, data))
 			break;
@@ -15,6 +17,22 @@ walk_tree_rec(node_t *tree, walkfn *fn, void *data)
 		for (i = 0; i < item->nchild; ++i)
 			if (item->child[i])
 				walk_tree_rec(item->child[i], fn, data);
+		item->seen = 1;
+		item = list_entry(item->list.next, node_t, list);
+	} while (item != tree);
+}
+
+static void
+reset_seen(node_t *tree)
+{
+	node_t *item = tree;
+	do {
+		item->seen = 0;
+		int i;
+		for (i = 0; i < item->nchild; ++i)
+			if (item->child[i])
+				reset_seen(item->child[i]);
+
 		item = list_entry(item->list.next, node_t, list);
 	} while (item != tree);
 }
@@ -24,6 +42,7 @@ walk_tree(node_t *tree, walkfn *fn, void *data)
 {
 	if (!tree)
 		return;
+	reset_seen(tree);
 	walk_tree_rec(tree, fn, data);
 }
 
