@@ -1,5 +1,7 @@
 #include <string.h>
+#include <stdlib.h>
 #include "parser.h"
+#include "clang.tab.h"
 
 typedef int walkfn(node_t *, void *);
 static void walk_tree(node_t *tree, walkfn *fn, void *data);
@@ -46,6 +48,11 @@ walk_tree(node_t *tree, walkfn *fn, void *data)
 	walk_tree_rec(tree, fn, data);
 }
 
+/************************************************************
+ * Useful helper functions
+ *
+ */
+
 static void
 replace_text(node_t *node, const char *text)
 {
@@ -54,6 +61,75 @@ replace_text(node_t *node, const char *text)
 
 	node->first_text = node->last_text = ds;
 }
+
+/* Remove text nodes from @remove up to, but not including @keep. */
+static void
+remove_text_list(struct dynstr *remove, struct dynstr *keep)
+{
+	struct list_head *it, *next;
+
+	it = &remove->list;
+	while (it != &keep->list) {
+		next = it->next;
+		list_del(it);
+		free(list_entry(it, struct dynstr, list)); 
+		it = next;
+	}
+}
+
+/* Remove text nodes from @remove backwards up to, but not including @keep. */
+static void
+remove_text_list_rev(struct dynstr *remove, struct dynstr *keep)
+{
+	struct list_head *it, *next;
+
+	it = &remove->list;
+	while (it != &keep->list) {
+		next = it->prev;
+		list_del(it);
+		free(list_entry(it, struct dynstr, list)); 
+		it = next;
+	}
+}
+
+/* Returns non-zero if @node is an ID */
+static int
+is_id(node_t *node)
+{
+	return node->type == nt_expr && node->e.op == ID;
+}
+
+/* Returns non-zero if @node is a direct call to a function
+ * with the ID @name.
+ */
+static int
+is_direct_call(node_t *node, const char *name)
+{
+	if (node->type != nt_expr || node->e.op != FUNC)
+		return 0;
+
+	node_t *fn = node->child[che_arg1];
+	return is_id(fn) && !strcmp(fn->e.str, name);
+}
+
+/* Get the @pos-th element from @list */
+static node_t *
+nth_element(node_t *list, int pos)
+{
+	node_t *elem = list;
+	int i;
+	for (i = 1; i < pos; ++i) {
+		elem = list_entry(elem->list.next, node_t, list);
+		if (elem == list)
+			return NULL;
+	}
+	return elem;
+}
+
+/************************************************************
+ * Use target types
+ *
+ */
 
 /* Convert a basic type into its target equivallent */
 static void
@@ -126,12 +202,92 @@ static int simple_xform(node_t *item, void *data)
 }
 
 /************************************************************
+ * Translate calls to mkstring()
+ *
+ */
+
+static int
+mkstring_typecast(node_t *node, void *data)
+{
+	const char **typecast = data;
+
+	if (!is_id(node))
+		return 0;
+
+	if (!strcmp(node->e.str, "LONG_DEC") ||
+	    !strcmp(node->e.str, "LONG_HEX")) {
+		*typecast = "ulong";
+		return 1;
+	} else if (!strcmp(node->e.str, "INT_DEC") ||
+		   !strcmp(node->e.str, "INT_HEX")) {
+		*typecast = "uint";
+		return 1;
+	} else if (!strcmp(node->e.str, "LONGLONG_HEX")) {
+		*typecast = "ulonglong";
+		return 1;
+	} else
+		return 0;
+}
+
+static int
+mkstring_variadic(node_t *node, void *data)
+{
+	if (!is_direct_call(node, "mkstring"))
+		return 0;
+
+	/* Get the right typecast if necessary */
+	const char *typecast = NULL;
+	node_t *flags = nth_element(node->child[che_arg2], 3);
+	walk_tree(flags, mkstring_typecast, &typecast);
+
+	/* Remove MKSTRING if necessary */
+	node_t *opt = nth_element(node->child[che_arg2], 4);
+	if (is_direct_call(opt, "MKSTR")) {
+		remove_text_list(opt->first_text,
+				 opt->child[che_arg2]->first_text);
+		remove_text_list_rev(opt->last_text,
+				     opt->child[che_arg2]->last_text);
+		list_add(&opt->child[che_arg2]->list, &opt->list);
+		list_del(&opt->list);
+		free(opt->child[che_arg1]);
+		node_t *oldopt = opt;
+		opt = opt->child[che_arg2];
+		free(oldopt);
+	}
+
+	/* Ensure correct typecast if necessary */
+	if (typecast) {
+		YYLTYPE loc;
+		struct dynstr *typestr = newdynstr(typecast, strlen(typecast));
+		struct dynstr *lparen = newdynstr("(", 1);
+		struct dynstr *rparen = newdynstr(")", 1);
+		list_add_tail(&lparen->list, &opt->first_text->list);
+		list_add(&typestr->list, &lparen->list);
+		list_add(&rparen->list, &typestr->list);
+
+		loc.first_text = loc.last_text = typestr;
+		node_t *type = newtype_name(&loc, typecast);
+		type->t.category = type_typedef;
+		loc.first_text = lparen;
+		loc.last_text = opt->last_text;
+		node_t *cast = newexpr2(&loc, TYPECAST, type, opt);
+		list_add(&cast->list, &opt->list);
+		list_del_init(&opt->list);
+	}
+
+	return 0;
+}
+
+/************************************************************
  * Main entry point for the transformations
  *
  */
 void
 xform_tree(node_t *tree)
 {
+	/* convert mkstring() to a variadic function */
+	walk_tree(tree, mkstring_variadic, NULL);
+
 	/* Do the simple transformations */
 	walk_tree(tree, simple_xform, NULL);
 }
