@@ -826,7 +826,7 @@ expr			: assign_expr
 
 argument_expr_list	: assign_expr
 			| argument_expr_list ',' assign_expr
-			{ $$ = newexpr2(&@$, ',', $1, $3); }
+			{ list_add_tail(&$3->list, &$1->list); }
 			;
 
 assign_expr		: cond_expr
