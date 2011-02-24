@@ -231,4 +231,11 @@ node_t *newexpr4(const YYLTYPE *, int, node_t *, node_t *, node_t *, node_t *);
 void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		       struct dynstr *newfirst, struct dynstr *newlast);
 
-void xform_tree(node_t *);
+struct parsed_file {
+	struct list_head list;
+	const char *name;
+	node_t *parsed;
+	struct list_head raw;
+};
+
+void xform_files(struct list_head *);

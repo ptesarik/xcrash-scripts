@@ -82,14 +82,7 @@ const char *predef_types[] = {
 	NULL,
 };
 
-struct parsed_file {
-	struct list_head list;
-	const char *name;
-	node_t *parsed;
-	struct list_head raw;
-};
-
-LIST_HEAD(files);
+static LIST_HEAD(files);
 
 #if DEBUG
 
@@ -463,12 +456,21 @@ int main(int argc, char **argv)
 
 	if (!ret) {
 		struct parsed_file *pf;
+
+#if DEBUG
+		list_for_each_entry(pf, &files, list) {
+			printf("File %s original\n", pf->name);
+			dump_tree(pf->parsed);
+		}
+#endif
+		xform_files(&files);
+
 		list_for_each_entry(pf, &files, list) {
 			fprintf(stderr, "Output file %s\n", pf->name);
 #if DEBUG
+			printf("File %s transformed\n", pf->name);
 			dump_tree(pf->parsed);
 #endif
-			xform_tree(pf->parsed);
 			dump_contents(&pf->raw);
 		}
 	}

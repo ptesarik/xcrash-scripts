@@ -283,11 +283,17 @@ mkstring_variadic(node_t *node, void *data)
  *
  */
 void
-xform_tree(node_t *tree)
+xform_files(struct list_head *filelist)
 {
-	/* convert mkstring() to a variadic function */
-	walk_tree(tree, mkstring_variadic, NULL);
+	struct parsed_file *pf;
 
-	/* Do the simple transformations */
-	walk_tree(tree, simple_xform, NULL);
+	list_for_each_entry(pf, filelist, list) {
+		node_t *tree = pf->parsed;
+
+		/* convert mkstring() to a variadic function */
+		walk_tree(tree, mkstring_variadic, NULL);
+
+		/* Do the simple transformations */
+		walk_tree(tree, simple_xform, NULL);
+	}
 }
