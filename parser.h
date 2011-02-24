@@ -228,6 +228,8 @@ node_t *newexpr3(const YYLTYPE *, int, node_t *, node_t *, node_t *);
 node_t *newexpr4(const YYLTYPE *, int, node_t *, node_t *, node_t *, node_t *);
 
 /* Tree transformation functions */
+int dump_contents(struct list_head *contents, FILE *f);
+
 void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		       struct dynstr *newfirst, struct dynstr *newlast);
 

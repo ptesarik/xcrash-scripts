@@ -354,11 +354,13 @@ void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 	}
 }
 
-static void dump_contents(struct list_head *contents)
+int dump_contents(struct list_head *contents, FILE *f)
 {
 	struct dynstr *ds;
 	list_for_each_entry(ds, contents, list)
-		fwrite(ds->text, 1, ds->len, stdout);
+		if (fwrite(ds->text, 1, ds->len, f) != ds->len)
+			return -1;
+	return 0;
 }
 
 static void parse_macros(void)
@@ -471,7 +473,7 @@ int main(int argc, char **argv)
 			printf("File %s transformed\n", pf->name);
 			dump_tree(pf->parsed);
 #endif
-			dump_contents(&pf->raw);
+			dump_contents(&pf->raw, stdout);
 		}
 	}
 
