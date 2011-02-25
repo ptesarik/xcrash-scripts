@@ -536,7 +536,7 @@ int main(int argc, char **argv)
 			dump_tree(pf->parsed);
 		}
 #endif
-		xform_files(&arguments, &files);
+		ret = xform_files(&arguments, &files);
 
 #if DEBUG
 		list_for_each_entry(pf, &files, list) {

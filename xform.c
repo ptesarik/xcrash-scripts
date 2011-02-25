@@ -555,24 +555,30 @@ find_xform(const char *name)
 	return NULL;
 }
 
-void
+int
 xform_files(struct arguments *args, struct list_head *filelist)
 {
+	int ret = 0;
+
 	basedir = args->basedir;
 	if (list_empty(&args->xform_names)) {
 		int i;
 		for (i = 0; i < sizeof(xforms)/sizeof(xforms[0]); ++i)
-			run_xform(&xforms[i], filelist);
+			if ( (ret = run_xform(&xforms[i], filelist)) )
+				break;
 	} else {
 		struct dynstr *ds;
 		list_for_each_entry(ds, &args->xform_names, list) {
 			struct xform_desc *desc = find_xform(ds->text);
-			if (desc)
-				run_xform(desc, filelist);
-			else
+			if (desc) {
+				if ( (ret = run_xform(desc, filelist)) )
+					break;
+			} else
 				fprintf(stderr, "WARNING: "
 					"Cannot find transform %s\n",
 					ds->text);
 		}
 	}
+
+	return ret;
 }
