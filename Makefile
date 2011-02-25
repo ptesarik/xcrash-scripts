@@ -3,7 +3,7 @@ BISON = bison
 YFLAGS = -d
 CFLAGS = -Wall -ggdb
 
-all: parser
+all: xcrashify
 
 clex.yy.c: clex.l clang.tab.h
 	$(FLEX) -o $@ $<
@@ -16,4 +16,5 @@ clang.tab.o: clang.tab.c parser.h
 parser.o: parser.c parser.h clang.tab.h
 xform.o: xform.c parser.h clang.tab.h
 
-parser: clex.yy.o clang.tab.o parser.o xform.o
+xcrashify: clex.yy.o clang.tab.o parser.o xform.o
+	$(CC) $^ -o $@
