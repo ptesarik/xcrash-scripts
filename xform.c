@@ -417,9 +417,14 @@ mkstring_variadic(node_t *node, void *data)
 	return 0;
 }
 
+static int import(const char *patchname, struct list_head *flist, void *arg)
+{
+	return quilt_import(patchname);
+}
+
 /* Helper for a simple transformation */
-static int simple_xform(const char *patchname, struct list_head *filelist,
-			walkfn *xform_fn)
+static int simple(const char *patchname, struct list_head *filelist,
+		  void *xform_fn)
 {
 	struct parsed_file *pf;
 
@@ -433,9 +438,13 @@ static int simple_xform(const char *patchname, struct list_head *filelist,
  * Main entry point for the transformations
  *
  */
+
+typedef int xformfn(const char *, struct list_head *, void *);
+
 struct xform_desc {
 	const char *name;
-	walkfn *fn;		/* NULL means import the patch */
+	xformfn *fn;
+	void *arg;
 };
 
 static struct xform_desc xforms[] = {
@@ -444,14 +453,14 @@ static struct xform_desc xforms[] = {
  */
 
 // Configure GDB_CONF_FLAGS from configure
-{ "configure-gdb-conf-flags.patch", NULL },
+{ "configure-gdb-conf-flags.patch", import },
 
-{ "remove-VOID_PTR.patch", NULL },
+{ "remove-VOID_PTR.patch", import },
 
-{ "gdb-does-not-need-syment.patch", NULL },
+{ "gdb-does-not-need-syment.patch", import },
 
 // mkstring() fixes
-{ "mkstring-optimize.patch", NULL },
+{ "mkstring-optimize.patch", import },
 
 /************************************************************
  * Things that could theoretically go upstream, but are not
@@ -459,30 +468,27 @@ static struct xform_desc xforms[] = {
  */
 
 // convert mkstring() to a variadic function
-{ "variadic-mkstring.patch", NULL },
+{ "variadic-mkstring.patch", import },
 
 /* convert mkstring() to a variadic function */
-{ "variadic-mkstring-use.patch", mkstring_variadic },
+{ "variadic-mkstring-use.patch", simple, mkstring_variadic },
 
 /************************************************************
  * Target types next...
  */
 
 // Introduce target types
-{ "target-types.patch", NULL },
+{ "target-types.patch", import },
 
 // Use target types
-{"target-types-use.patch", target_types },
+{"target-types-use.patch", simple, target_types },
 
 };
 
 static int
 run_xform(struct xform_desc *desc, struct list_head *filelist)
 {
-	if (desc->fn)
-		return simple_xform(desc->name, filelist, desc->fn);
-	else
-		return quilt_import(desc->name);
+	return desc->fn(desc->name, filelist, desc->arg);
 }
 
 static struct xform_desc *
