@@ -524,9 +524,8 @@ int main(int argc, char **argv)
 	}
 
 	if (!ret) {
-		struct parsed_file *pf;
-
 #if DEBUG
+		struct parsed_file *pf;
 		list_for_each_entry(pf, &files, list) {
 			printf("File %s original\n", pf->name);
 			dump_tree(pf->parsed);
@@ -534,14 +533,12 @@ int main(int argc, char **argv)
 #endif
 		xform_files(&arguments, &files);
 
-		list_for_each_entry(pf, &files, list) {
-			fprintf(stderr, "Output file %s\n", pf->name);
 #if DEBUG
+		list_for_each_entry(pf, &files, list) {
 			printf("File %s transformed\n", pf->name);
 			dump_tree(pf->parsed);
-#endif
-			dump_contents(&pf->raw, stdout);
 		}
+#endif
 	}
 
 	return ret;
