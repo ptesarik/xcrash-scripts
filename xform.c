@@ -130,11 +130,12 @@ run_command(const char *name, const char *const argv[])
 	}
 }
 
+static const char *quilt_refresh_argv[] =
+{ QUILT, "refresh", "-p", "ab", "--no-timestamp", NULL };
+
 static int
 quilt_new(struct list_head *filelist, const char *name)
 {
-	static const char *argvrefresh[] =
-		{ QUILT, "refresh", "-p", "ab", "--no-timestamp", NULL };
 	int n = list_count(filelist);
 	const char **argv = calloc(sizeof(char*), n + 4);
 	struct parsed_file *pf;
@@ -160,7 +161,28 @@ quilt_new(struct list_head *filelist, const char *name)
 	if ( (res = writeout_files(filelist)) )
 		return res;
 
-	return run_command(QUILT, argvrefresh);
+	return run_command(QUILT, quilt_refresh_argv);
+}
+
+static int
+quilt_import(const char *name)
+{
+	static const char *quilt_push_argv[] =
+		{ QUILT, "push", NULL };
+	char *path = malloc(strlen(basedir) + strlen(name) + 1);
+	const char *quilt_import_argv[] =
+		{ QUILT, "import", path, NULL };
+	int res;
+
+	strcpy(stpcpy(path, basedir), name);
+
+	if ( (res = run_command(QUILT, quilt_import_argv)) )
+		return res;
+
+	if ( (res = run_command(QUILT, quilt_push_argv)) )
+		return res;
+	
+	return run_command(QUILT, quilt_refresh_argv);
 }
 
 /************************************************************

@@ -441,10 +441,27 @@ static int parse_file(const char *name)
 	return ret;
 }
 
+const char *basedir;
+
+static char *
+get_basedir(const char *path)
+{
+	char *p, *ret;
+	if ( (p = strrchr(path, '/')) ) {
+		ret = malloc(p - path + 2);
+		memcpy(ret, path, p - path + 1);
+		ret[p - path + 1] = 0;
+	} else
+		ret = "./";
+	return ret;
+}
+
 int main(int argc, char **argv)
 {
 	int i;
 	int ret;
+
+	basedir = get_basedir(argv[0]);
 
 	init_types(predef_types);
 
