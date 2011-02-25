@@ -244,6 +244,7 @@ struct parsed_file {
 	const char *name;
 	node_t *parsed;
 	struct list_head raw;
+	struct list_head raw_cpp;
 };
 
 void xform_files(struct arguments *, struct list_head *);
