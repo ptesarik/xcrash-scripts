@@ -432,14 +432,9 @@ static int parse_file(const char *name)
 		}
 		pf->name = name;
 		pf->parsed = parsed_tree;
-
 		pf->raw = raw_contents;
 		pf->raw.prev->next = &pf->raw;
 		pf->raw.next->prev = &pf->raw;
-
-		pf->raw_cpp = raw_cpp;
-		pf->raw_cpp.prev->next = &pf->raw_cpp;
-		pf->raw_cpp.next->prev = &pf->raw_cpp;
 
 		list_add_tail(&pf->list, &files);
 	}
