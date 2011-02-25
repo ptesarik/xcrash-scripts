@@ -55,6 +55,19 @@ walk_tree(node_t *tree, walkfn *fn, void *data)
 	walk_tree_rec(tree, fn, data);
 }
 
+static void
+walk_tree_single(node_t *tree, walkfn *fn, void *data)
+{
+	if (fn(tree, data))
+		return;
+	int i;
+	for (i = 0; i < tree->nchild; ++i)
+		if (tree->child[i])
+			walk_tree_rec(tree->child[i], fn, data);
+	tree->seen = 1;
+}
+
+
 /************************************************************
  * Interface to quilt
  *
@@ -377,7 +390,7 @@ mkstring_variadic(node_t *node, void *data)
 	/* Get the right typecast if necessary */
 	const char *typecast = NULL;
 	node_t *flags = nth_element(node->child[che_arg2], 3);
-	walk_tree(flags, mkstring_typecast, &typecast);
+	walk_tree_single(flags, mkstring_typecast, &typecast);
 
 	/* Remove MKSTRING if necessary */
 	node_t *opt = nth_element(node->child[che_arg2], 4);
