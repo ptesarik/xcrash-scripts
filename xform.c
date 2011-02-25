@@ -435,21 +435,54 @@ static int simple_xform(struct list_head *filelist, walkfn *xform_fn,
  */
 struct xform_desc {
 	const char *name;
-	walkfn *fn;
+	walkfn *fn;		/* NULL means import the patch */
 };
 
 static struct xform_desc xforms[] = {
-	/* convert mkstring() to a variadic function */
-	{ "variadic-mkstring-use.patch", mkstring_variadic },
+/************************************************************
+ * Upstreamed patches first...
+ */
 
-	/* Use target types */
-	{ "target-types-use.patch", target_types },
+// Configure GDB_CONF_FLAGS from configure
+{ "configure-gdb-conf-flags.patch", NULL },
+
+{ "remove-VOID_PTR.patch", NULL },
+
+{ "gdb-does-not-need-syment.patch", NULL },
+
+// mkstring() fixes
+{ "mkstring-optimize.patch", NULL },
+
+/************************************************************
+ * Things that could theoretically go upstream, but are not
+ * accepted there
+ */
+
+// convert mkstring() to a variadic function
+{ "variadic-mkstring.patch", NULL },
+
+/* convert mkstring() to a variadic function */
+{ "variadic-mkstring-use.patch", mkstring_variadic },
+
+/************************************************************
+ * Target types next...
+ */
+
+// Introduce target types
+{ "target-types.patch", NULL },
+
+// Use target types
+{"target-types-use.patch", target_types },
+
 };
 
 static int
 run_xform(struct list_head *filelist, struct xform_desc *desc)
 {
-	return simple_xform(filelist, desc->fn, desc->name);
+	if (desc->fn)
+		return simple_xform(filelist, desc->fn, desc->name);
+	else
+		return quilt_import(desc->name);
 }
 
 static struct xform_desc *
