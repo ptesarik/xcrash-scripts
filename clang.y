@@ -118,7 +118,7 @@ static void hidedecls(node_t *);
 %token <str> CPP_IDARG
 
 /* pseudo-tokens */
-%token ARRAY DECL FUNC LABEL RANGE SIZEOF_TYPE TYPECAST
+%token ARRAY FUNC LABEL RANGE SIZEOF_TYPE TYPECAST
 
 /* precedence */
 %left TYPEID ID
@@ -809,12 +809,11 @@ compound_body		: /* empty */
 			{ $$ = NULL; }
 			| compound_body decl
 			{
-				node_t *expr = newexpr1(&@$, DECL, $2);
 				if ($1) {
-					list_add_tail(&expr->list, &$1->list);
+					list_add_tail(&$2->list, &$1->list);
 					$$ = $1;
 				} else
-					$$ = expr;
+					$$ = $2;
 				hidedecls($2);
 			}
 			| compound_body stat
