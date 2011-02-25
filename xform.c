@@ -474,6 +474,19 @@ static struct xform_desc xforms[] = {
 { "variadic-mkstring-use.patch", simple, mkstring_variadic },
 
 /************************************************************
+ * Endianity-related issues
+ */
+
+// Find and convert calls to readmem
+// TBD
+
+// Add readlong, readint, etc. functions
+{ "readtype.patch", import },
+
+// Modify the "facilitator" macros
+{ "facilitators.patch", import },
+
+/************************************************************
  * Target types next...
  */
 
@@ -481,7 +494,48 @@ static struct xform_desc xforms[] = {
 { "target-types.patch", import },
 
 // Use target types
-{"target-types-use.patch", simple, target_types },
+{ "target-types-use.patch", simple, target_types },
+
+// Introduce target timeval
+{ "target-timeval.patch", import },
+
+// Use target timeval
+// TBD
+
+// Introduce target off_t
+{ "target-off_t.patch", import },
+
+// Use target off_t
+// TBD
+
+// Provide platform-independent struct pt_regs
+{ "arch-pt-regs.patch", import },
+
+// Use platform-independent pt_regs
+// TBD
+
+/************************************************************
+ * Print formatters
+ */
+
+// Introduce target print formatters
+{ "target-printf-spec.patch", import },
+
+// Replace all occurences in the source code
+// TBD
+
+/************************************************************
+ * Build-time changes
+ */
+
+// Allow configuring for any target
+{ "configure-cross-gdb-conf-flags.patch", import },
+{ "configure-any-target.patch", import },
+
+/************************************************************
+ * Final manual tweaks
+ */
+{ "manual.patch", import },
 
 };
 
