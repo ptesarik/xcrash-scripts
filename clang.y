@@ -420,6 +420,7 @@ struct_or_union_spec	: struct_or_union { typedef_ign = 1; }
 				$$ = $4;
 				$$->t.category = $1;
 				type_add_attr($$, $3);
+				$$->first_text = @$.first_text;
 			}
 			;
 
@@ -485,6 +486,7 @@ enum_spec		: ENUM { typedef_ign = 1; } opt_attr enum_desc
 				$$ = $4;
 				$$->t.category = type_enum;
 				type_add_attr($$, $3);
+				$$->first_text = @$.first_text;
 			}
 			;
 
