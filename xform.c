@@ -1,7 +1,14 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <errno.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #include "parser.h"
 #include "clang.tab.h"
+
+#define QUILT	"quilt"
 
 typedef int walkfn(node_t *, void *);
 static void walk_tree(node_t *tree, walkfn *fn, void *data);
@@ -46,6 +53,114 @@ walk_tree(node_t *tree, walkfn *fn, void *data)
 		return;
 	reset_seen(tree);
 	walk_tree_rec(tree, fn, data);
+}
+
+/************************************************************
+ * Interface to quilt
+ *
+ */
+
+static int
+list_count(struct list_head *list)
+{
+	struct list_head *iter;
+	int ret = 0;
+	list_for_each(iter, list) {
+		++ret;
+	}
+	return ret;
+}
+
+static int
+writeout(const char *name, struct list_head *rawlist)
+{
+	FILE *f;
+	int res;
+	if (! (f = fopen(name, "w")) ) {
+		fprintf(stderr, "Cannot open %s for writing: %s\n",
+			name, strerror(errno));
+		return -1;
+	}
+	if ( (res = dump_contents(rawlist, f)) ) {
+		fprintf(stderr, "Write to %s failed: %s\n",
+			name, strerror(errno));
+		fclose(f);
+		return res;
+	}
+	if (fclose(f)) {
+		fprintf(stderr, "Cannot close %s: %s\n",
+			name, strerror(errno));
+	}
+
+	return 0;
+}
+
+static int
+writeout_files(struct list_head *filelist)
+{
+	struct parsed_file *pf;
+	int res;
+	list_for_each_entry(pf, filelist, list)
+		if ( (res = writeout(pf->name, &pf->raw)) )
+			return res;
+	return 0;
+}
+
+static int
+run_command(const char *name, const char *const argv[])
+{
+	pid_t pid;
+	if ( !(pid = vfork()) ) {
+		execvp(name, (char *const*) argv);
+		_exit(-1);
+	} else if (pid > 0){
+		int status;
+		if (waitpid(pid, &status, 0) == -1) {
+			perror("Cannot get child status");
+			return -1;
+		}
+
+		if (WIFEXITED(status))
+			return WEXITSTATUS(status);
+		else
+			return -1;
+	} else {
+		perror("Cannot fork");
+		return -1;
+	}
+}
+
+static int
+quilt_new(struct list_head *filelist, const char *name)
+{
+	static const char *argvrefresh[] =
+		{ QUILT, "refresh", "-p", "ab", "--no-timestamp", NULL };
+	int n = list_count(filelist);
+	const char **argv = calloc(sizeof(char*), n + 4);
+	struct parsed_file *pf;
+	int i, res;
+
+	i = 0;
+	argv[i++] = QUILT;
+	argv[i++] = "new";
+	argv[i++] = name;
+	argv[i] = NULL;
+	if ( (res = run_command(QUILT, argv)) )
+		return res;
+
+	i = 0;
+	argv[i++] = QUILT;
+	argv[i++] = "add";
+	list_for_each_entry(pf, filelist, list)
+		argv[i++] = pf->name;
+	argv[i] = NULL;
+	if ( (res = run_command(QUILT, argv)) )
+		return res;
+
+	if ( (res = writeout_files(filelist)) )
+		return res;
+
+	return run_command(QUILT, argvrefresh);
 }
 
 /************************************************************
@@ -187,8 +302,8 @@ typedef_to_target(node_t *item)
 	}
 }
 
-/* Simple (linear) transformations go here */
-static int simple_xform(node_t *item, void *data)
+/* Replace types with target types */
+static int target_types(node_t *item, void *data)
 {
 	/* Convert types to their target equivallents */
 	if (item->type == nt_type) {
@@ -278,6 +393,18 @@ mkstring_variadic(node_t *node, void *data)
 	return 0;
 }
 
+/* Helper for a simple transformation */
+static int simple_xform(struct list_head *filelist, walkfn *xform_fn,
+			const char *patchname)
+{
+	struct parsed_file *pf;
+
+	list_for_each_entry(pf, filelist, list) {
+		walk_tree(pf->parsed, xform_fn, NULL);
+	}
+	return quilt_new(filelist, patchname);
+}
+
 /************************************************************
  * Main entry point for the transformations
  *
@@ -285,15 +412,10 @@ mkstring_variadic(node_t *node, void *data)
 void
 xform_files(struct list_head *filelist)
 {
-	struct parsed_file *pf;
+	/* convert mkstring() to a variadic function */
+	simple_xform(filelist, mkstring_variadic,
+		     "variadic-mkstring-use.patch");
 
-	list_for_each_entry(pf, filelist, list) {
-		node_t *tree = pf->parsed;
-
-		/* convert mkstring() to a variadic function */
-		walk_tree(tree, mkstring_variadic, NULL);
-
-		/* Do the simple transformations */
-		walk_tree(tree, simple_xform, NULL);
-	}
+	/* Use target types */
+	simple_xform(filelist, target_types, "target-types-use.patch");
 }
