@@ -417,6 +417,83 @@ mkstring_variadic(node_t *node, void *data)
 	return 0;
 }
 
+static char *
+get_read_fn(node_t *type)
+{
+	if (type->t.category == type_basic) {
+		switch (type->t.btype & ~(TYPE_INT | TYPE_UNSIGNED)) {
+		case TYPE_SHORT: return "readshort";
+		case 0:		 return "readint";
+		case TYPE_LONG:	 return "readlong";
+		case TYPE_LONG | TYPE_LONGLONG:	return "readlonglong";
+		}
+	} else if (type->t.category == type_typedef) {
+		if (!strcmp(type->t.name, "ushort"))
+			return "readshort";
+		else if (!strcmp(type->t.name, "uint"))
+			return "readint";
+		else if (!strcmp(type->t.name, "ulong"))
+			return "readlong";
+		else if (!strcmp(type->t.name, "longlong") ||
+			 !strcmp(type->t.name, "ulonglong") ||
+			 !strcmp(type->t.name, "uint64_t"))
+			return "readlonglong";
+	} else if (type->t.category == type_pointer)
+		return "readptr";
+	return NULL;
+}
+
+static int
+convert_readmem(node_t *node, void *data)
+{
+	if (!is_direct_call(node, "readmem"))
+		return 0;
+
+	node_t *arg = nth_element(node->child[che_arg2], 4);
+	if (arg->type != nt_expr) {
+		fputs("Huh?! Argument to call not an expression?\n", stderr);
+		return 0;
+	}
+
+	node_t *mult = NULL;
+	node_t *size = arg;
+	if (arg->e.op == '*') {
+		if (arg->child[che_arg1]->e.op == SIZEOF_TYPE) {
+			size = arg->child[che_arg1];
+			mult = arg->child[che_arg2];
+		} else if (arg->child[che_arg2]->e.op == SIZEOF_TYPE) {
+			mult = arg->child[che_arg1];
+			size = arg->child[che_arg2];
+		} else
+			/* not a recognized format */
+			return 0;
+	} else if (arg->e.op != SIZEOF_TYPE)
+		return 0;
+
+	/* Replace the function name */
+	char *newfn = get_read_fn(size->child[che_arg1]);
+	if (!newfn)
+		return 0;
+	node->child[che_arg1]->e.str = newfn;
+	replace_text(node->child[che_arg1], newfn);
+
+	/* Replace the 4th argument */
+	if (mult) {
+		remove_text_list(arg->first_text, mult->first_text);
+		remove_text_list_rev(arg->last_text, mult->last_text);
+		list_add(&mult->list, &arg->list);
+		list_del(&arg->list);
+	} else {
+		replace_text(arg, "1");
+		YYLTYPE loc;
+		loc.first_text = loc.last_text = arg->first_text;
+		node_t *one = newexprnum(&loc, strdup("1"));
+		list_add(&one->list, &arg->list);
+		list_del(&arg->list);
+	}
+	return 0;
+}
+
 static int import(const char *patchname, struct list_head *flist, void *arg)
 {
 	return quilt_import(patchname);
@@ -478,7 +555,7 @@ static struct xform_desc xforms[] = {
  */
 
 // Find and convert calls to readmem
-// TBD
+{ "replace-readmem.patch", simple, convert_readmem },
 
 // Add readlong, readint, etc. functions
 { "readtype.patch", import },
