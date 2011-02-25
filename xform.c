@@ -134,7 +134,7 @@ static const char *quilt_refresh_argv[] =
 { QUILT, "refresh", "-p", "ab", "--no-timestamp", NULL };
 
 static int
-quilt_new(struct list_head *filelist, const char *name)
+quilt_new(const char *name, struct list_head *filelist)
 {
 	int n = list_count(filelist);
 	const char **argv = calloc(sizeof(char*), n + 4);
@@ -418,15 +418,15 @@ mkstring_variadic(node_t *node, void *data)
 }
 
 /* Helper for a simple transformation */
-static int simple_xform(struct list_head *filelist, walkfn *xform_fn,
-			const char *patchname)
+static int simple_xform(const char *patchname, struct list_head *filelist,
+			walkfn *xform_fn)
 {
 	struct parsed_file *pf;
 
 	list_for_each_entry(pf, filelist, list) {
 		walk_tree(pf->parsed, xform_fn, NULL);
 	}
-	return quilt_new(filelist, patchname);
+	return quilt_new(patchname, filelist);
 }
 
 /************************************************************
@@ -477,10 +477,10 @@ static struct xform_desc xforms[] = {
 };
 
 static int
-run_xform(struct list_head *filelist, struct xform_desc *desc)
+run_xform(struct xform_desc *desc, struct list_head *filelist)
 {
 	if (desc->fn)
-		return simple_xform(filelist, desc->fn, desc->name);
+		return simple_xform(desc->name, filelist, desc->fn);
 	else
 		return quilt_import(desc->name);
 }
@@ -502,13 +502,13 @@ xform_files(struct arguments *args, struct list_head *filelist)
 	if (list_empty(&args->xform_names)) {
 		int i;
 		for (i = 0; i < sizeof(xforms)/sizeof(xforms[0]); ++i)
-			run_xform(filelist, &xforms[i]);
+			run_xform(&xforms[i], filelist);
 	} else {
 		struct dynstr *ds;
 		list_for_each_entry(ds, &args->xform_names, list) {
 			struct xform_desc *desc = find_xform(ds->text);
 			if (desc)
-				run_xform(filelist, desc);
+				run_xform(desc, filelist);
 			else
 				fprintf(stderr, "WARNING: "
 					"Cannot find transform %s\n",
