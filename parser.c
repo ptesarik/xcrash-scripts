@@ -8,6 +8,7 @@ void (*signal(int sig, void (*func)(int handler_sig)))(int oldhandler_sig);
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <argp.h>
 #include "parser.h"
 #include "clang.tab.h"
 
@@ -441,8 +442,6 @@ static int parse_file(const char *name)
 	return ret;
 }
 
-const char *basedir;
-
 static char *
 get_basedir(const char *path)
 {
@@ -456,20 +455,71 @@ get_basedir(const char *path)
 	return ret;
 }
 
+const char *argp_program_version =
+	"xcrashify 1.0";
+const char *argp_program_bug_address =
+	"<ptesarik@suse.cz>";
+static char doc[] =
+	"A script to add cross-platform functionality to the crash utility";
+
+/* Non-option arguments are input files */
+static char args_doc[] = "[FILE...]";
+
+/* The options we understand. */
+static struct argp_option options[] = {
+	{"basedir",  'd', "DIR",   0,  "Where to look for imported patches" },
+	{"xform",    'x', "NAME",  0,  "Do only the specified transform(s)" },
+	{"patch",    'p', "NAME",  OPTION_ALIAS },
+	{ 0 }
+};
+
+/* Parse a single option. */
+static error_t
+parse_opt (int key, char *arg, struct argp_state *state)
+{
+	struct arguments *arguments = state->input;
+	struct dynstr *ds;
+
+	switch (key) {
+	case 'd':
+		free(arguments->basedir);
+		arguments->basedir = strdup(arg);
+		break;
+
+	case 'x':
+	case 'p':
+		ds = newdynstr(arg, strlen(arg) + 1);
+		list_add_tail(&ds->list, &arguments->xform_names);
+		break;
+
+         default:
+           return ARGP_ERR_UNKNOWN;
+         }
+       return 0;
+     }
+
+/* An argp parser. */
+static struct argp argp = { options, parse_opt, args_doc, doc };
+
 int main(int argc, char **argv)
 {
+	struct arguments arguments;
 	int i;
 	int ret;
 
-	basedir = get_basedir(argv[0]);
+	/* Default values. */
+	INIT_LIST_HEAD(&arguments.xform_names);
+	arguments.basedir = get_basedir(argv[0]);
+
+	/* Parse arguments */
+	argp_parse(&argp, argc, argv, 0, &i, &arguments);
 
 	init_types(predef_types);
-
-	if (argc <= 1)
+	if (i >= argc)
 		ret = parse_file("-");
 	else {
-		for (i = 1; i < argc; ++i)
-			if ( (ret = parse_file(argv[i])) )
+		while(i < argc)
+			if ( (ret = parse_file(argv[i++])) )
 				break;
 	}
 
@@ -482,7 +532,7 @@ int main(int argc, char **argv)
 			dump_tree(pf->parsed);
 		}
 #endif
-		xform_files(&files);
+		xform_files(&arguments, &files);
 
 		list_for_each_entry(pf, &files, list) {
 			fprintf(stderr, "Output file %s\n", pf->name);

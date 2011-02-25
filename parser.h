@@ -227,9 +227,13 @@ node_t *newexpr2(const YYLTYPE *, int, node_t *, node_t *);
 node_t *newexpr3(const YYLTYPE *, int, node_t *, node_t *, node_t *);
 node_t *newexpr4(const YYLTYPE *, int, node_t *, node_t *, node_t *, node_t *);
 
-/* Tree transformation functions */
-extern const char *basedir;
+/* Program arguments */
+struct arguments {
+	char *basedir;
+	struct list_head xform_names;
+};
 
+/* Tree transformation functions */
 int dump_contents(struct list_head *contents, FILE *f);
 
 void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
@@ -242,4 +246,4 @@ struct parsed_file {
 	struct list_head raw;
 };
 
-void xform_files(struct list_head *);
+void xform_files(struct arguments *, struct list_head *);
