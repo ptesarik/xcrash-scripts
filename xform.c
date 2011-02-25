@@ -507,6 +507,82 @@ convert_readmem(node_t *node, void *data)
 	return 0;
 }
 
+static int
+printf_spec_one(node_t *node, void *data)
+{
+	if (node->type != nt_expr || node->e.op != STRING_CONST)
+		return 0;
+
+	char *p = strchr(node->e.str, '%');
+	int nperc = 0;
+	while (p && *p) {
+		++nperc;
+		p = strchr(p + 1, '%');
+	}
+	char *dst = malloc(strlen(node->e.str) + 1 + 5 * nperc);
+	char *q, *start = NULL;
+	int state = 0;
+
+	p = node->e.str;
+	q = dst;
+	while (*p) {
+		if (state == 0) {
+			if (*p == '%')
+				state = 1;
+		} else if (strchr("dioux", *p)) {
+			if (!start)
+				start = q;
+			else
+				memmove(start + 4, start, q - start);
+			memcpy(start, "\"PRI", 4);
+			q += 4;
+			*q++ = *p++;
+			if (*p != '\"')
+				*q++ = '\"';
+			else
+				++p;
+			state = 0;
+			start = NULL;
+			continue;
+		} else if (state == 1) {
+			if (*p == 'l') {
+				if (!start)
+					start = q;
+			} else if (!strchr("-0123456789.*", *p)) {
+				state = 0;
+				start = NULL;
+			}
+		}
+		*q++ = *p++;
+	}
+	*q = 0;
+	node->e.str = dst;
+	replace_text(node, dst);
+	return 0;
+}
+
+static int
+printf_spec(node_t *node, void *data)
+{
+	int pos;
+
+	if (is_direct_call(node, "printf"))
+		pos = 1;
+	else if (is_direct_call(node, "fprintf") ||
+		 is_direct_call(node, "sprintf"))
+		pos = 2;
+	else if (is_direct_call(node, "snprintf") ||
+		 is_direct_call(node, "vsnprintf"))
+		pos = 3;
+	else
+		return 0;
+
+	node_t *spec = nth_element(node->child[che_arg2], pos);
+	walk_tree_single(spec, printf_spec_one, NULL);
+
+	return 0;
+}
+
 static int import(const char *patchname, struct list_head *flist, void *arg)
 {
 	return quilt_import(patchname);
@@ -612,7 +688,7 @@ static struct xform_desc xforms[] = {
 { "target-printf-spec.patch", import },
 
 // Replace all occurences in the source code
-// TBD
+{ "target-printf-spec-use.patch", simple, printf_spec },
 
 /************************************************************
  * Build-time changes
