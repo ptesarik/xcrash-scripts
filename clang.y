@@ -689,6 +689,14 @@ type_name		: { typedef_ign = 0; } _type_name
 			;
 _type_name		: spec_qualifier_list
 			| spec_qualifier_list abstract_declarator
+			{
+				*$2->abstract.stub = $1;
+				$$ = $2->abstract.tree;
+				$$->t.flags = $1->t.flags;
+				free($2);
+				$$->first_text = @$.first_text;
+				$$->last_text = @$.last_text;
+			}
 			| TYPEOF '(' expr ')'
 			{
 				$$ = newtype(&@$);
