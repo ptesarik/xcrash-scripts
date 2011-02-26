@@ -118,7 +118,7 @@ static void hidedecls(node_t *);
 %token <str> CPP_IDARG
 
 /* pseudo-tokens */
-%token ARRAY FUNC LABEL RANGE SIZEOF_TYPE TYPECAST
+%token ARRAY CONCAT FUNC LABEL RANGE SIZEOF_TYPE TYPECAST
 
 /* precedence */
 %left TYPEID ID
@@ -978,16 +978,14 @@ string_const		: STRING_CONST
 			{ $$ = newexprstr(&@$, $1); }
 			| string_const STRING_CONST 
 			{
-				node_t *expr = newexprstr(&@$, $2);
-				list_add_tail(&expr->list, &$1->list);
-				$$ = $1;
+				$$ = newexpr2(&@$, CONCAT, $1,
+					      newexprstr(&@2, $2));
 			}
 			/* HACK for concatenation with macros */
 			| string_const ID
 			{
-				node_t *expr = newexprid(&@$, $2);
-				list_add_tail(&expr->list, &$1->list);
-				$$ = $1;
+				$$ = newexpr2(&@$, CONCAT, $1,
+					      newexprid(&@2, $2));
 			}
 			;
 

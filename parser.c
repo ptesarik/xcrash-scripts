@@ -263,6 +263,7 @@ static void dump_op(int op)
 	case RETURN:	fputs("return", stdout); break;
 	case ELLIPSIS:	fputs("...", stdout); break;
 	case TYPECAST:	fputs("typecast", stdout); break;
+	case CONCAT:	fputs("concat", stdout); break;
 
 	case OFFSETOF:	fputs("offsetof", stdout); break;
 	case FOR_CPU_INDEXES:	fputs("for_cpu_indexes", stdout); break;
