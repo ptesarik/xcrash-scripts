@@ -513,51 +513,58 @@ printf_spec_one(node_t *node, void *data)
 	if (node->type != nt_expr || node->e.op != STRING_CONST)
 		return 0;
 
-	char *p = strchr(node->e.str, '%');
-	int nperc = 0;
-	while (p && *p) {
-		++nperc;
-		p = strchr(p + 1, '%');
-	}
-	char *dst = malloc(strlen(node->e.str) + 1 + 5 * nperc);
-	char *q, *start = NULL;
-	int state = 0;
+	char *p = node->e.str;
+	LIST_HEAD(ds);
+	while ( (p = strchr(p, '%')) ) {
+		char *start;
+		do {
+			++p;
+		} while (*p && strchr("-0123456789.*", *p));
+		start = p;
+		while (*p == 'l')
+			++p;
+		if (strchr("dioux", *p)) {
+			YYLTYPE loc;
 
-	p = node->e.str;
-	q = dst;
-	while (*p) {
-		if (state == 0) {
-			if (*p == '%')
-				state = 1;
-		} else if (strchr("dioux", *p)) {
-			if (!start)
-				start = q;
-			else
-				memmove(start + 4, start, q - start);
-			memcpy(start, "\"PRI", 4);
-			q += 4;
-			*q++ = *p++;
-			if (*p != '\"')
-				*q++ = '\"';
-			else
-				++p;
-			state = 0;
-			start = NULL;
-			continue;
-		} else if (state == 1) {
-			if (*p == 'l') {
-				if (!start)
-					start = q;
-			} else if (!strchr("-0123456789.*", *p)) {
-				state = 0;
-				start = NULL;
-			}
-		}
-		*q++ = *p++;
+			/* Re-create prefix string */
+			size_t len = start - node->e.str;
+			char *pfx = calloc(len + 2, sizeof(char));
+			memcpy(pfx, node->e.str, len);
+			pfx[len] = '\"';
+			struct dynstr *dspfx = newdynstr(pfx, len + 1);
+			list_add_tail(&dspfx->list, &ds);
+			loc.first_text = loc.last_text = dspfx;
+			node_t *npfx = newexprstr(&loc, pfx);
+			list_add_tail(&npfx->list, &node->list);
+
+			/* Create the PRI identifier */
+			len = p - start + 1 + 3;
+			char *pri = calloc(len + 1, sizeof(char));
+			memcpy(stpcpy(pri, "PRI"), start, len - 3);
+			struct dynstr *dspri = newdynstr(pri, len);
+			list_add_tail(&dspri->list, &ds);
+			loc.first_text = loc.last_text = dspri;
+			node_t *npri = newexprid(&loc, pri);
+			list_add_tail(&npri->list, &node->list);
+
+			/* Re-open the tail string */
+			*p = '\"';
+			node->e.str = p;
+		} else
+			++p;
 	}
-	*q = 0;
-	node->e.str = dst;
-	replace_text(node, dst);
+
+	if (!list_empty(&ds)) {
+		if (strcmp(node->e.str, "\"\"")) {
+			struct dynstr *dslast =
+				newdynstr(node->e.str, strlen(node->e.str));
+			list_add_tail(&dslast->list, &ds);
+		}
+		replace_text_list(node->first_text, node->last_text,
+				  list_entry(ds.next, struct dynstr, list),
+				  list_entry(ds.prev, struct dynstr, list));
+	}
+
 	return 0;
 }
 
