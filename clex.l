@@ -281,11 +281,13 @@ static void init_vars(void)
 
 struct dynstr *newdynstr(const char *s, size_t len)
 {
-	struct dynstr *ds = malloc(sizeof(struct dynstr) + len);
+	struct dynstr *ds = malloc(sizeof(struct dynstr) + len + 1);
 	ds->cpp_list.next = NULL;
-	ds->len = ds->alloc = len;
+	ds->len = len;
+	ds->alloc = len + 1;
 	ds->reuse = 0;
 	memcpy(ds->text, s, len);
+	ds->text[ds->len] = '\0';
 	return ds;
 }
 
@@ -304,8 +306,8 @@ reuse_last_content(const char *s, size_t len)
 	if (!ds->reuse)
 		return NULL;
 
-	if (ds->len + len > ds->alloc) {
-		size_t newalloc = ds->len + len + ALLOC_INC;
+	if (ds->len + len + 1 > ds->alloc) {
+		size_t newalloc = ds->len + len + 1 + ALLOC_INC;
 		newalloc -= newalloc % ALLOC_INC;
 		ds = realloc(ds, sizeof(struct dynstr) + newalloc);
 		ds->alloc = newalloc;
@@ -320,6 +322,7 @@ reuse_last_content(const char *s, size_t len)
 	}
 	memcpy(ds->text + ds->len, s, len);
 	ds->len += len;
+	ds->text[ds->len] = '\0';
 	return ds;
 }
 
