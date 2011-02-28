@@ -17,6 +17,8 @@
 
 #include "parser.h"
 
+static void yyerror(const char *);
+
 static void type_add_attr(node_t *, node_t *);
 static void type_merge(node_t *, node_t *);
 

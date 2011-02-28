@@ -186,7 +186,6 @@ extern node_t *parsed_tree;
 extern FILE *yyin;
 extern YYLTYPE yylloc;
 
-void yyerror(const char *);
 int yyparse(void);
 int yylex(void);
 int yylex_destroy(void);
