@@ -78,7 +78,7 @@ typedef struct type {
 	unsigned flags;		/* see TF_xxx macros below */
 	union {
 		unsigned long btype;
-		char *name;
+		const char *name;
 	};
 } type_t;
 
@@ -98,12 +98,12 @@ typedef struct expr {
 	union {
 		long num;
 		double f;
-		char *str;
+		const char *str;
 	};
 } expr_t;
 
 typedef struct var {
-	char *name;
+	const char *name;
 } var_t;
 
 enum {
@@ -201,12 +201,7 @@ int istypedef(const char *name);
 extern int typedef_ign;		/* treat typedefs as regular identifiers */
 
 /* Parse tree */
-node_t *newnode_extra(const YYLTYPE *, enum node_type, int, size_t);
-static inline node_t *
-newnode(const YYLTYPE *loc, enum node_type type, int nchild)
-{
-	return newnode_extra(loc, type, nchild, 0);
-}
+node_t *newnode(const YYLTYPE *, enum node_type, int);
 
 node_t *newtype(const YYLTYPE *);
 node_t *newtype_name(const YYLTYPE *, const char *);
@@ -217,11 +212,11 @@ node_t *newvar(const YYLTYPE *, const char *);
 node_t *newdecl(const YYLTYPE *, node_t *, declarator_t *);
 
 node_t *newexpr(const YYLTYPE *, int);
-node_t *newexprnum(const YYLTYPE *, char *);
-node_t *newexprfloat(const YYLTYPE *, char *);
-node_t *newexprstr(const YYLTYPE *, char *);
-node_t *newexprchar(const YYLTYPE *, char *);
-node_t *newexprid(const YYLTYPE *, char *);
+node_t *newexprnum(const YYLTYPE *, const char *);
+node_t *newexprfloat(const YYLTYPE *, const char *);
+node_t *newexprstr(const YYLTYPE *, const char *);
+node_t *newexprchar(const YYLTYPE *, const char *);
+node_t *newexprid(const YYLTYPE *, const char *);
 node_t *newexpr1(const YYLTYPE *, int, node_t *);
 node_t *newexpr2(const YYLTYPE *, int, node_t *, node_t *);
 node_t *newexpr3(const YYLTYPE *, int, node_t *, node_t *, node_t *);

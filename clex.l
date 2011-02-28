@@ -97,12 +97,12 @@ IS			(u|U|l|L)*
 <cpp_def>[ \t\v\f]+		/* skip whitespace except newline */
 <cpp_def>{L}({L}|{D})*/\(	{
 				BEGIN(cpp);
-				yylval.str = strdup(yytext);
+				yylval.str = yylloc.first_text->text;
 				return CPP_IDARG;
 				}
 <cpp_def>{L}({L}|{D})*		{
 				BEGIN(cpp);
-				yylval.str = strdup(yytext);
+				yylval.str = yylloc.first_text->text;
 				return ID;
 				}
 
@@ -232,7 +232,7 @@ IS			(u|U|l|L)*
 3COM({L}|{D})*		|	/* HACK */
 3DFX({L}|{D})*		|	/* HACK */
 3DLABS({L}|{D})*	{	/* HACK */
-				yylval.str = strdup(yytext);
+				yylval.str = yylloc.first_text->text;
 				if (typedef_ign)
 					--typedef_ign;
 				else if (istypedef(yytext))
@@ -240,19 +240,27 @@ IS			(u|U|l|L)*
 				return ID;
 			}
 
-0[xX]{H}+{IS}?		yylval.str = strdup(yytext); return INT_CONST;
-0{D}+{IS}?		yylval.str = strdup(yytext); return INT_CONST;
-{D}+{IS}?		yylval.str = strdup(yytext); return INT_CONST;
+0[xX]{H}+{IS}?		|
+0{D}+{IS}?		|
+{D}+{IS}?		{
+				yylval.str = yylloc.first_text->text;
+				return INT_CONST;
+			}
 
-{D}+{E}{FS}?		yylval.str = strdup(yytext); return FLOAT_CONST;
-{D}*"."{D}+({E})?{FS}?	yylval.str = strdup(yytext); return FLOAT_CONST;
-{D}+"."{D}*({E})?{FS}?	yylval.str = strdup(yytext); return FLOAT_CONST;
+{D}+{E}{FS}?		|
+{D}*"."{D}+({E})?{FS}?	|
+{D}+"."{D}*({E})?{FS}?	{
+				yylval.str = yylloc.first_text->text;
+				return FLOAT_CONST;
+			}
 
 L?\'(?s:\\.|[^\\'])*\'	{ /* fix highlight: ' */
-			yylval.str = strdup(yytext); return CHAR_CONST;
+				yylval.str = yylloc.first_text->text;
+				return CHAR_CONST;
 			}
 L?\"(?s:\\.|[^\\"])*\"	{ /* fix highlight: " */
-			yylval.str = strdup(yytext); return STRING_CONST;
+				yylval.str = yylloc.first_text->text;
+				return STRING_CONST;
 			}
 <*>\\\n?		/* continuation lines */
 [ \t\v\n\f]+		/* skip whitespace */

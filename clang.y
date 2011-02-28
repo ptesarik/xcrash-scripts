@@ -370,7 +370,7 @@ attribute		: /* empty */
 			{ $$ = newexprid(&@$, $1); }
 			/* HACK: should change context in lexer... */
 			| CONST
-			{ $$ = newexprid(&@$, strdup("const")); }
+			{ $$ = newexprid(&@$, "const"); }
 			;
 
 attr_param_list		: /* empty */
@@ -1036,10 +1036,9 @@ node_t *parsed_tree;
  * and @extra bytes.
  */
 node_t *
-newnode_extra(const YYLTYPE *loc, enum node_type type,
-	      int nchild, size_t extra)
+newnode(const YYLTYPE *loc, enum node_type type, int nchild)
 {
-	size_t allocextra = nchild * sizeof(node_t *) + extra;
+	size_t allocextra = nchild * sizeof(node_t *);
 	node_t *ret = calloc(sizeof(node_t) + allocextra, 1);
 
 	INIT_LIST_HEAD(&ret->list);
@@ -1052,30 +1051,18 @@ newnode_extra(const YYLTYPE *loc, enum node_type type,
 	return ret;
 }
 
-/* Return a pointer to the extra allocated space */
-static void *
-node_extra(node_t *node)
+node_t *
+newtype(const YYLTYPE *loc)
 {
-	return (char*)(node + 1) + node->nchild * sizeof(node_t *);
+	return newnode(loc, nt_type, cht_max);
 }
 
 node_t *
 newtype_name(const YYLTYPE *loc, const char *name)
 {
-	int len = name ? strlen(name) + 1 : 0;
-	node_t *node = newnode_extra(loc, nt_type, cht_max, len);
-
-	if (name) {
-		node->t.name = node_extra(node);
-		strcpy(node->t.name, name);
-	}
+	node_t *node = newtype(loc);
+	node->t.name = name;
 	return node;
-}
-
-node_t *
-newtype(const YYLTYPE *loc)
-{
-	return newtype_name(loc, NULL);
 }
 
 node_t *
@@ -1115,13 +1102,8 @@ type_merge(node_t *merger, node_t *other)
 node_t *
 newvar(const YYLTYPE *loc, const char *name)
 {
-	size_t extra = name ? strlen(name) + 1 : 0;
-	node_t *node = newnode_extra(loc, nt_var, chv_max, extra);
-
-	if (name) {
-		node->v.name = node_extra(node);
-		strcpy(node->v.name, name);
-	}
+	node_t *node = newnode(loc, nt_var, chv_max);
+	node->v.name = name;
 	return node;
 }
 
@@ -1194,49 +1176,42 @@ newexpr(const YYLTYPE *loc, int op)
 }
 
 node_t *
-newexprnum(const YYLTYPE *loc, char *str)
+newexprnum(const YYLTYPE *loc, const char *str)
 {
 	node_t *ret = newexpr(loc, INT_CONST);
 	ret->e.num = strtol(str, (char**)NULL, 0);
-	free(str);
 	return ret;
 }
 
 node_t *
-newexprfloat(const YYLTYPE *loc, char *str)
+newexprfloat(const YYLTYPE *loc, const char *str)
 {
 	node_t *ret = newexpr(loc, FLOAT_CONST);
 	ret->e.f = strtod(str, (char**)NULL);
-	free(str);
 	return ret;
 }
 
 node_t *
-newexprstr(const YYLTYPE *loc, char *str)
+newexprstr(const YYLTYPE *loc, const char *str)
 {
-	size_t len = strlen(str) + 1;
-	node_t *node = newnode_extra(loc, nt_expr, che_max, len);
-
-	node->e.op = STRING_CONST;
-	node->e.str = node_extra(node);
-	strcpy(node->e.str, str);
-	free(str);
-	return node;
-}
-
-node_t *
-newexprchar(const YYLTYPE *loc, char *str)
-{
-	node_t *ret = newexprstr(loc, str);
-	ret->e.op = CHAR_CONST;
+	node_t *ret = newexpr(loc, STRING_CONST);
+	ret->e.str = str;
 	return ret;
 }
 
 node_t *
-newexprid(const YYLTYPE *loc, char *id)
+newexprchar(const YYLTYPE *loc, const char *str)
 {
-	node_t *ret = newexprstr(loc, id);
-	ret->e.op = ID;
+	node_t *ret = newexpr(loc, CHAR_CONST);
+	ret->e.str = str;
+	return ret;
+}
+
+node_t *
+newexprid(const YYLTYPE *loc, const char *id)
+{
+	node_t *ret = newexpr(loc, ID);
+	ret->e.str = id;
 	return ret;
 }
 
