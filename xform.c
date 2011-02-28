@@ -500,7 +500,7 @@ convert_readmem(node_t *node, void *data)
 		replace_text(arg, "1");
 		YYLTYPE loc;
 		loc.first_text = loc.last_text = arg->first_text;
-		node_t *one = newexprnum(&loc, strdup("1"));
+		node_t *one = newexprnum(&loc, "1");
 		list_add(&one->list, &arg->list);
 		list_del(&arg->list);
 	}
