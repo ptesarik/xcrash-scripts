@@ -334,12 +334,26 @@ static void dump_tree(node_t *tree)
 	--depth;
 }
 
+static void dump_first_and_last(struct dynstr *ds)
+{
+	node_t *node;
+
+	printf("Used as first_text:\n");
+	list_for_each_entry(node, &ds->node_first, first_list)
+		dump_tree(node);
+	printf("Used as last_text:\n");
+	list_for_each_entry(node, &ds->node_last, last_list)
+		dump_tree(node);
+}
+
 #endif	/* DEBUG */
 
 void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		       struct dynstr *newfirst, struct dynstr *newlast)
 {
 	struct list_head *it, *next;
+	struct dynstr *ds;
+	node_t *node, *nnode;
 
 	newfirst->list.prev = oldfirst->list.prev;
 	newfirst->list.prev->next = &newfirst->list;
@@ -347,12 +361,33 @@ void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 	newlast->list.next->prev = &newlast->list;
 
 	it = &oldfirst->list;
-	for (;;) {
+	ds = list_entry(it, struct dynstr, list);
+	list_for_each_entry_safe(node, nnode, &ds->node_first, first_list) {
+		node->first_text = ds;
+		list_move(&node->first_list, &newfirst->node_first);
+	}
+
+	while (it != &oldlast->list) {
+		ds = list_entry(it, struct dynstr, list);
 		next = it->next;
-		free(list_entry(it, struct dynstr, list)); 
-		if (it == &oldlast->list)
-			break;
+		if (!list_empty(&ds->node_first) ||
+		    !list_empty(&ds->node_last)) {
+			/* This is fatal (for now) */
+			fprintf(stderr, "String >>>%s<<< still in use"
+				" while replacing!\n", ds->text);
+#if DEBUG
+			dump_first_and_last(ds);
+#endif
+			exit(1);
+		}
+		free(ds);
 		it = next;
+	}
+	
+	ds = list_entry(it, struct dynstr, list);
+	list_for_each_entry_safe(node, nnode, &ds->node_last, last_list) {
+		node->last_text = ds;
+		list_move(&node->last_list, &newlast->node_last);
 	}
 }
 

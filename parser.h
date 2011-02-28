@@ -7,6 +7,7 @@
 struct dynstr {
 	struct list_head list;
 	struct list_head cpp_list;
+	struct list_head node_first, node_last;
 	size_t len, alloc;
 	int reuse;
 	char text[];
@@ -150,6 +151,7 @@ typedef struct node {
 		var_t v;
 	};
 	struct dynstr *first_text, *last_text;
+	struct list_head first_list, last_list;
 	int nchild;
 	int seen;		/* used when walking the list */
 	struct node *child[];

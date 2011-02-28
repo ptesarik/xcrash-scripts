@@ -291,6 +291,8 @@ struct dynstr *newdynstr(const char *s, size_t len)
 {
 	struct dynstr *ds = malloc(sizeof(struct dynstr) + len + 1);
 	ds->cpp_list.next = NULL;
+	INIT_LIST_HEAD(&ds->node_first);
+	INIT_LIST_HEAD(&ds->node_last);
 	ds->len = len;
 	ds->alloc = len + 1;
 	ds->reuse = 0;

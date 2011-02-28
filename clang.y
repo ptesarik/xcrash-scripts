@@ -1048,7 +1048,9 @@ newnode(const YYLTYPE *loc, enum node_type type, int nchild)
 	ret->nchild = nchild;
 
 	ret->first_text = loc->first_text;
+	list_add(&ret->first_list, &loc->first_text->node_first);
 	ret->last_text = loc->last_text;
+	list_add(&ret->last_list, &loc->last_text->node_last);
 
 	return ret;
 }
@@ -1060,6 +1062,8 @@ freenode(node_t *node)
 	for (i = 0; i < node->nchild; ++i)
 		if (node->child[i])
 			freenode(node->child[i]);
+	list_del(&node->first_list);
+	list_del(&node->last_list);
 	free(node);
 }
 
