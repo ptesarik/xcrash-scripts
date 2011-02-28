@@ -401,10 +401,10 @@ mkstring_variadic(node_t *node, void *data)
 				     opt->child[che_arg2]->last_text);
 		list_add(&opt->child[che_arg2]->list, &opt->list);
 		list_del(&opt->list);
-		free(opt->child[che_arg1]);
+		freenode(opt->child[che_arg1]);
 		node_t *oldopt = opt;
 		opt = opt->child[che_arg2];
-		free(oldopt);
+		freenode(oldopt);
 	}
 
 	/* Ensure correct typecast if necessary */

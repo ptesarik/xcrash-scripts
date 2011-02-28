@@ -201,6 +201,7 @@ extern int typedef_ign;		/* treat typedefs as regular identifiers */
 
 /* Parse tree */
 node_t *newnode(const YYLTYPE *, enum node_type, int);
+void freenode(node_t *);
 
 node_t *newtype(const YYLTYPE *);
 node_t *newtype_name(const YYLTYPE *, const char *);

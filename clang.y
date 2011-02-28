@@ -1053,6 +1053,16 @@ newnode(const YYLTYPE *loc, enum node_type type, int nchild)
 	return ret;
 }
 
+void
+freenode(node_t *node)
+{
+	int i;
+	for (i = 0; i < node->nchild; ++i)
+		if (node->child[i])
+			freenode(node->child[i]);
+	free(node);
+}
+
 node_t *
 newtype(const YYLTYPE *loc)
 {
@@ -1098,7 +1108,7 @@ type_merge(node_t *merger, node_t *other)
 	if (merger->t.category == type_basic &&
 	    other->t.category == type_basic)
 		merger->t.btype |= other->t.btype;
-	free(other);
+	freenode(other);
 }
 
 node_t *
