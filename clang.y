@@ -194,7 +194,11 @@ translation_unit	: /* empty */
 			| START_EXPR expr
 			{ list_add_tail(&$2->list, &parsed_tree); }
 			| START_DIRECTIVE directive
-			{ list_add_tail(&$2->list, &parsed_tree); }
+			{
+				if($2)
+					list_add_tail(&$2->list,
+						      &parsed_tree);
+			}
 			;
 
 directive		: CPP_DEFINE macro_def
