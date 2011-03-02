@@ -388,14 +388,14 @@ mkstring_typecast(node_t *node, void *data)
 
 	if (!strcmp(node->e.str, "LONG_DEC") ||
 	    !strcmp(node->e.str, "LONG_HEX")) {
-		*typecast = "ulong";
+		*typecast = "(ulong)";
 		return 1;
 	} else if (!strcmp(node->e.str, "INT_DEC") ||
 		   !strcmp(node->e.str, "INT_HEX")) {
-		*typecast = "uint";
+		*typecast = "(uint)";
 		return 1;
 	} else if (!strcmp(node->e.str, "LONGLONG_HEX")) {
-		*typecast = "ulonglong";
+		*typecast = "(ulonglong)";
 		return 1;
 	} else
 		return 0;
@@ -419,15 +419,9 @@ mkstring_variadic(node_t *node, void *data)
 	const char *typecast = NULL;
 	node_t *flags = nth_element(&node->child[che_arg2], 3);
 	walk_tree_single(flags, mkstring_typecast, &typecast);
-
-	/* Ensure correct typecast if necessary */
 	if (typecast) {
-		struct dynstr *lparen = newdynstr("(", 1);
-		struct dynstr *typestr = newdynstr(typecast, strlen(typecast));
-		struct dynstr *rparen = newdynstr(")", 1);
-		list_add_tail(&lparen->list, &opt->first_text->list);
-		list_add(&typestr->list, &lparen->list);
-		list_add(&rparen->list, &typestr->list);
+		struct dynstr *ds = newdynstr(typecast, strlen(typecast));
+		list_add_tail(&ds->list, &opt->first_text->list);
 	}
 
 	reparse_node(node, START_EXPR);
