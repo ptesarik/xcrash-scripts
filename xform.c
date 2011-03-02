@@ -514,51 +514,44 @@ printf_spec_one(node_t *node, void *data)
 	if (node->type != nt_expr || node->e.op != STRING_CONST)
 		return 0;
 
-	char *p = node->e.str;
+	char *start = node->first_text->text;
+	char *p = start;
 	LIST_HEAD(ds);
 	while ( (p = strchr(p, '%')) ) {
-		char *start;
+		char *spec;
 		do {
 			++p;
 		} while (*p && strchr("-0123456789.*", *p));
-		start = p;
+		spec = p;
 		while (*p == 'l')
 			++p;
 		if (strchr("dioux", *p)) {
-			YYLTYPE loc;
-
 			/* Re-create prefix string */
-			size_t len = start - node->e.str;
+			size_t len = spec - start;
 			char *pfx = calloc(len + 2, sizeof(char));
-			memcpy(pfx, node->e.str, len);
+			memcpy(pfx, start, len);
 			pfx[len] = '\"';
 			struct dynstr *dspfx = newdynstr(pfx, len + 1);
 			list_add_tail(&dspfx->list, &ds);
-			loc.first_text = loc.last_text = dspfx;
-			node_t *npfx = newexprstr(&loc, pfx);
-			list_add_tail(&npfx->list, &node->list);
 
 			/* Create the PRI identifier */
-			len = p - start + 1 + 3;
+			len = p - spec + 1 + 3;
 			char *pri = calloc(len + 1, sizeof(char));
-			memcpy(stpcpy(pri, "PRI"), start, len - 3);
+			memcpy(stpcpy(pri, "PRI"), spec, len - 3);
 			struct dynstr *dspri = newdynstr(pri, len);
 			list_add_tail(&dspri->list, &ds);
-			loc.first_text = loc.last_text = dspri;
-			node_t *npri = newexprid(&loc, pri);
-			list_add_tail(&npri->list, &node->list);
 
 			/* Re-open the tail string */
 			*p = '\"';
-			node->e.str = p;
+			start = p;
 		} else
 			++p;
 	}
 
 	if (!list_empty(&ds)) {
-		if (strcmp(node->e.str, "\"\"")) {
+		if (strcmp(start, "\"\"")) {
 			struct dynstr *dslast =
-				newdynstr(node->e.str, strlen(node->e.str));
+				newdynstr(start, strlen(start));
 			list_add_tail(&dslast->list, &ds);
 		}
 		replace_text_list(node->first_text, node->last_text,
@@ -566,6 +559,7 @@ printf_spec_one(node_t *node, void *data)
 				  list_entry(ds.prev, struct dynstr, list));
 	}
 
+	reparse_node(node, START_EXPR);
 	return 0;
 }
 
