@@ -407,6 +407,7 @@ static void parse_macros(void)
 		list_del_init(&raw_contents);
 
 		lex_input_first = lex_input_last = ds;
+		lex_cpp_mode = 1;
 		start_symbol = START_DIRECTIVE;
 		ret = yyparse();
 		if (ret) {
@@ -444,6 +445,7 @@ static int parse_file(const char *name)
 	INIT_LIST_HEAD(&raw_contents);
 	INIT_LIST_HEAD(&raw_cpp);
 	lex_input_first = lex_input_last = NULL;
+	lex_cpp_mode = 0;
 	start_symbol = 0;
 	ret = yyparse();
 	if (yyin != stdin)

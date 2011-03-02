@@ -29,6 +29,9 @@ extern int start_symbol;
  */
 extern struct dynstr *lex_input_first, *lex_input_last;
 
+/* If non-zero, lexer will set the starting condition to cpp_dir */
+extern int lex_cpp_mode;
+
 typedef struct {
 	int first_line;
 	int first_column;

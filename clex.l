@@ -20,6 +20,7 @@
 #include "clang.tab.h"
 
 int start_symbol;
+int lex_cpp_mode;
 
 struct list_head raw_contents;
 struct list_head raw_cpp;
@@ -282,9 +283,10 @@ static void init_vars(void)
 	if (lex_input_first) {
 		lex_input = lex_input_first;
 		lex_input_ptr = lex_input->text;
-		BEGIN(cpp_dir);
 	} else
 		lex_input = NULL;
+	if (lex_cpp_mode)
+		BEGIN(cpp_dir);
 }
 
 struct dynstr *newdynstr(const char *s, size_t len)
