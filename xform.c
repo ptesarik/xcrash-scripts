@@ -185,12 +185,24 @@ static void
 remove_text_list(struct dynstr *remove, struct dynstr *keep)
 {
 	struct list_head *it, *next;
+	struct dynstr *prec =
+		list_entry(remove->list.prev, struct dynstr, list);
 
 	it = &remove->list;
 	while (it != &keep->list) {
+		node_t *node, *nnode;
+		struct dynstr *ds = list_entry(it, struct dynstr, list);
+
+		list_for_each_entry_safe(node, nnode,
+					 &ds->node_first, first_list)
+			set_node_first(node, keep);
+		list_for_each_entry_safe(node, nnode,
+					 &ds->node_last, last_list)
+			set_node_last(node, prec);
+
 		next = it->next;
 		list_del(it);
-		free(list_entry(it, struct dynstr, list)); 
+		free(ds);
 		it = next;
 	}
 }
@@ -200,12 +212,24 @@ static void
 remove_text_list_rev(struct dynstr *remove, struct dynstr *keep)
 {
 	struct list_head *it, *next;
+	struct dynstr *follow =
+		list_entry(keep->list.next, struct dynstr, list);
 
 	it = &remove->list;
 	while (it != &keep->list) {
+		node_t *node, *nnode;
+		struct dynstr *ds = list_entry(it, struct dynstr, list);
+
+		list_for_each_entry_safe(node, nnode,
+					 &ds->node_first, first_list)
+			set_node_first(node, follow);
+		list_for_each_entry_safe(node, nnode,
+					 &ds->node_last, last_list)
+			set_node_last(node, keep);
+
 		next = it->prev;
 		list_del(it);
-		free(list_entry(it, struct dynstr, list)); 
+		free(ds);
 		it = next;
 	}
 }
