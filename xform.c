@@ -14,39 +14,16 @@ typedef int walkfn(node_t *, void *);
 static void walk_tree(struct list_head *tree, walkfn *fn, void *data);
 
 static void
-walk_tree_rec(struct list_head *tree, walkfn *fn, void *data)
+walk_tree(struct list_head *tree, walkfn *fn, void *data)
 {
 	node_t *item;
 	list_for_each_entry(item, tree, list) {
-		if (item->seen)
-			continue;
-
 		if (fn(item, data))
 			break;
 		int i;
 		for (i = 0; i < item->nchild; ++i)
-			walk_tree_rec(&item->child[i], fn, data);
-		item->seen = 1;
+			walk_tree(&item->child[i], fn, data);
 	}
-}
-
-static void
-reset_seen(struct list_head *tree)
-{
-	node_t *item;
-	list_for_each_entry(item, tree, list) {
-		item->seen = 0;
-		int i;
-		for (i = 0; i < item->nchild; ++i)
-			reset_seen(&item->child[i]);
-	}
-}
-
-static void
-walk_tree(struct list_head *tree, walkfn *fn, void *data)
-{
-	reset_seen(tree);
-	walk_tree_rec(tree, fn, data);
 }
 
 static void
@@ -56,8 +33,7 @@ walk_tree_single(node_t *tree, walkfn *fn, void *data)
 		return;
 	int i;
 	for (i = 0; i < tree->nchild; ++i)
-		walk_tree_rec(&tree->child[i], fn, data);
-	tree->seen = 1;
+		walk_tree(&tree->child[i], fn, data);
 }
 
 

@@ -161,7 +161,6 @@ typedef struct node {
 	struct dynstr *first_text, *last_text;
 	struct list_head first_list, last_list;
 	int nchild;
-	int seen;		/* used when walking the list */
 	struct list_head child[];
 } node_t;
 
