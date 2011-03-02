@@ -23,10 +23,11 @@ int start_symbol;
 
 struct list_head raw_contents;
 struct list_head raw_cpp;
-struct dynstr *cpp_input;
+struct dynstr *lex_input_first, *lex_input_last;
 
 static int eof_seen;
-static char *cpp_ptr;
+static struct dynstr *lex_input;
+static char *lex_input_ptr;
 
 static void store_yytext(const char *s);
 #define YY_USER_ACTION	store_yytext(yytext);
@@ -34,14 +35,11 @@ static void store_yytext(const char *s);
 static void init_vars(void);
 #define YY_USER_INIT	init_vars()
 
+static size_t dynstr_read(void *, size_t);
+
 #define YY_INPUT(buf,result,max_size) \
-	if (cpp_input) { \
-		int n = cpp_input->len - (cpp_ptr - cpp_input->text); \
-		if (n > max_size) \
-			n = max_size; \
-		memcpy(buf, cpp_ptr, n); \
-		cpp_ptr += n; \
-		result = n; \
+	if (lex_input) { \
+		result = dynstr_read(buf, max_size); \
 	} else { \
 		errno=0; \
 		while ( (result = fread(buf, 1, max_size, yyin))==0 && ferror(yyin)) { \
@@ -127,7 +125,7 @@ IS			(u|U|l|L)*
   /* CPP ignored directive */
 ("#"|"%:")[ \t\v\f]*	BEGIN(cpp_ign);
 <cpp_ign>(.|\\\n)	{
-	if (!cpp_input && !yylloc.last_text->reuse)
+	if (!lex_input && !yylloc.last_text->reuse)
 		list_add_tail(&yylloc.last_text->cpp_list, &raw_cpp);
 	yylloc.last_text->reuse = 1;
 	/* and eat up the directive */
@@ -281,10 +279,12 @@ static void init_vars(void)
 {
 	typedef_ign = 0;
 	eof_seen = 0;
-	if (cpp_input) {
-		cpp_ptr = cpp_input->text;
+	if (lex_input_first) {
+		lex_input = lex_input_first;
+		lex_input_ptr = lex_input->text;
 		BEGIN(cpp_dir);
-	}
+	} else
+		lex_input = NULL;
 }
 
 struct dynstr *newdynstr(const char *s, size_t len)
@@ -358,4 +358,23 @@ static void store_yytext(const char *s)
 		list_add_tail(&ds->list, &raw_contents);
 	}
 	yylloc.first_text = yylloc.last_text = ds;
+}
+
+static size_t
+dynstr_read(void *buf, size_t max_size)
+{
+	size_t n;
+
+	while (! (n = lex_input->len - (lex_input_ptr - lex_input->text)) &&
+	       lex_input != lex_input_last) {
+		lex_input = list_entry(lex_input->list.next,
+				       struct dynstr, list);
+		lex_input_ptr = lex_input->text;
+	}
+
+	if (n > max_size)
+		n = max_size;
+	memcpy(buf, lex_input_ptr, n);
+	lex_input_ptr += n;
+	return n;
 }

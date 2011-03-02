@@ -24,8 +24,10 @@ extern struct list_head raw_cpp;
  */
 extern int start_symbol;
 
-/* If @cpp_input is non-NULL, then we're parsing CPP code from there */
-extern struct dynstr *cpp_input;
+/* If @lex_input_first is non-NULL, then we're parsing dynstr
+ * strings instead of an input stream.
+ */
+extern struct dynstr *lex_input_first, *lex_input_last;
 
 typedef struct {
 	int first_line;

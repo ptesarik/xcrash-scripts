@@ -408,7 +408,7 @@ static void parse_macros(void)
 		list_add(&savedraw, &raw_contents);
 		list_del_init(&raw_contents);
 
-		cpp_input = ds;
+		lex_input_first = lex_input_last = ds;
 		start_symbol = START_DIRECTIVE;
 		ret = yyparse();
 		if (ret) {
@@ -445,7 +445,7 @@ static int parse_file(const char *name)
 	parsed_tree = NULL;
 	INIT_LIST_HEAD(&raw_contents);
 	INIT_LIST_HEAD(&raw_cpp);
-	cpp_input = NULL;
+	lex_input_first = lex_input_last = NULL;
 	start_symbol = 0;
 	ret = yyparse();
 	if (yyin != stdin)
