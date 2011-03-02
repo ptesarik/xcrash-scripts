@@ -1150,6 +1150,7 @@ type_merge(node_t *merger, node_t *other)
 {
 	merger->t.flags |= other->t.flags;
 	list_splice(&other->child[cht_attr], merger->child[cht_attr].prev);
+	INIT_LIST_HEAD(&other->child[cht_attr]);
 	if (merger->t.category == type_basic &&
 	    other->t.category == type_basic)
 		merger->t.btype |= other->t.btype;
