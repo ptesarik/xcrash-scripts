@@ -213,6 +213,12 @@ void freenode(node_t *);
 void set_node_first(node_t *, struct dynstr *);
 void set_node_last(node_t *, struct dynstr *);
 
+static inline void
+set_node_child(node_t *parent, int pos, node_t *child)
+{
+	parent->child[pos] = child;
+}
+
 node_t *newtype(const YYLTYPE *);
 node_t *newtype_name(const YYLTYPE *, const char *);
 node_t *newtype_int(const YYLTYPE *);

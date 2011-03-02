@@ -207,8 +207,8 @@ directive		: CPP_DEFINE macro_def
 macro_def		: macro_declarator compound_body
 			{
 				$$ = newdecl(&@$, NULL, NULL);
-				$$->child[chd_var] = $1;
-				$$->child[chd_body] = $2;
+				set_node_child($$, chd_var, $1);
+				set_node_child($$, chd_body, $2);
 			}
 			;
 
@@ -216,23 +216,23 @@ macro_declarator	: CPP_IDARG macro_param
 			{
 				node_t *type = newtype(&@$);
 				type->t.category = type_func;
-				type->child[cht_param] = $2;
+				set_node_child(type, cht_param, $2);
 				$$ = newvar(&@1, $1);
-				$$->child[chv_type] = type;
+				set_node_child($$, chv_type, type);
 			}
 			| ID
 			{
 				node_t *type = newtype(&@$);
 				type->t.category = type_func;
 				$$ = newvar(&@1, $1);
-				$$->child[chv_type] = type;
+				set_node_child($$, chv_type, type);
 			}
 			;
 
 macro_param		: '(' id_list ')'
 			{
 				$$ = newdecl(&@$, NULL, NULL);
-				$$->child[chd_var] = $2;
+				set_node_child($$, chd_var, $2);
 			}
 			| '(' ')'
 			{ $$ = NULL; }
@@ -246,27 +246,27 @@ func_def		: type_decl declarator_list decl_list compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, $1, $2);
-				$$->child[chd_decl] = $3;
-				$$->child[chd_body] = $4;
+				set_node_child($$, chd_decl, $3);
+				set_node_child($$, chd_body, $4);
 			}
 			| type_decl declarator_list           compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, $1, $2);
-				$$->child[chd_body] = $3;
+				set_node_child($$, chd_body, $3);
 			}
 			|           declarator_list decl_list compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, newtype_int(&@$), $1);
-				$$->child[chd_decl] = $2;
-				$$->child[chd_body] = $3;
+				set_node_child($$, chd_decl, $2);
+				set_node_child($$, chd_body, $3);
 			}
 			|           declarator_list           compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, newtype_int(&@$), $1);
-				$$->child[chd_body] = $2;
+				set_node_child($$, chd_body, $2);
 			}
 			;
 
@@ -325,7 +325,7 @@ opt_notype_decl		: /* empty */
 notype_decl		: attr_spec
 			{
 				$$ = newtype(&@$);
-				$$->child[cht_attr] = $1;
+				set_node_child($$, cht_attr, $1);
 			}
 			| storage_class_spec
 			{ $$ = newtype(&@$); $$->t.flags = $1; }
@@ -432,12 +432,12 @@ struct_or_union		: STRUCT	{ $$ = type_struct; }
 struct_desc		: ID     struct_body
 			{
 				$$ = newtype_name(&@$, $1);
-				$$->child[cht_body] = $2;
+				set_node_child($$, cht_body, $2);
 			}
 			|        struct_body
 			{
 				$$ = newtype(&@$);
-				$$->child[cht_body] = $1;
+				set_node_child($$, cht_body, $1);
 			}
 			| ID
 			{ $$ = newtype_name(&@$, $1); }
@@ -471,13 +471,13 @@ struct_declarator_list	: struct_declarator
 struct_declarator	: declarator ':' const_expr
 			{
 				$$ = $1;
-				$$->var->child[chv_bitsize] = $3;
+				set_node_child($$->var, chv_bitsize, $3);
 			}
 			|            ':' const_expr
 			{
 				$$ = newdeclarator();
 				$$->var = newvar(&@$, NULL);
-				$$->var->child[chv_bitsize] = $2;
+				set_node_child($$->var, chv_bitsize, $2);
 			}
 			| declarator
 			;
@@ -494,11 +494,11 @@ enum_spec		: ENUM { typedef_ign = 1; } opt_attr enum_desc
 enum_desc		: ID enum_body
 			{
 				$$ = newtype_name(&@$, $1);
-				$$->child[cht_body] = $2; }
+				set_node_child($$, cht_body, $2); }
 			|    enum_body
 			{
 				$$ = newtype(&@$);
-				$$->child[cht_body] = $1;
+				set_node_child($$, cht_body, $1);
 			}
 			| ID
 			{ $$ = newtype_name(&@$, $1); }
@@ -523,7 +523,7 @@ enumerator		: ID
 			| ID '=' const_expr
 			{
 				$$ = newvar(&@$, $1);
-				$$->child[chv_init] = $3;
+				set_node_child($$, chv_init, $3);
 			}
 			;
 
@@ -550,7 +550,7 @@ init_declarator_list	: init_declarator
 init_declarator		: declarator '=' initializer
 			{
 				$$ = $1;
-				$$->var->child[chv_init] = $3;
+				set_node_child($$->var, chv_init, $3);
 			}
 			| declarator
 			;
@@ -564,13 +564,13 @@ declarator		: pointer direct_declarator opt_attr
 				$$ = $2;
 				link_abstract($$, &$1);
 				if ($3)
-					$$->var->child[chv_attr] = $3;
+					set_node_child($$->var, chv_attr, $3);
 			}
 			|         direct_declarator opt_attr
 			{
 				$$ = $1;
 				if ($2)
-					$$->var->child[chv_attr] = $2;
+					set_node_child($$->var, chv_attr, $2);
 			}
 			;
 
@@ -596,7 +596,7 @@ param_declarator	: '(' param_type_or_idlist ')'
 			{
 				node_t *type = newtype(&@$);
 				type->t.category = type_func;
-				type->child[cht_param] = $2;
+				set_node_child(type, cht_param, $2);
 				$$.tree = type;
 				$$.stub = &type->child[cht_type];
 			}
@@ -606,7 +606,7 @@ param_type_or_idlist	: param_type_list
 			| id_list
 			{
 				$$ = newdecl(&@$, NULL, NULL);
-				$$->child[chd_var] = $1;
+				set_node_child($$, chd_var, $1);
 			}
 			;
 
@@ -621,7 +621,7 @@ pointer			: '*'
 			{
 				node_t *ptr = newtype(&@$);
 				ptr->t.category = type_pointer;
-				ptr->child[cht_type] = $1.tree;
+				set_node_child(ptr, cht_type, $1.tree);
 				$$ = $1;
 				$$.tree = ptr;
 			}
@@ -702,7 +702,7 @@ _type_name		: spec_qualifier_list
 			{
 				$$ = newtype(&@$);
 				$$->t.category = type_typeof;
-				$$->child[cht_expr] = $3;
+				set_node_child($$, cht_expr, $3);
 			}
 			;
 
@@ -730,7 +730,7 @@ array_declarator	: '[' array_size ']'
 			{
 				node_t *type = newtype(&@$);
 				type->t.category = type_array;
-				type->child[cht_size] = $2;
+				set_node_child(type, cht_size, $2);
 				$$.tree = type;
 				$$.stub = &type->child[cht_type];
 			}
@@ -746,7 +746,7 @@ abstract_param_declarator:
 			{
 				node_t *type = newtype(&@$);
 				type->t.category = type_func;
-				type->child[cht_param] = $2;
+				set_node_child(type, cht_param, $2);
 				$$.tree = type;
 				$$.stub = &type->child[cht_type];
 			}
@@ -1102,7 +1102,7 @@ static void
 type_add_attr(node_t *merger, node_t *attr)
 {
 	if (!merger->child[cht_attr]) {
-		merger->child[cht_attr] = attr;
+		set_node_child(merger, cht_attr, attr);
 	} else if (attr) {
 		struct list_head *last = merger->child[cht_attr]->list.prev;
 		list_splice(&attr->list, last);
@@ -1155,11 +1155,11 @@ newdecl(const YYLTYPE *loc, node_t *type, declarator_t *declarator)
 	node_t *var, *lastvar;
 	declarator_t *d, *nextd;
 
-	node->child[chd_type] = type;
+	set_node_child(node, chd_type, type);
 	if (!declarator)
 		return node;
 
-	node->child[chd_var] = declarator->var;
+	set_node_child(node, chd_var, declarator->var);
 
 	lastvar = list_entry(declarator->list.prev, declarator_t, list)->var;
 	nextd = declarator;
@@ -1173,13 +1173,14 @@ newdecl(const YYLTYPE *loc, node_t *type, declarator_t *declarator)
 			if (d->abstract.stub) {
 				*d->abstract.stub = type;
 				var->child[chv_type] = d->abstract.tree;
-				var->child[chv_type]->t.flags = type->t.flags;
+				set_node_child(var, chv_type,
+					       d->abstract.tree);
 			} else
-				var->child[chv_type] = type;
+				set_node_child(var, chv_type, type);
 		} else if (d->abstract.stub) {
 			*d->abstract.stub = type;
-			node->child[chd_type] = d->abstract.tree;
-			node->child[chd_type]->t.flags = type->t.flags;
+			d->abstract.tree->t.flags = type->t.flags;
+			set_node_child(node, chd_type, d->abstract.tree);
 		}
 
 		lastvar = var;
@@ -1242,7 +1243,7 @@ node_t *
 newexpr1(const YYLTYPE *loc, int op, node_t *arg1)
 {
 	node_t *ret = newexpr(loc, op);
-	ret->child[che_arg1] = arg1;
+	set_node_child(ret, che_arg1, arg1);
 	return ret;
 }
 
@@ -1250,8 +1251,8 @@ node_t *
 newexpr2(const YYLTYPE *loc, int op, node_t *arg1, node_t *arg2)
 {
 	node_t *ret = newexpr(loc, op);
-	ret->child[che_arg1] = arg1;
-	ret->child[che_arg2] = arg2;
+	set_node_child(ret, che_arg1, arg1);
+	set_node_child(ret, che_arg2, arg2);
 	return ret;
 }
 
@@ -1259,9 +1260,9 @@ node_t *
 newexpr3(const YYLTYPE *loc, int op, node_t *arg1, node_t *arg2, node_t *arg3)
 {
 	node_t * ret = newexpr(loc, op);
-	ret->child[che_arg1] = arg1;
-	ret->child[che_arg2] = arg2;
-	ret->child[che_arg3] = arg3;
+	set_node_child(ret, che_arg1, arg1);
+	set_node_child(ret, che_arg2, arg2);
+	set_node_child(ret, che_arg3, arg3);
 	return ret;
 }
 
@@ -1270,10 +1271,10 @@ newexpr4(const YYLTYPE *loc, int op,
 	 node_t *arg1, node_t *arg2, node_t *arg3, node_t *arg4)
 {
 	node_t * ret = newexpr(loc, op);
-	ret->child[che_arg1] = arg1;
-	ret->child[che_arg2] = arg2;
-	ret->child[che_arg3] = arg3;
-	ret->child[che_arg4] = arg4;
+	set_node_child(ret, che_arg1, arg1);
+	set_node_child(ret, che_arg2, arg2);
+	set_node_child(ret, che_arg3, arg3);
+	set_node_child(ret, che_arg4, arg4);
 	return ret;
 }
 
