@@ -493,25 +493,18 @@ convert_readmem(node_t *node, void *data)
 	char *newfn = get_read_fn(first_node(&size->child[che_arg1]));
 	if (!newfn)
 		return 0;
-	first_node(&node->child[che_arg1])->e.str = newfn;
 	replace_text(first_node(&node->child[che_arg1]), newfn);
 
 	/* Replace the 4th argument */
 	if (mult) {
 		remove_text_list(arg->first_text, mult->first_text);
 		remove_text_list_rev(arg->last_text, mult->last_text);
-		list_add(&mult->list, &arg->list);
-		list_del(&arg->list);
 	} else {
-		YYLTYPE loc;
 		struct dynstr *ds = newdynstr("1", 1);
-		loc.first_text = loc.last_text = ds;
-		node_t *one = newexprnum(&loc, ds->text);
-		list_add(&one->list, &arg->list);
-		list_del(&arg->list);
-		freenode(arg);
 		replace_text_list(arg->first_text, arg->last_text, ds, ds);
 	}
+
+	reparse_node(node, START_EXPR);
 	return 0;
 }
 
