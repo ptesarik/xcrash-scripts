@@ -407,46 +407,30 @@ mkstring_variadic(node_t *node, void *data)
 	if (!is_direct_call(node, "mkstring"))
 		return 0;
 
+	/* Remove MKSTRING if necessary */
+	node_t *opt = nth_element(&node->child[che_arg2], 4);
+	if (is_direct_call(opt, "MKSTR")) {
+		node_t *arg = nth_element(&opt->child[che_arg2], 1);
+		remove_text_list(opt->first_text, arg->first_text);
+		remove_text_list_rev(opt->last_text, arg->last_text);
+	}
+
 	/* Get the right typecast if necessary */
 	const char *typecast = NULL;
 	node_t *flags = nth_element(&node->child[che_arg2], 3);
 	walk_tree_single(flags, mkstring_typecast, &typecast);
 
-	/* Remove MKSTRING if necessary */
-	node_t *opt = nth_element(&node->child[che_arg2], 4);
-	if (is_direct_call(opt, "MKSTR")) {
-		struct dynstr *oldstart = opt->first_text,
-			*oldend = opt->last_text;
-		freenode(first_node(&opt->child[che_arg1]));
-		list_add(&opt->child[che_arg2], &opt->list);
-		list_del(&opt->list);
-		node_t *oldopt = opt;
-		opt = first_node(&opt->child[che_arg2]);
-		freenode(oldopt);
-		remove_text_list(oldstart, opt->first_text);
-		remove_text_list_rev(oldend, opt->last_text);
-	}
-
 	/* Ensure correct typecast if necessary */
 	if (typecast) {
-		YYLTYPE loc;
-		struct dynstr *typestr = newdynstr(typecast, strlen(typecast));
 		struct dynstr *lparen = newdynstr("(", 1);
+		struct dynstr *typestr = newdynstr(typecast, strlen(typecast));
 		struct dynstr *rparen = newdynstr(")", 1);
 		list_add_tail(&lparen->list, &opt->first_text->list);
 		list_add(&typestr->list, &lparen->list);
 		list_add(&rparen->list, &typestr->list);
-
-		loc.first_text = loc.last_text = typestr;
-		node_t *type = newtype_name(&loc, typecast);
-		type->t.category = type_typedef;
-		loc.first_text = lparen;
-		loc.last_text = opt->last_text;
-		node_t *cast = newexpr2(&loc, TYPECAST, type, opt);
-		list_add(&cast->list, &opt->list);
-		list_del_init(&opt->list);
 	}
 
+	reparse_node(node, START_EXPR);
 	return 0;
 }
 
