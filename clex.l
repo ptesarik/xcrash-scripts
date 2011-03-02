@@ -290,7 +290,7 @@ static void init_vars(void)
 struct dynstr *newdynstr(const char *s, size_t len)
 {
 	struct dynstr *ds = malloc(sizeof(struct dynstr) + len + 1);
-	ds->cpp_list.next = NULL;
+	INIT_LIST_HEAD(&ds->cpp_list);
 	INIT_LIST_HEAD(&ds->node_first);
 	INIT_LIST_HEAD(&ds->node_last);
 	ds->len = len;
@@ -317,18 +317,30 @@ reuse_last_content(const char *s, size_t len)
 		return NULL;
 
 	if (ds->len + len + 1 > ds->alloc) {
+		struct dynstr tmp;
+		list_add_tail(&tmp.list, &ds->list);
+		list_del(&ds->list);
+		list_add_tail(&tmp.cpp_list, &ds->cpp_list);
+		list_del(&ds->cpp_list);
+		list_add_tail(&tmp.node_first, &ds->node_first);
+		list_del(&ds->node_first);
+		list_add_tail(&tmp.node_last, &ds->node_last);
+		list_del(&ds->node_last);
+
 		size_t newalloc = ds->len + len + 1 + ALLOC_INC;
 		newalloc -= newalloc % ALLOC_INC;
 		ds = realloc(ds, sizeof(struct dynstr) + newalloc);
 		ds->alloc = newalloc;
 
 		/* Fix up list pointers */
-		ds->list.prev->next = &ds->list;
-		ds->list.next->prev = &ds->list;
-		if (ds->cpp_list.next) {
-			ds->cpp_list.prev->next = &ds->cpp_list;
-			ds->cpp_list.next->prev = &ds->cpp_list;
-		}
+		list_add(&ds->list, &tmp.list);
+		list_del(&tmp.list);
+		list_add(&ds->cpp_list, &tmp.cpp_list);
+		list_del(&tmp.cpp_list);
+		list_add(&ds->node_first, &tmp.node_first);
+		list_del(&tmp.node_first);
+		list_add(&ds->node_last, &tmp.node_last);
+		list_del(&tmp.node_last);
 	}
 	memcpy(ds->text + ds->len, s, len);
 	ds->len += len;
