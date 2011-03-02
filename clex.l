@@ -37,6 +37,7 @@ static void init_vars(void);
 #define YY_USER_INIT	init_vars()
 
 static size_t dynstr_read(void *, size_t);
+static int lex_input_type(void);
 
 #define YY_INPUT(buf,result,max_size) \
 	if (lex_input) { \
@@ -231,9 +232,12 @@ IS			(u|U|l|L)*
 3COM({L}|{D})*		|	/* HACK */
 3DFX({L}|{D})*		|	/* HACK */
 3DLABS({L}|{D})*	{	/* HACK */
+				int type;
 				yylval.str = yylloc.first_text->text;
 				if (typedef_ign)
 					--typedef_ign;
+				else if( (type = lex_input_type()) >= 0)
+					return type;
 				else if (istypedef(yytext))
 					return TYPEID;
 				return ID;
@@ -276,6 +280,9 @@ int tabsize = 8;
 
 int typedef_ign;
 
+static struct dynstr *curds;
+static size_t curdsoff;
+
 static void init_vars(void)
 {
 	typedef_ign = 0;
@@ -283,8 +290,12 @@ static void init_vars(void)
 	if (lex_input_first) {
 		lex_input = lex_input_first;
 		lex_input_ptr = lex_input->text;
-	} else
+		curds = lex_input;
+		curdsoff = 0;
+	} else {
 		lex_input = NULL;
+		curds = NULL;
+	}
 	if (lex_cpp_mode)
 		BEGIN(cpp_dir);
 }
@@ -367,6 +378,15 @@ static void store_yytext(const char *s)
 			yylloc.last_column++;
 	}
 
+	if (curds) {
+		curdsoff += yyleng;
+		while(curdsoff > curds->len || !curds->len) {
+			curdsoff -= curds->len;
+			curds = list_entry(curds->list.next,
+					   struct dynstr, list);
+		}
+	}
+
 	if (! (ds = reuse_last_content(s, yyleng)) ) {
 		ds = newdynstr(s, yyleng);
 		list_add_tail(&ds->list, &raw_contents);
@@ -391,4 +411,23 @@ dynstr_read(void *buf, size_t max_size)
 	memcpy(buf, lex_input_ptr, n);
 	lex_input_ptr += n;
 	return n;
+}
+
+/* Return the original identifier type if available */
+static int
+lex_input_type(void)
+{
+	node_t *node;
+
+	if (!lex_input_first)
+		return -1;
+
+	list_for_each_entry(node, &curds->node_first, first_list) {
+		if (node->type == nt_expr && node->e.op == ID)
+			return ID;
+		if (node->type == nt_type && node->t.category == type_typedef)
+			return TYPEID;
+	}
+
+	return -1;
 }
