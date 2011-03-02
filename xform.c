@@ -16,24 +16,23 @@ static void walk_tree(struct list_head *tree, walkfn *fn, void *data);
 static void
 walk_tree(struct list_head *tree, walkfn *fn, void *data)
 {
-	node_t *item;
-	list_for_each_entry(item, tree, list) {
-		if (fn(item, data))
-			break;
+	node_t *item, *next;
+	list_for_each_entry_safe(item, next, tree, list) {
 		int i;
 		for (i = 0; i < item->nchild; ++i)
 			walk_tree(&item->child[i], fn, data);
+		if (fn(item, data))
+			break;
 	}
 }
 
 static void
 walk_tree_single(node_t *tree, walkfn *fn, void *data)
 {
-	if (fn(tree, data))
-		return;
 	int i;
 	for (i = 0; i < tree->nchild; ++i)
 		walk_tree(&tree->child[i], fn, data);
+	fn(tree, data);
 }
 
 
