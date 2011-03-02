@@ -29,9 +29,8 @@ static void addtypedeflist(node_t *);
 static void hidetypedef(const char *);
 static void unhidetypedefs(void);
 static void hidefnparams(declarator_t *);
-static void hidedecls(node_t *);
-
-static node_t *parsed_tree_add(node_t *);
+static void hidevars(struct list_head *);
+static void hidedecls(struct list_head *);
 
 # define YYLLOC_DEFAULT(Current, Rhs, N)				\
     do									\
@@ -174,8 +173,6 @@ static node_t *parsed_tree_add(node_t *);
 /* CPP types */
 %type <node> directive macro_def macro_declarator macro_param
 
-%type <node> translation_unit
-
 %error-verbose
 %locations
 %glr-parser
@@ -191,11 +188,10 @@ static node_t *parsed_tree_add(node_t *);
 %%
 
 translation_unit	: /* empty */
-			{ $$ = parsed_tree_add(NULL); }
 			| translation_unit external_decl
-			{ $$ = parsed_tree_add($2); }
+			{ list_add_tail(&$2->list, &parsed_tree); }
 			| START_DIRECTIVE directive
-			{ $$ = parsed_tree_add($2); }
+			{ list_add_tail(&$2->list, &parsed_tree); }
 			;
 
 directive		: CPP_DEFINE macro_def
@@ -691,7 +687,7 @@ type_name		: { typedef_ign = 0; } _type_name
 _type_name		: spec_qualifier_list
 			| spec_qualifier_list abstract_declarator
 			{
-				*$2->abstract.stub = $1;
+				list_add_tail(&$1->list, $2->abstract.stub);
 				$$ = $2->abstract.tree;
 				$$->t.flags = $1->t.flags;
 				free($2);
@@ -809,7 +805,7 @@ compound_body		: /* empty */
 					$$ = $1;
 				} else
 					$$ = $2;
-				hidedecls($2);
+				hidevars(&$2->child[chd_var]);
 			}
 			| compound_body stat
 			{
@@ -1025,7 +1021,7 @@ yyerror(const char *s)
 		first_column + 1, s, yylloc.last_line);
 }
 
-node_t *parsed_tree;
+struct list_head parsed_tree;
 
 /* Initialize a new node of type @type, room for @nchild children
  * and @extra bytes.
@@ -1033,12 +1029,15 @@ node_t *parsed_tree;
 node_t *
 newnode(const YYLTYPE *loc, enum node_type type, int nchild)
 {
-	size_t allocextra = nchild * sizeof(node_t *);
+	size_t allocextra = nchild * sizeof(struct list_head);
 	node_t *ret = calloc(sizeof(node_t) + allocextra, 1);
+	int i;
 
 	INIT_LIST_HEAD(&ret->list);
 	ret->type = type;
 	ret->nchild = nchild;
+	for (i = 0; i < nchild; ++i)
+		INIT_LIST_HEAD(&ret->child[i]);
 
 	ret->first_text = loc->first_text;
 	list_add(&ret->first_list, &loc->first_text->node_first);
@@ -1048,13 +1047,41 @@ newnode(const YYLTYPE *loc, enum node_type type, int nchild)
 	return ret;
 }
 
+node_t *
+dupnode(node_t *node)
+{
+	size_t allocextra = node->nchild * sizeof(struct list_head);
+	node_t *ret = malloc(sizeof(node_t) + allocextra);
+	int i;
+
+	memcpy(ret, node, sizeof(node_t));
+
+	INIT_LIST_HEAD(&ret->list);
+	for (i = 0; i < ret->nchild; ++i) {
+		node_t *child;
+		INIT_LIST_HEAD(&ret->child[i]);
+		list_for_each_entry(child, &node->child[i], list)
+			set_node_child(ret, i, dupnode(child));
+	}
+
+	ret->first_text = node->first_text;
+	list_add(&ret->first_list, &ret->first_text->node_first);
+	ret->last_text = node->last_text;
+	list_add(&ret->last_list, &ret->last_text->node_last);
+
+	return ret;
+}
+
 void
 freenode(node_t *node)
 {
 	int i;
-	for (i = 0; i < node->nchild; ++i)
-		if (node->child[i])
-			freenode(node->child[i]);
+	for (i = 0; i < node->nchild; ++i) {
+		node_t *child, *next;
+		list_for_each_entry_safe(child, next, &node->child[i], list)
+			freenode(child);
+	}
+	list_del(&node->list);
 	list_del(&node->first_list);
 	list_del(&node->last_list);
 	free(node);
@@ -1101,10 +1128,10 @@ newtype_int(const YYLTYPE *loc)
 static void
 type_add_attr(node_t *merger, node_t *attr)
 {
-	if (!merger->child[cht_attr]) {
+	if (list_empty(&merger->child[cht_attr])) {
 		set_node_child(merger, cht_attr, attr);
 	} else if (attr) {
-		struct list_head *last = merger->child[cht_attr]->list.prev;
+		struct list_head *last = merger->child[cht_attr].prev;
 		list_splice(&attr->list, last);
 		list_add(&attr->list, last);
 	}
@@ -1115,7 +1142,7 @@ static void
 type_merge(node_t *merger, node_t *other)
 {
 	merger->t.flags |= other->t.flags;
-	type_add_attr(merger, other->child[cht_attr]);
+	list_splice(&other->child[cht_attr], merger->child[cht_attr].prev);
 	if (merger->t.category == type_basic &&
 	    other->t.category == type_basic)
 		merger->t.btype |= other->t.btype;
@@ -1142,7 +1169,8 @@ static void
 link_abstract(declarator_t *declarator, const abstract_t *abstract)
 {
 	if (declarator->abstract.stub) {
-		*declarator->abstract.stub = abstract->tree;
+		list_add_tail(&abstract->tree->list,
+			      declarator->abstract.stub);
 		declarator->abstract.stub = abstract->stub;
 	} else
 		declarator->abstract = *abstract;
@@ -1152,41 +1180,38 @@ node_t *
 newdecl(const YYLTYPE *loc, node_t *type, declarator_t *declarator)
 {
 	node_t *node = newnode(loc, nt_decl, chd_max);
-	node_t *var, *lastvar;
 	declarator_t *d, *nextd;
+	node_t *typedup;
 
-	set_node_child(node, chd_type, type);
-	if (!declarator)
+	if (!declarator) {
+		set_node_child(node, chd_type, type);
 		return node;
+	}
 
-	set_node_child(node, chd_var, declarator->var);
-
-	lastvar = list_entry(declarator->list.prev, declarator_t, list)->var;
 	nextd = declarator;
 	do {
 		d = nextd;
-		var = d->var;
-		if (var) {
-			lastvar->list.next = &var->list;
-			var->list.prev = &lastvar->list;
 
-			if (d->abstract.stub) {
-				*d->abstract.stub = type;
-				var->child[chv_type] = d->abstract.tree;
-				set_node_child(var, chv_type,
-					       d->abstract.tree);
-			} else
-				set_node_child(var, chv_type, type);
-		} else if (d->abstract.stub) {
-			*d->abstract.stub = type;
-			d->abstract.tree->t.flags = type->t.flags;
-			set_node_child(node, chd_type, d->abstract.tree);
-		}
+		if (d->abstract.stub) {
+			list_add_tail(&type->list, d->abstract.stub);
+			typedup = dupnode(d->abstract.tree);
+			typedup->t.flags = type->t.flags;
+			list_del_init(&type->list);
+			freenode(d->abstract.tree);
+		} else
+			typedup = dupnode(type);
 
-		lastvar = var;
+		if (d->var) {
+			set_node_child(d->var, chv_type, typedup);
+			set_node_child(node, chd_var, d->var);
+		} else
+			set_node_child(node, chd_type, typedup);
+
 		nextd = list_entry(d->list.next, declarator_t, list);
 		free(d);
 	} while(nextd != declarator);
+
+	freenode(type);
 
 	return node;
 }
@@ -1365,25 +1390,23 @@ unhidetypedefs(void)
 }
 
 static void
-hidevars(node_t *first)
+hidevars(struct list_head *vars)
 {
-	node_t *node = first;
-	do {
+	node_t *node;
+	list_for_each_entry(node, vars, list) {
 		if (node->type == nt_var && node->v.name)
 			hidetypedef(node->v.name);
-		node = list_entry(node->list.next, node_t, list);
-	} while (node != first);
+	}
 }
 
 static void
-hidedecls(node_t *first)
+hidedecls(struct list_head *decls)
 {
-	node_t *node = first;
-	do {
-		if (node->type == nt_decl && node->child[chd_var])
-			hidevars(node->child[chd_var]);
-		node = list_entry(node->list.next, node_t, list);
-	} while (node != first);
+	node_t *node;
+	list_for_each_entry(node, decls, list) {
+		if (node->type == nt_decl)
+			hidevars(&node->child[chd_var]);
+	}
 }
 
 static void
@@ -1392,25 +1415,13 @@ hidefnparams(declarator_t *first)
 	declarator_t *decl = first;
 	do {
 		node_t *tree = decl->abstract.tree;
-		if (!tree || tree->type != nt_type ||
-		    tree->t.category != type_func) {
+		if (tree && tree->type == nt_type &&
+		    tree->t.category == type_func)
+			hidedecls(&tree->child[cht_param]);
+		else
 			fprintf(stderr, "Ouch! %s is not a function!\n",
 				decl->var->v.name);
-		} else if (tree->child[cht_param])
-			hidedecls(tree->child[cht_param]);
 
 		decl = list_entry(decl->list.next, declarator_t, list);
 	} while (decl != first);
-}
-
-static node_t *
-parsed_tree_add(node_t *newtree)
-{
-	if (newtree) {
-		if (parsed_tree)
-			list_add_tail(&newtree->list, &parsed_tree->list);
-		else
-			parsed_tree = newtree;
-	}
-	return parsed_tree;
 }

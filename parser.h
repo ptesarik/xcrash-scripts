@@ -159,7 +159,7 @@ typedef struct node {
 	struct list_head first_list, last_list;
 	int nchild;
 	int seen;		/* used when walking the list */
-	struct node *child[];
+	struct list_head child[];
 } node_t;
 
 /* Macros to get the address of the containing node_t */
@@ -176,7 +176,7 @@ typedef struct node {
 /* This type is used only temporarily during parsing */
 typedef struct abstract {
 	node_t *tree;
-	node_t **stub;	
+	struct list_head *stub;
 } abstract_t;
 
 /* This type is used only temporarily during parsing */
@@ -187,7 +187,7 @@ typedef struct declarator {
 } declarator_t;
 
 /* When yyparse() succeeds, the resulting tree is here: */
-extern node_t *parsed_tree;
+extern struct list_head parsed_tree;
 
 /* Parser/lexer interface */
 extern FILE *yyin;
@@ -216,7 +216,13 @@ void set_node_last(node_t *, struct dynstr *);
 static inline void
 set_node_child(node_t *parent, int pos, node_t *child)
 {
-	parent->child[pos] = child;
+	list_add_tail(&parent->child[pos], &child->list);
+}
+
+static inline node_t *
+first_node(struct list_head *nodelist)
+{
+	return list_entry(nodelist, node_t, list);
 }
 
 node_t *newtype(const YYLTYPE *);
@@ -253,7 +259,7 @@ void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 struct parsed_file {
 	struct list_head list;
 	const char *name;
-	node_t *parsed;
+	struct list_head parsed;
 	struct list_head raw;
 };
 

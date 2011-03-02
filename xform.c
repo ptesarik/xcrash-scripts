@@ -11,46 +11,40 @@
 #define QUILT	"quilt"
 
 typedef int walkfn(node_t *, void *);
-static void walk_tree(node_t *tree, walkfn *fn, void *data);
+static void walk_tree(struct list_head *tree, walkfn *fn, void *data);
 
 static void
-walk_tree_rec(node_t *tree, walkfn *fn, void *data)
+walk_tree_rec(struct list_head *tree, walkfn *fn, void *data)
 {
-	node_t *item = tree;
-	if (item->seen)
-		return;
-	do {
+	node_t *item;
+	list_for_each_entry(item, tree, list) {
+		if (item->seen)
+			continue;
+
 		if (fn(item, data))
 			break;
 		int i;
 		for (i = 0; i < item->nchild; ++i)
-			if (item->child[i])
-				walk_tree_rec(item->child[i], fn, data);
+			walk_tree_rec(&item->child[i], fn, data);
 		item->seen = 1;
-		item = list_entry(item->list.next, node_t, list);
-	} while (item != tree);
+	}
 }
 
 static void
-reset_seen(node_t *tree)
+reset_seen(struct list_head *tree)
 {
-	node_t *item = tree;
-	do {
+	node_t *item;
+	list_for_each_entry(item, tree, list) {
 		item->seen = 0;
 		int i;
 		for (i = 0; i < item->nchild; ++i)
-			if (item->child[i])
-				reset_seen(item->child[i]);
-
-		item = list_entry(item->list.next, node_t, list);
-	} while (item != tree);
+			reset_seen(&item->child[i]);
+	}
 }
 
 static void
-walk_tree(node_t *tree, walkfn *fn, void *data)
+walk_tree(struct list_head *tree, walkfn *fn, void *data)
 {
-	if (!tree)
-		return;
 	reset_seen(tree);
 	walk_tree_rec(tree, fn, data);
 }
@@ -62,8 +56,7 @@ walk_tree_single(node_t *tree, walkfn *fn, void *data)
 		return;
 	int i;
 	for (i = 0; i < tree->nchild; ++i)
-		if (tree->child[i])
-			walk_tree_rec(tree->child[i], fn, data);
+		walk_tree_rec(&tree->child[i], fn, data);
 	tree->seen = 1;
 }
 
@@ -258,22 +251,21 @@ is_direct_call(node_t *node, const char *name)
 	if (node->type != nt_expr || node->e.op != FUNC)
 		return 0;
 
-	node_t *fn = node->child[che_arg1];
+	node_t *fn = first_node(&node->child[che_arg1]);
 	return is_id(fn) && !strcmp(fn->e.str, name);
 }
 
 /* Get the @pos-th element from @list */
 static node_t *
-nth_element(node_t *list, int pos)
+nth_element(struct list_head *list, int pos)
 {
-	node_t *elem = list;
-	int i;
-	for (i = 1; i < pos; ++i) {
-		elem = list_entry(elem->list.next, node_t, list);
-		if (elem == list)
-			return NULL;
+	node_t *elem;
+	int i = 0;
+	list_for_each_entry(elem, list, list) {
+		if (++i == pos)
+			return elem;
 	}
-	return elem;
+	return NULL;
 }
 
 /************************************************************
@@ -387,22 +379,22 @@ mkstring_variadic(node_t *node, void *data)
 
 	/* Get the right typecast if necessary */
 	const char *typecast = NULL;
-	node_t *flags = nth_element(node->child[che_arg2], 3);
+	node_t *flags = nth_element(&node->child[che_arg2], 3);
 	walk_tree_single(flags, mkstring_typecast, &typecast);
 
 	/* Remove MKSTRING if necessary */
-	node_t *opt = nth_element(node->child[che_arg2], 4);
+	node_t *opt = nth_element(&node->child[che_arg2], 4);
 	if (is_direct_call(opt, "MKSTR")) {
-		remove_text_list(opt->first_text,
-				 opt->child[che_arg2]->first_text);
-		remove_text_list_rev(opt->last_text,
-				     opt->child[che_arg2]->last_text);
-		list_add(&opt->child[che_arg2]->list, &opt->list);
+		struct dynstr *oldstart = opt->first_text,
+			*oldend = opt->last_text;
+		freenode(first_node(&opt->child[che_arg1]));
+		list_add(&opt->child[che_arg2], &opt->list);
 		list_del(&opt->list);
-		freenode(opt->child[che_arg1]);
 		node_t *oldopt = opt;
-		opt = opt->child[che_arg2];
+		opt = first_node(&opt->child[che_arg2]);
 		freenode(oldopt);
+		remove_text_list(oldstart, opt->first_text);
+		remove_text_list_rev(oldend, opt->last_text);
 	}
 
 	/* Ensure correct typecast if necessary */
@@ -460,7 +452,7 @@ convert_readmem(node_t *node, void *data)
 	if (!is_direct_call(node, "readmem"))
 		return 0;
 
-	node_t *arg = nth_element(node->child[che_arg2], 4);
+	node_t *arg = nth_element(&node->child[che_arg2], 4);
 	if (arg->type != nt_expr) {
 		fputs("Huh?! Argument to call not an expression?\n", stderr);
 		return 0;
@@ -469,12 +461,14 @@ convert_readmem(node_t *node, void *data)
 	node_t *mult = NULL;
 	node_t *size = arg;
 	if (arg->e.op == '*') {
-		if (arg->child[che_arg1]->e.op == SIZEOF_TYPE) {
-			size = arg->child[che_arg1];
-			mult = arg->child[che_arg2];
-		} else if (arg->child[che_arg2]->e.op == SIZEOF_TYPE) {
-			mult = arg->child[che_arg1];
-			size = arg->child[che_arg2];
+		node_t *arg1 = first_node(&arg->child[che_arg1]);
+		node_t *arg2 = first_node(&arg->child[che_arg2]);
+		if (arg1->e.op == SIZEOF_TYPE) {
+			size = arg1;
+			mult = arg2;
+		} else if (arg2->e.op == SIZEOF_TYPE) {
+			mult = arg1;
+			size = arg2;
 		} else
 			/* not a recognized format */
 			return 0;
@@ -482,11 +476,11 @@ convert_readmem(node_t *node, void *data)
 		return 0;
 
 	/* Replace the function name */
-	char *newfn = get_read_fn(size->child[che_arg1]);
+	char *newfn = get_read_fn(first_node(&size->child[che_arg1]));
 	if (!newfn)
 		return 0;
-	node->child[che_arg1]->e.str = newfn;
-	replace_text(node->child[che_arg1], newfn);
+	first_node(&node->child[che_arg1])->e.str = newfn;
+	replace_text(first_node(&node->child[che_arg1]), newfn);
 
 	/* Replace the 4th argument */
 	if (mult) {
@@ -495,12 +489,14 @@ convert_readmem(node_t *node, void *data)
 		list_add(&mult->list, &arg->list);
 		list_del(&arg->list);
 	} else {
-		replace_text(arg, "1");
 		YYLTYPE loc;
-		loc.first_text = loc.last_text = arg->first_text;
-		node_t *one = newexprnum(&loc, "1");
+		struct dynstr *ds = newdynstr("1", 1);
+		loc.first_text = loc.last_text = ds;
+		node_t *one = newexprnum(&loc, ds->text);
 		list_add(&one->list, &arg->list);
 		list_del(&arg->list);
+		freenode(arg);
+		replace_text_list(arg->first_text, arg->last_text, ds, ds);
 	}
 	return 0;
 }
@@ -582,7 +578,7 @@ printf_spec(node_t *node, void *data)
 	else
 		return 0;
 
-	node_t *spec = nth_element(node->child[che_arg2], pos);
+	node_t *spec = nth_element(&node->child[che_arg2], pos);
 	walk_tree_single(spec, printf_spec_one, NULL);
 
 	return 0;
@@ -600,7 +596,7 @@ static int simple(const char *patchname, struct list_head *filelist,
 	struct parsed_file *pf;
 
 	list_for_each_entry(pf, filelist, list) {
-		walk_tree(pf->parsed, xform_fn, NULL);
+		walk_tree(&pf->parsed, xform_fn, NULL);
 	}
 	return quilt_new(patchname, filelist);
 }

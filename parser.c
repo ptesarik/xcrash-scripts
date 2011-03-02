@@ -91,7 +91,7 @@ static void dump_basic_type(type_t *type);
 static void dump_type(type_t *type, int showflags);
 static void dump_expr(expr_t *expr);
 static void dump_var(var_t *var);
-static void dump_tree(node_t *tree);
+static void dump_tree(struct list_head *tree);
 
 static int indent = 2;
 static int depth = -1;
@@ -301,37 +301,35 @@ static void dump_var(var_t *var)
 	printf("name: %s", var->name);
 }
 
-static void dump_tree(node_t *tree)
+static void dump_node(node_t *node)
 {
-	node_t *item = tree;
 	int i;
 
-	if (!tree)
-		return;
-
 	++depth;
-	do {
-		printf("%*s(", depth*indent, "");
-		dump_chunk(item->first_text, item->last_text);
-		printf("%*s", depth*indent, "");
-		switch (item->type) {
-		case nt_type: dump_type(&item->t, 1); break;
-		case nt_expr: dump_expr(&item->e); break;
-		case nt_var:  dump_var (&item->v); break;
-		case nt_decl: fputs("decl", stdout); break;
-		}
-		putchar('\n');
 
-		for (i = 0; i < item->nchild; ++i) {
-			if (!item->child[i])
-				continue;
-			dump_tree(item->child[i]);
-		}
-		printf("%*s)\n", depth*indent, "");
+	printf("%*s(", depth*indent, "");
+	dump_chunk(node->first_text, node->last_text);
+	printf("%*s", depth*indent, "");
+	switch (node->type) {
+	case nt_type: dump_type(&node->t, 1); break;
+	case nt_expr: dump_expr(&node->e); break;
+	case nt_var:  dump_var (&node->v); break;
+	case nt_decl: fputs("decl", stdout); break;
+	}
+	putchar('\n');
 
-		item = list_entry(item->list.next, node_t, list);
-	} while (item != tree);
+	for (i = 0; i < node->nchild; ++i)
+		dump_tree(&node->child[i]);
+	printf("%*s)\n", depth*indent, "");
+
 	--depth;
+}
+
+static void dump_tree(struct list_head *tree)
+{
+	node_t *item;
+	list_for_each_entry(item, tree, list)
+		dump_node(item);
 }
 
 static void dump_first_and_last(struct dynstr *ds)
@@ -340,10 +338,10 @@ static void dump_first_and_last(struct dynstr *ds)
 
 	printf("Used as first_text:\n");
 	list_for_each_entry(node, &ds->node_first, first_list)
-		dump_tree(node);
+		dump_node(node);
 	printf("Used as last_text:\n");
 	list_for_each_entry(node, &ds->node_last, last_list)
-		dump_tree(node);
+		dump_node(node);
 }
 
 #endif	/* DEBUG */
@@ -442,7 +440,7 @@ static int parse_file(const char *name)
 
 	fprintf(stderr, "Parsing file %s\n", name);
 
-	parsed_tree = NULL;
+	INIT_LIST_HEAD(&parsed_tree);
 	INIT_LIST_HEAD(&raw_contents);
 	INIT_LIST_HEAD(&raw_cpp);
 	lex_input_first = lex_input_last = NULL;
@@ -463,10 +461,10 @@ static int parse_file(const char *name)
 			return -1;
 		}
 		pf->name = name;
-		pf->parsed = parsed_tree;
-		pf->raw = raw_contents;
-		pf->raw.prev->next = &pf->raw;
-		pf->raw.next->prev = &pf->raw;
+		list_add_tail(&pf->parsed, &parsed_tree);
+		list_del_init(&parsed_tree);
+		list_add_tail(&pf->raw, &raw_contents);
+		list_del_init(&raw_contents);
 
 		list_add_tail(&pf->list, &files);
 	}
@@ -560,7 +558,7 @@ int main(int argc, char **argv)
 		struct parsed_file *pf;
 		list_for_each_entry(pf, &files, list) {
 			printf("File %s original\n", pf->name);
-			dump_tree(pf->parsed);
+			dump_tree(&pf->parsed);
 		}
 #endif
 		ret = xform_files(&arguments, &files);
@@ -568,7 +566,7 @@ int main(int argc, char **argv)
 #if DEBUG
 		list_for_each_entry(pf, &files, list) {
 			printf("File %s transformed\n", pf->name);
-			dump_tree(pf->parsed);
+			dump_tree(&pf->parsed);
 		}
 #endif
 	}
