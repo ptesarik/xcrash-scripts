@@ -115,11 +115,14 @@ static void hidedecls(node_t *);
 %token <str> ID TYPEID
 
 /* CPP tokens */
-%token <token> CPP_START CPP_DEFINE
+%token <token> CPP_DEFINE
 %token <token> CPP_CONCAT	"##"
 %token <str> CPP_IDARG
 
-/* pseudo-tokens */
+/* start symbol pseudo-tokens */
+%token START_DIRECTIVE
+
+/* other pseudo-tokens */
 %token ARRAY CONCAT FUNC LABEL RANGE SIZEOF_TYPE TYPECAST
 
 /* precedence */
@@ -194,7 +197,7 @@ translation_unit	: /* empty */
 				else
 					parsed_tree = $$ = $2;
 			}
-			| CPP_START directive
+			| START_DIRECTIVE directive
 			{
 				if ($2) {
 					if ( ($$ = parsed_tree) )

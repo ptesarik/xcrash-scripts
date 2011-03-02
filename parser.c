@@ -409,7 +409,7 @@ static void parse_macros(void)
 		list_del_init(&raw_contents);
 
 		cpp_input = ds;
-		first_token = CPP_START;
+		start_symbol = START_DIRECTIVE;
 		ret = yyparse();
 		if (ret) {
 			struct dynstr *it, *itnext;
@@ -446,7 +446,7 @@ static int parse_file(const char *name)
 	INIT_LIST_HEAD(&raw_contents);
 	INIT_LIST_HEAD(&raw_cpp);
 	cpp_input = NULL;
-	first_token = 0;
+	start_symbol = 0;
 	ret = yyparse();
 	if (yyin != stdin)
 		fclose(yyin);

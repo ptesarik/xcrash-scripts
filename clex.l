@@ -19,7 +19,7 @@
 #include "parser.h"
 #include "clang.tab.h"
 
-int first_token;
+int start_symbol;
 
 struct list_head raw_contents;
 struct list_head raw_cpp;
@@ -70,9 +70,9 @@ IS			(u|U|l|L)*
 
 %%
 %{
-	if (first_token) {
-		int ret = first_token;
-		first_token = 0;
+	if (start_symbol) {
+		int ret = start_symbol;
+		start_symbol = 0;
 		return ret;
 	}
 %}

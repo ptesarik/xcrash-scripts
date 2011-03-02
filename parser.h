@@ -18,8 +18,11 @@ struct dynstr *newdynstr(const char *, size_t);
 extern struct list_head raw_contents;
 extern struct list_head raw_cpp;
 
-/* If non-zero, this is the first token returned by the lexer */
-extern int first_token;
+/* If non-zero, this is the first token returned by the lexer
+ * It is used to override the parser's start symbol by forcing
+ * the lexer to return a special START_xxx pseudo-token.
+ */
+extern int start_symbol;
 
 /* If @cpp_input is non-NULL, then we're parsing CPP code from there */
 extern struct dynstr *cpp_input;
