@@ -267,6 +267,37 @@ nth_element(struct list_head *list, int pos)
 	return NULL;
 }
 
+/* Re-parse a node from the current raw contents */
+static node_t *
+reparse_node(node_t *node, int type)
+{
+	node_t *newnode;
+	int res;
+
+	INIT_LIST_HEAD(&parsed_tree);
+	INIT_LIST_HEAD(&raw_contents);
+	lex_input_first = node->first_text;
+	lex_input_last = node->last_text;
+	lex_cpp_mode = 0;
+	start_symbol = type;
+	res = yyparse();
+	yylex_destroy();
+
+	if (res != 0) {
+		/* This is fatal (for now) */
+		fprintf(stderr, "Reparsing failed with %d\n", res);
+		exit(1);
+	}
+
+	newnode = first_node(&parsed_tree);
+	replace_text_list(node->first_text, node->last_text,
+			  newnode->first_text, newnode->last_text);
+	list_add(&newnode->list, &node->list);
+	freenode(node);
+
+	return newnode;
+}
+
 /************************************************************
  * Use target types
  *
