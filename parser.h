@@ -218,7 +218,8 @@ void set_node_last(node_t *, struct dynstr *);
 static inline void
 set_node_child(node_t *parent, int pos, node_t *child)
 {
-	list_add_tail(&parent->child[pos], &child->list);
+	if (child)
+		list_add_tail(&parent->child[pos], &child->list);
 }
 
 static inline node_t *
