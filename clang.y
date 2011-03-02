@@ -31,6 +31,8 @@ static void unhidetypedefs(void);
 static void hidefnparams(declarator_t *);
 static void hidedecls(node_t *);
 
+static node_t *parsed_tree_add(node_t *);
+
 # define YYLLOC_DEFAULT(Current, Rhs, N)				\
     do									\
       if (N)								\
@@ -189,24 +191,11 @@ static void hidedecls(node_t *);
 %%
 
 translation_unit	: /* empty */
-			{ $$ = parsed_tree; }
+			{ $$ = parsed_tree_add(NULL); }
 			| translation_unit external_decl
-			{
-				if ( ($$ = parsed_tree) )
-					list_add_tail(&$2->list, &$$->list);
-				else
-					parsed_tree = $$ = $2;
-			}
+			{ $$ = parsed_tree_add($2); }
 			| START_DIRECTIVE directive
-			{
-				if ($2) {
-					if ( ($$ = parsed_tree) )
-						list_add_tail(&$2->list,
-							      &$$->list);
-					else
-						parsed_tree = $$ = $2;
-				}
-			}
+			{ $$ = parsed_tree_add($2); }
 			;
 
 directive		: CPP_DEFINE macro_def
@@ -1411,4 +1400,16 @@ hidefnparams(declarator_t *first)
 
 		decl = list_entry(decl->list.next, declarator_t, list);
 	} while (decl != first);
+}
+
+static node_t *
+parsed_tree_add(node_t *newtree)
+{
+	if (newtree) {
+		if (parsed_tree)
+			list_add_tail(&newtree->list, &parsed_tree->list);
+		else
+			parsed_tree = newtree;
+	}
+	return parsed_tree;
 }
