@@ -205,6 +205,9 @@ extern int typedef_ign;		/* treat typedefs as regular identifiers */
 node_t *newnode(const YYLTYPE *, enum node_type, int);
 void freenode(node_t *);
 
+void set_node_first(node_t *, struct dynstr *);
+void set_node_last(node_t *, struct dynstr *);
+
 node_t *newtype(const YYLTYPE *);
 node_t *newtype_name(const YYLTYPE *, const char *);
 node_t *newtype_int(const YYLTYPE *);

@@ -412,7 +412,7 @@ basic_type_list		: BASIC_TYPE
 				    $$->t.btype & TYPE_LONG)
 					$$->t.btype |= TYPE_LONGLONG;
 				$$->t.btype |= $2;
-				$$->last_text = @2.last_text;
+				set_node_last($$, @2.last_text);
 			}
 			;
 
@@ -422,7 +422,7 @@ struct_or_union_spec	: struct_or_union { typedef_ign = 1; }
 				$$ = $4;
 				$$->t.category = $1;
 				type_add_attr($$, $3);
-				$$->first_text = @$.first_text;
+				set_node_first($$, @$.first_text);
 			}
 			;
 
@@ -488,7 +488,7 @@ enum_spec		: ENUM { typedef_ign = 1; } opt_attr enum_desc
 				$$ = $4;
 				$$->t.category = type_enum;
 				type_add_attr($$, $3);
-				$$->first_text = @$.first_text;
+				set_node_first($$, @$.first_text);
 			}
 			;
 
@@ -696,8 +696,8 @@ _type_name		: spec_qualifier_list
 				$$ = $2->abstract.tree;
 				$$->t.flags = $1->t.flags;
 				free($2);
-				$$->first_text = @$.first_text;
-				$$->last_text = @$.last_text;
+				set_node_first($$, @$.first_text);
+				set_node_last($$, @$.last_text);
 			}
 			| TYPEOF '(' expr ')'
 			{
@@ -1065,6 +1065,20 @@ freenode(node_t *node)
 	list_del(&node->first_list);
 	list_del(&node->last_list);
 	free(node);
+}
+
+void
+set_node_first(node_t *node, struct dynstr *ds)
+{
+	node->first_text = ds;
+	list_move(&node->first_list, &ds->node_first);
+}
+
+void
+set_node_last(node_t *node, struct dynstr *ds)
+{
+	node->last_text = ds;
+	list_move(&node->last_list, &ds->node_last);
 }
 
 node_t *

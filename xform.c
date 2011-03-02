@@ -210,8 +210,6 @@ replace_text(node_t *node, const char *text)
 {
 	struct dynstr *ds = newdynstr(text, strlen(text));
 	replace_text_list(node->first_text, node->last_text, ds, ds);
-
-	node->first_text = node->last_text = ds;
 }
 
 /* Remove text nodes from @remove up to, but not including @keep. */

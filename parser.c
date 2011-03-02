@@ -362,10 +362,8 @@ void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 
 	it = &oldfirst->list;
 	ds = list_entry(it, struct dynstr, list);
-	list_for_each_entry_safe(node, nnode, &ds->node_first, first_list) {
-		node->first_text = ds;
-		list_move(&node->first_list, &newfirst->node_first);
-	}
+	list_for_each_entry_safe(node, nnode, &ds->node_first, first_list)
+		set_node_first(node, newfirst);
 
 	while (it != &oldlast->list) {
 		ds = list_entry(it, struct dynstr, list);
@@ -385,10 +383,8 @@ void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 	}
 	
 	ds = list_entry(it, struct dynstr, list);
-	list_for_each_entry_safe(node, nnode, &ds->node_last, last_list) {
-		node->last_text = ds;
-		list_move(&node->last_list, &newlast->node_last);
-	}
+	list_for_each_entry_safe(node, nnode, &ds->node_last, last_list)
+		set_node_last(node, newlast);
 }
 
 int dump_contents(struct list_head *contents, FILE *f)
