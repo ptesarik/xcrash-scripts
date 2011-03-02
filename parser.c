@@ -332,18 +332,6 @@ static void dump_tree(struct list_head *tree)
 		dump_node(item);
 }
 
-static void dump_first_and_last(struct dynstr *ds)
-{
-	node_t *node;
-
-	printf("Used as first_text:\n");
-	list_for_each_entry(node, &ds->node_first, first_list)
-		dump_node(node);
-	printf("Used as last_text:\n");
-	list_for_each_entry(node, &ds->node_last, last_list)
-		dump_node(node);
-}
-
 #endif	/* DEBUG */
 
 void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
@@ -365,17 +353,10 @@ void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 
 	while (it != &oldlast->list) {
 		ds = list_entry(it, struct dynstr, list);
+		list_del(&ds->node_first);
+		list_del(&ds->node_last);
+
 		next = it->next;
-		if (!list_empty(&ds->node_first) ||
-		    !list_empty(&ds->node_last)) {
-			/* This is fatal (for now) */
-			fprintf(stderr, "String >>>%s<<< still in use"
-				" while replacing!\n", ds->text);
-#if DEBUG
-			dump_first_and_last(ds);
-#endif
-			exit(1);
-		}
 		free(ds);
 		it = next;
 	}
