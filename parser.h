@@ -225,7 +225,7 @@ set_node_child(node_t *parent, int pos, node_t *child)
 static inline node_t *
 first_node(struct list_head *nodelist)
 {
-	return list_entry(nodelist, node_t, list);
+	return list_entry(nodelist->next, node_t, list);
 }
 
 node_t *newtype(const YYLTYPE *);
