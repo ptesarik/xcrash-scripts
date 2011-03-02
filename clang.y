@@ -394,9 +394,9 @@ storage_class_spec	: AUTO		{ $$ = TF_AUTO; }
 			;
 
 type_spec		: basic_type_list
+			| typedef_name
 			| struct_or_union_spec
 			| enum_spec
-			| typedef_name
 			;
 
 basic_type_list		: BASIC_TYPE
@@ -413,6 +413,13 @@ basic_type_list		: BASIC_TYPE
 					$$->t.btype |= TYPE_LONGLONG;
 				$$->t.btype |= $2;
 				set_node_last($$, @2.last_text);
+			}
+			;
+
+typedef_name		: TYPEID
+			{
+				$$ = newtype_name(&@$, $1);
+				$$->t.category = type_typedef;
 			}
 			;
 
@@ -752,12 +759,6 @@ abstract_param_declarator:
 				$$.stub = &type->child[cht_type];
 			}
 			;
-
-typedef_name		: TYPEID
-			{
-				$$ = newtype_name(&@$, $1);
-				$$->t.category = type_typedef;
-			}
 
 stat			: ID ':' stat
 			{ $$ = newexpr1(&@$, LABEL, $3); }
