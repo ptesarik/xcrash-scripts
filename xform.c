@@ -605,6 +605,38 @@ static int simple(const char *patchname, struct list_head *filelist,
 	return quilt_new(patchname, filelist);
 }
 
+/* Remove the definition of a named struct */
+static int
+remove_struct_fn(node_t *node, void *data)
+{
+	const char *name = data;
+	if (node->type != nt_decl)
+		return 0;
+
+	node_t *type = nth_element(&node->child[chd_type], 1);
+	if (type && type->type == nt_type &&
+	    type->t.category == type_struct &&
+	    !strcmp(type->t.name, name)) {
+		remove_text_list(node->first_text,
+				 next_dynstr(node->last_text));
+		freenode(node);
+	}
+	return 0;
+}
+
+static int
+remove_struct(const char *patchname, struct list_head *filelist,
+	      void *arg)
+{
+	struct parsed_file *pf;
+
+	update_parsed_files(filelist);
+	list_for_each_entry(pf, filelist, list) {
+		walk_tree(&pf->parsed, remove_struct_fn, arg);
+	}
+	return quilt_new(patchname, filelist);
+}
+
 /************************************************************
  * Main entry point for the transformations
  *
@@ -686,6 +718,9 @@ static struct xform_desc xforms[] = {
 
 // Provide platform-independent struct pt_regs
 { "arch-pt-regs.patch", import },
+
+// Remove struct ppc64_pt_regs
+{ "remove-ppc64_pt_regs.patch", remove_struct,  "ppc64_pt_regs" },
 
 // Use platform-independent pt_regs
 // TBD
