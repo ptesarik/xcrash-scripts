@@ -597,8 +597,11 @@ static int simple(const char *patchname, struct list_head *filelist,
 		  void *xform_fn)
 {
 	struct parsed_file *pf;
+	int res;
 
-	update_parsed_files(filelist);
+	if ( (res = update_parsed_files(filelist)) )
+		return res;
+
 	list_for_each_entry(pf, filelist, list) {
 		walk_tree(&pf->parsed, xform_fn, NULL);
 	}
@@ -636,12 +639,15 @@ rename_struct(const char *patchname, struct list_head *filelist,
 {
 	struct parsed_file *pf;
 	struct rename_data rd;
+	int res;
 
 	rd.oldname = arg;
 	rd.newname = arg + strlen(arg) + 1;
 	rd.newlen = strlen(rd.newname);
 
-	update_parsed_files(filelist);
+	if ( (res = update_parsed_files(filelist)) )
+		return res;
+
 	list_for_each_entry(pf, filelist, list) {
 		walk_tree(&pf->parsed, rename_struct_fn, &rd);
 	}
@@ -672,8 +678,11 @@ remove_struct(const char *patchname, struct list_head *filelist,
 	      void *arg)
 {
 	struct parsed_file *pf;
+	int res;
 
-	update_parsed_files(filelist);
+	if ( (res = update_parsed_files(filelist)) )
+		return res;
+
 	list_for_each_entry(pf, filelist, list) {
 		walk_tree(&pf->parsed, remove_struct_fn, arg);
 	}
