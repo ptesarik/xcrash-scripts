@@ -375,6 +375,37 @@ int dump_contents(struct list_head *contents, FILE *f)
 	return 0;
 }
 
+/* Re-parse a node from the current raw contents */
+node_t *reparse_node(node_t *node, int type)
+{
+	node_t *newnode;
+	int res;
+
+	INIT_LIST_HEAD(&parsed_tree);
+	INIT_LIST_HEAD(&raw_contents);
+	lex_input_first = node->first_text;
+	lex_input_last = node->last_text;
+	lex_cpp_mode = 0;
+	start_symbol = type;
+	res = yyparse();
+	yylex_destroy();
+
+	if (res != 0) {
+		/* This is fatal (for now) */
+		fprintf(stderr, "Reparsing failed with %d\n", res);
+		exit(1);
+	}
+
+	newnode = first_node(&parsed_tree);
+	replace_text_list(node->first_text, node->last_text,
+			  newnode->first_text, newnode->last_text);
+	list_add(&newnode->list, &node->list);
+	freenode(node);
+
+	return newnode;
+}
+
+/* Parse macro bodies saved during the first stage */
 static void parse_macros(void)
 {
 	struct dynstr *ds, *next;
@@ -411,16 +442,25 @@ static void parse_macros(void)
 	}
 }
 
-int parse_file(const char *name)
+/* Parse an external file */
+int parse_file(struct parsed_file *pf)
 {
+	node_t *node, *nextnode;
+	struct dynstr *ds, *nextds;
 	int ret;
 
-	if (!strcmp(name, "-"))
+	/* Clean up any respective old contents first */
+	list_for_each_entry_safe(node, nextnode, &pf->parsed, list)
+		freenode(node);
+	list_for_each_entry_safe(ds, nextds, &pf->raw, list)
+		free(ds);
+
+	if (!strcmp(pf->name, "-"))
 		yyin = stdin;
 	else
-		yyin = fopen(name, "r");
+		yyin = fopen(pf->name, "r");
 
-	fprintf(stderr, "Parsing file %s\n", name);
+	fprintf(stderr, "Parsing file %s\n", pf->name);
 
 	INIT_LIST_HEAD(&parsed_tree);
 	INIT_LIST_HEAD(&raw_contents);
@@ -436,23 +476,31 @@ int parse_file(const char *name)
 	if (ret) {
 		fprintf(stderr, "Parser failed with %d\n", ret);
 	} else {
-		struct parsed_file *pf;
-		
 		parse_macros();
-		if (! (pf = malloc(sizeof(struct parsed_file))) ) {
-			perror("Cannot allocate parsed file");
-			return -1;
-		}
-		pf->name = name;
+
 		list_add_tail(&pf->parsed, &parsed_tree);
 		list_del_init(&parsed_tree);
 		list_add_tail(&pf->raw, &raw_contents);
 		list_del_init(&raw_contents);
-
-		list_add_tail(&pf->list, &files);
 	}
 
 	return ret;
+}
+
+static int add_file(const char *name)
+{
+	struct parsed_file *pf;
+
+	if (! (pf = malloc(sizeof(struct parsed_file))) ) {
+		perror("Cannot allocate parsed file");
+		return -1;
+	}
+
+	pf->name = name;
+	INIT_LIST_HEAD(&pf->parsed);
+	INIT_LIST_HEAD(&pf->raw);
+	list_add_tail(&pf->list, &files);
+	return 0;
 }
 
 static char *
@@ -529,10 +577,10 @@ int main(int argc, char **argv)
 
 	init_predef_types();
 	if (i >= argc)
-		ret = parse_file("-");
+		ret = add_file("-");
 	else {
 		while(i < argc)
-			if ( (ret = parse_file(argv[i++])) )
+			if ( (ret = add_file(argv[i++])) )
 				break;
 	}
 

@@ -10,7 +10,7 @@
 
 #define QUILT	"quilt"
 
-static int need_new_parsing;
+static int uptodate;
 
 typedef int walkfn(node_t *, void *);
 static void walk_tree(struct list_head *tree, walkfn *fn, void *data);
@@ -168,7 +168,7 @@ quilt_import(const char *name)
 		return res;
 
 	/* All files must be re-read to reflect the change */
-	need_new_parsing = 1;
+	uptodate = 0;
 
 	return run_command(QUILT, quilt_refresh_argv);
 }
@@ -270,37 +270,6 @@ nth_element(struct list_head *list, int pos)
 			return elem;
 	}
 	return NULL;
-}
-
-/* Re-parse a node from the current raw contents */
-static node_t *
-reparse_node(node_t *node, int type)
-{
-	node_t *newnode;
-	int res;
-
-	INIT_LIST_HEAD(&parsed_tree);
-	INIT_LIST_HEAD(&raw_contents);
-	lex_input_first = node->first_text;
-	lex_input_last = node->last_text;
-	lex_cpp_mode = 0;
-	start_symbol = type;
-	res = yyparse();
-	yylex_destroy();
-
-	if (res != 0) {
-		/* This is fatal (for now) */
-		fprintf(stderr, "Reparsing failed with %d\n", res);
-		exit(1);
-	}
-
-	newnode = first_node(&parsed_tree);
-	replace_text_list(node->first_text, node->last_text,
-			  newnode->first_text, newnode->last_text);
-	list_add(&newnode->list, &node->list);
-	freenode(node);
-
-	return newnode;
 }
 
 /************************************************************
@@ -586,32 +555,19 @@ printf_spec(node_t *node, void *data)
 
 static int update_parsed_files(struct list_head *filelist)
 {
-	struct parsed_file *pf, *nextpf;
-	struct list_head oldlist;
-	int res;
+	struct parsed_file *pf;
 
-	if (!need_new_parsing)
+	if (uptodate)
 		return 0;
 
-	list_add(&oldlist, filelist);
-	list_del_init(filelist);
-
 	init_predef_types();
-	list_for_each_entry_safe(pf, nextpf, &oldlist, list) {
-		node_t *node, *nextnode;
-		struct dynstr *ds, *nextds;
-		list_for_each_entry_safe(node, nextnode, &pf->parsed, list)
-			freenode(node);
-		list_for_each_entry_safe(ds, nextds, &pf->raw, list)
-			free(ds);
-
-		res = parse_file(pf->name);
+	list_for_each_entry(pf, filelist, list) {
+		int res = parse_file(pf);
 		if (res)
 			return res;
-		free(pf);
 	}
 
-	need_new_parsing = 0;
+	uptodate = 1;
 	return 0;
 }
 
