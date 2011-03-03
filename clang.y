@@ -121,6 +121,7 @@ static void hidedecls(struct list_head *);
 %token <str> CPP_IDARG
 
 /* start symbol pseudo-tokens */
+%token START_TYPE_NAME
 %token START_EXPR
 %token START_DIRECTIVE
 
@@ -190,6 +191,8 @@ static void hidedecls(struct list_head *);
 
 translation_unit	: /* empty */
 			| translation_unit external_decl
+			{ list_add_tail(&$2->list, &parsed_tree); }
+			| START_TYPE_NAME type_name
 			{ list_add_tail(&$2->list, &parsed_tree); }
 			| START_EXPR expr
 			{ list_add_tail(&$2->list, &parsed_tree); }
