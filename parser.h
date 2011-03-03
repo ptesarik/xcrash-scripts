@@ -19,6 +19,9 @@ struct dynstr *newdynstr(const char *, size_t);
 	(list_entry((ds)->list.next, struct dynstr, list))
 #define prev_dynstr(ds)	\
 	(list_entry((ds)->list.prev, struct dynstr, list))
+#define text_dynstr(ptr) ({	\
+        const char *__mptr = (ptr);	\
+        (struct dynstr *)(__mptr - offsetof(struct dynstr,text) );})
 
 extern struct list_head raw_contents;
 extern struct list_head raw_cpp;
