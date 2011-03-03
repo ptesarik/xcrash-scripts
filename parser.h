@@ -206,6 +206,7 @@ extern int tabsize;
 void cleartypedefs(void);
 void addtypedef(const char *name);
 int istypedef(const char *name);
+void init_predef_types(void);
 
 extern int typedef_ign;		/* treat typedefs as regular identifiers */
 

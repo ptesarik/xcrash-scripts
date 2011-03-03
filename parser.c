@@ -16,7 +16,7 @@ void (*signal(int sig, void (*func)(int handler_sig)))(int oldhandler_sig);
 #define DEBUG	1
 #undef DEBUG
 
-const char *predef_types[] = {
+static const char *predef_types[] = {
 	"__time_t",		/* from types.h */
 	"Bytef",		/* from zlib.h */
 	"Elf32_Ehdr",
@@ -98,13 +98,12 @@ static int depth = -1;
 
 #endif	/* DEBUG */
 
-static void init_types(const char **types)
+void init_predef_types(void)
 {
+	const char **p;
 	cleartypedefs();
-	while (*types) {
-		addtypedef(*types);
-		++types;
-	}
+	for (p = predef_types; *p; ++p)
+		addtypedef(*p);
 }
 
 #if DEBUG
@@ -528,7 +527,7 @@ int main(int argc, char **argv)
 	/* Parse arguments */
 	argp_parse(&argp, argc, argv, 0, &i, &arguments);
 
-	init_types(predef_types);
+	init_predef_types();
 	if (i >= argc)
 		ret = parse_file("-");
 	else {
