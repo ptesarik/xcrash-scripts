@@ -588,6 +588,7 @@ int main(int argc, char **argv)
 #if DEBUG
 		struct parsed_file *pf;
 		list_for_each_entry(pf, &files, list) {
+			parse_file(pf);
 			printf("File %s original\n", pf->name);
 			dump_tree(&pf->parsed);
 		}
