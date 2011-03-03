@@ -605,6 +605,49 @@ static int simple(const char *patchname, struct list_head *filelist,
 	return quilt_new(patchname, filelist);
 }
 
+/* Rename a struct */
+
+struct rename_data {
+	const char *oldname;
+	const char *newname;
+	size_t newlen;
+};
+
+#define TO	"\0"
+
+static int
+rename_struct_fn(node_t *node, void *data)
+{
+	struct rename_data *rd = data;
+
+	if (node->type == nt_type && node->t.category == type_struct &&
+	    node->t.name && !strcmp(node->t.name, rd->oldname)) {
+		struct dynstr *oldds = text_dynstr(node->t.name);
+		struct dynstr *newds = newdynstr(rd->newname, rd->newlen);
+		replace_text_list(oldds, oldds, newds, newds);
+		node->t.name = newds->text;
+	}
+	return 0;
+}
+
+static int
+rename_struct(const char *patchname, struct list_head *filelist,
+	       void *arg)
+{
+	struct parsed_file *pf;
+	struct rename_data rd;
+
+	rd.oldname = arg;
+	rd.newname = arg + strlen(arg) + 1;
+	rd.newlen = strlen(rd.newname);
+
+	update_parsed_files(filelist);
+	list_for_each_entry(pf, filelist, list) {
+		walk_tree(&pf->parsed, rename_struct_fn, &rd);
+	}
+	return quilt_new(patchname, filelist);
+}
+
 /* Remove the definition of a named struct */
 static int
 remove_struct_fn(node_t *node, void *data)
@@ -708,7 +751,8 @@ static struct xform_desc xforms[] = {
 { "target-timeval.patch", import },
 
 // Use target timeval
-// TBD
+{ "target-timeval-use.patch", rename_struct,
+		"timeval" TO "ttimeval" },
 
 // Introduce target off_t
 { "target-off_t.patch", import },
@@ -721,6 +765,10 @@ static struct xform_desc xforms[] = {
 
 // Remove struct ppc64_pt_regs
 { "remove-ppc64_pt_regs.patch", remove_struct,  "ppc64_pt_regs" },
+
+// Replace remaining ppc64_pt_regs with pt_regs_ppc64
+{ "pt-regs-ppc64.patch", rename_struct,
+		"ppc64_pt_regs" TO "pt_regs_ppc64" },
 
 // Use platform-independent pt_regs
 // TBD
