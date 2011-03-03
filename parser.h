@@ -268,4 +268,5 @@ struct parsed_file {
 	struct list_head raw;
 };
 
+int parse_file(const char *name);
 int xform_files(struct arguments *, struct list_head *);

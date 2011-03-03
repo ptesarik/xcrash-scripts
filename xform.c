@@ -10,6 +10,8 @@
 
 #define QUILT	"quilt"
 
+static int need_new_parsing;
+
 typedef int walkfn(node_t *, void *);
 static void walk_tree(struct list_head *tree, walkfn *fn, void *data);
 
@@ -164,7 +166,10 @@ quilt_import(const char *name)
 
 	if ( (res = run_command(QUILT, quilt_push_argv)) )
 		return res;
-	
+
+	/* All files must be re-read to reflect the change */
+	need_new_parsing = 1;
+
 	return run_command(QUILT, quilt_refresh_argv);
 }
 
@@ -579,6 +584,38 @@ printf_spec(node_t *node, void *data)
 	return 0;
 }
 
+static int update_parsed_files(struct list_head *filelist)
+{
+	struct parsed_file *pf, *nextpf;
+	struct list_head oldlist;
+	int res;
+
+	if (!need_new_parsing)
+		return 0;
+
+	list_add(&oldlist, filelist);
+	list_del_init(filelist);
+
+	init_predef_types();
+	list_for_each_entry_safe(pf, nextpf, &oldlist, list) {
+		node_t *node, *nextnode;
+		struct dynstr *ds, *nextds;
+		list_for_each_entry_safe(node, nextnode, &pf->parsed, list)
+			freenode(node);
+		list_for_each_entry_safe(ds, nextds, &pf->raw, list)
+			free(ds);
+
+		res = parse_file(pf->name);
+		if (res)
+			return res;
+		free(pf);
+	}
+
+	need_new_parsing = 0;
+	return 0;
+}
+
+
 static int import(const char *patchname, struct list_head *flist, void *arg)
 {
 	return quilt_import(patchname);
@@ -590,6 +627,7 @@ static int simple(const char *patchname, struct list_head *filelist,
 {
 	struct parsed_file *pf;
 
+	update_parsed_files(filelist);
 	list_for_each_entry(pf, filelist, list) {
 		walk_tree(&pf->parsed, xform_fn, NULL);
 	}

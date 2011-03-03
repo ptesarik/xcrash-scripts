@@ -411,7 +411,7 @@ static void parse_macros(void)
 	}
 }
 
-static int parse_file(const char *name)
+int parse_file(const char *name)
 {
 	int ret;
 
