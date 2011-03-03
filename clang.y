@@ -1332,6 +1332,21 @@ mkhash(const char *s)
 	return ret % HASH_SIZE;
 }
 
+void
+cleartypedefs(void)
+{
+	unsigned hash;
+	for (hash = 0; hash < HASH_SIZE; ++hash) {
+		struct hashed_type *ht, *next;
+		next = typedefs[hash];
+		typedefs[hash] = NULL;
+		while ( (ht = next) ) {
+			next = ht->next;
+			free(ht);
+		}
+	}
+}
+
 int
 istypedef(const char *name)
 {

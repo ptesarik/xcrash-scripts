@@ -100,6 +100,7 @@ static int depth = -1;
 
 static void init_types(const char **types)
 {
+	cleartypedefs();
 	while (*types) {
 		addtypedef(*types);
 		++types;

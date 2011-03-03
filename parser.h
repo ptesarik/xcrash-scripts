@@ -203,6 +203,7 @@ int yylex_destroy(void);
 extern int tabsize;
 
 /* Typedef hash */
+void cleartypedefs(void);
 void addtypedef(const char *name);
 int istypedef(const char *name);
 
