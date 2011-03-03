@@ -347,6 +347,21 @@ static int target_types(node_t *item, void *data)
 	return 0;
 }
 
+/* Replace sizeof pointers with target pointers */
+static int target_ptr(node_t *node, void *data)
+{
+	if (! (node->type == nt_expr && node->e.op == SIZEOF_TYPE) )
+		return 0;
+
+	node_t *arg = nth_element(&node->child[che_arg1], 1);
+	if (arg->type == nt_type && arg->t.category == type_pointer) {
+		replace_text(arg, "tptr");
+		reparse_node(arg, START_TYPE_NAME);
+	}
+
+	return 0;
+}
+
 /************************************************************
  * Translate calls to mkstring()
  *
@@ -651,6 +666,11 @@ static struct xform_desc xforms[] = {
 
 // Use target types
 { "target-types-use.patch", simple, target_types },
+
+// Target pointer types are trickier, but let's change the size
+// where they are read and find out later where the size of the
+// variable needs adjustment
+{ "sizeof-target-ptr.patch", simple, target_ptr },
 
 // Introduce target timeval
 { "target-timeval.patch", import },
