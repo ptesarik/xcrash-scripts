@@ -405,14 +405,25 @@ node_t *reparse_node(node_t *node, int type)
 	return newnode;
 }
 
+static void
+discard_tail_nodes(struct list_head *list, struct list_head *first)
+{
+	while (list->prev != first)
+		freenode(last_node(list));
+}
+
 /* Parse macro bodies saved during the first stage */
 static void parse_macros(void)
 {
 	struct dynstr *ds, *next;
 
 	list_for_each_entry_safe(ds, next, &raw_cpp, cpp_list) {
+		struct list_head *lastroot;
 		struct list_head savedraw;
 		int ret;
+
+		/* Save the original last tree root node */
+		lastroot = parsed_tree.prev;
 
 		/* Save the original raw list and start a new one */
 		list_add(&savedraw, &raw_contents);
@@ -427,6 +438,7 @@ static void parse_macros(void)
 			list_for_each_entry_safe(it, itnext,
 						 &raw_contents, list)
 				free(it);
+			discard_tail_nodes(&parsed_tree, lastroot);
 		} else {
 			struct dynstr *first, *last;
 			first = list_entry(raw_contents.next,

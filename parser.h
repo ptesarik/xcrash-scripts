@@ -236,6 +236,12 @@ first_node(struct list_head *nodelist)
 	return list_entry(nodelist->next, node_t, list);
 }
 
+static inline node_t *
+last_node(struct list_head *nodelist)
+{
+	return list_entry(nodelist->prev, node_t, list);
+}
+
 node_t *newtype(const YYLTYPE *);
 node_t *newtype_name(const YYLTYPE *, const char *);
 node_t *newtype_int(const YYLTYPE *);
