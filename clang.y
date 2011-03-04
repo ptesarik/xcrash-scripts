@@ -150,7 +150,8 @@ static void hidedecls(struct list_head *);
 %type <abstract> pointer array_declarator direct_suffix_declarator
 %type <abstract> param_declarator abstract_param_declarator
 
-%type <declarator> declarator declarator_list direct_declarator 
+%type <declarator> declarator direct_declarator
+%type <declarator> func_declarators func_declarator direct_func_declarator
 %type <declarator> init_declarator init_declarator_list
 %type <declarator> struct_declarator struct_declarator_list
 %type <declarator> abstract_declarator direct_abstract_declarator
@@ -250,27 +251,27 @@ external_decl		: func_def
 			| decl
 			;
 
-func_def		: type_decl declarator_list decl_list compound_stat
+func_def		: type_decl func_declarators decl_list compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, $1, $2);
 				set_node_child($$, chd_decl, $3);
 				set_node_child($$, chd_body, $4);
 			}
-			| type_decl declarator_list           compound_stat
+			| type_decl func_declarators           compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, $1, $2);
 				set_node_child($$, chd_body, $3);
 			}
-			|           declarator_list decl_list compound_stat
+			|           func_declarators decl_list compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, newtype_int(&@$), $1);
 				set_node_child($$, chd_decl, $2);
 				set_node_child($$, chd_body, $3);
 			}
-			|           declarator_list           compound_stat
+			|           func_declarators           compound_stat
 			{
 				unhidetypedefs();
 				$$ = newdecl(&@$, newtype_int(&@$), $1);
@@ -279,12 +280,12 @@ func_def		: type_decl declarator_list decl_list compound_stat
 			;
 
 /* HACK to cope with multiple #ifdef'd functions in unwind.c */
-declarator_list		: declarator
+func_declarators	: func_declarator
 			{
 				hidefnparams($1);
 				$$ = $1;
 			}
-			| declarator_list declarator
+			| func_declarators func_declarator
 			{
 				hidefnparams($2);
 				list_add_tail(&$2->list, &$1->list);
@@ -598,6 +599,21 @@ id_or_typeid		: ID
 direct_suffix_declarator: array_declarator
 			| param_declarator
 
+func_declarator		: pointer direct_func_declarator
+			{
+				$$ = $2;
+				link_abstract($$, &$1);
+			}
+			|         direct_func_declarator
+			;
+
+direct_func_declarator	: ID param_declarator
+			{
+				$$ = newdeclarator();
+				$$->var = newvar(&@1, $1);
+				link_abstract($$, &$2);
+			}
+			;
 
 param_declarator	: '(' param_type_or_idlist ')'
 			{
