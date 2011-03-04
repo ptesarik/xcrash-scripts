@@ -234,9 +234,7 @@ IS			(u|U|l|L)*
 3DLABS({L}|{D})*	{	/* HACK */
 				int type;
 				yylval.str = yylloc.first_text->text;
-				if (typedef_ign)
-					--typedef_ign;
-				else if( (type = lex_input_type()) >= 0)
+				if( (type = lex_input_type()) >= 0)
 					return type;
 				else if (istypedef(yytext))
 					return TYPEID;
@@ -278,14 +276,11 @@ int yywrap(void)
 
 int tabsize = 8;
 
-int typedef_ign;
-
 static struct dynstr *curds;
 static size_t curdsoff;
 
 static void init_vars(void)
 {
-	typedef_ign = 0;
 	eof_seen = 0;
 	if (lex_input_first) {
 		lex_input = lex_input_first;

@@ -139,9 +139,11 @@ static void hidedecls(struct list_head *);
 
 %type <tflags> storage_class_spec type_qualifier type_qualifier_list
 
+%type <str> id_or_typeid
+
 /* type type */
 %type <node> type_decl opt_notype_decl notype_decl
-%type <node> type_name _type_name typedef_name
+%type <node> type_name typedef_name
 %type <node> type_spec basic_type_list spec_qualifier_list
 %type <node> struct_or_union_spec struct_desc enum_spec enum_desc
 
@@ -168,7 +170,7 @@ static void hidedecls(struct list_head *);
 
 /* decl type */
 %type <node> external_decl func_def decl_list decl
-%type <node> param_decl _param_decl param_list param_type_list
+%type <node> param_decl param_list param_type_list
 %type <node> param_type_or_idlist
 %type <node> struct_body struct_decl_list struct_decl
 
@@ -305,7 +307,7 @@ decl			: type_decl init_declarator_list ';'
 				$$ = newdecl(&@$, $1, $2);
 			}
 			| type_decl                      ';'
-			{ typedef_ign = 0; $$ = newdecl(&@$, $1, NULL); }
+			{ $$ = newdecl(&@$, $1, NULL); }
 			;
 
 type_decl		: notype_decl
@@ -316,10 +318,6 @@ type_decl		: notype_decl
 					type_merge($$, $1);
 				if ($3)
 					type_merge($$, $3);
-				if (yychar == TYPEID)
-					yychar = ID;
-				else if (yychar != ID)
-					typedef_ign = 1;
 			}
 			;
 
@@ -421,12 +419,11 @@ typedef_name		: TYPEID
 			}
 			;
 
-struct_or_union_spec	: struct_or_union { typedef_ign = 1; }
-				opt_attr struct_desc
+struct_or_union_spec	: struct_or_union opt_attr struct_desc
 			{
-				$$ = $4;
+				$$ = $3;
 				$$->t.category = $1;
-				type_add_attr($$, $3);
+				type_add_attr($$, $2);
 				set_node_first($$, @$.first_text);
 			}
 			;
@@ -435,22 +432,22 @@ struct_or_union		: STRUCT	{ $$ = type_struct; }
 			| UNION		{ $$ = type_union; }
 			;
 
-struct_desc		: ID     struct_body
+struct_desc		: id_or_typeid struct_body
 			{
 				$$ = newtype_name(&@$, $1);
 				set_node_child($$, cht_body, $2);
 			}
-			|        struct_body
+			|              struct_body
 			{
 				$$ = newtype(&@$);
 				set_node_child($$, cht_body, $1);
 			}
-			| ID
+			| id_or_typeid
 			{ $$ = newtype_name(&@$, $1); }
 			;
 
-struct_body		: '{' { typedef_ign = 0; } struct_decl_list '}'
-			{ $$ = $3; }
+struct_body		: '{' struct_decl_list '}'
+			{ $$ = $2; }
 			;
 
 struct_decl_list	: struct_decl
@@ -488,25 +485,25 @@ struct_declarator	: declarator ':' const_expr
 			| declarator
 			;
 
-enum_spec		: ENUM { typedef_ign = 1; } opt_attr enum_desc
+enum_spec		: ENUM opt_attr enum_desc
 			{
-				$$ = $4;
+				$$ = $3;
 				$$->t.category = type_enum;
-				type_add_attr($$, $3);
+				type_add_attr($$, $2);
 				set_node_first($$, @$.first_text);
 			}
 			;
 
-enum_desc		: ID enum_body
+enum_desc		: id_or_typeid enum_body
 			{
 				$$ = newtype_name(&@$, $1);
 				set_node_child($$, cht_body, $2); }
-			|    enum_body
+			|              enum_body
 			{
 				$$ = newtype(&@$);
 				set_node_child($$, cht_body, $1);
 			}
-			| ID
+			| id_or_typeid
 			{ $$ = newtype_name(&@$, $1); }
 			;
 
@@ -580,7 +577,7 @@ declarator		: pointer direct_declarator opt_attr
 			}
 			;
 
-direct_declarator	: ID
+direct_declarator	: id_or_typeid
 			{
 				$$ = newdeclarator();
 				$$->var = newvar(&@$, $1);
@@ -592,6 +589,10 @@ direct_declarator	: ID
 				$$ = $1;
 				link_abstract($$, &$2);
 			}
+			;
+
+id_or_typeid		: ID
+			| TYPEID
 			;
 
 direct_suffix_declarator: array_declarator
@@ -648,10 +649,7 @@ param_list		: param_decl
 			}
 			;
 
-param_decl		: _param_decl
-			{ typedef_ign = 0; $$ = $1; }
-			;
-_param_decl		: type_decl declarator
+param_decl		: type_decl declarator
 			{ $$ = newdecl(&@$, $1, $2); }
 			| type_decl abstract_declarator
 			{ $$ = newdecl(&@$, $1, $2); }
@@ -691,10 +689,7 @@ initializer_list	: initializer
 			}
 			;
 
-type_name		: { typedef_ign = 0; } _type_name
-			{ $$ = $2; typedef_ign = 0; }
-			;
-_type_name		: spec_qualifier_list
+type_name		: spec_qualifier_list
 			| spec_qualifier_list abstract_declarator
 			{
 				list_add_tail(&$1->list, $2->abstract.stub);
@@ -946,16 +941,10 @@ postfix_expr		: primary_expr
 			{ $$ = newexpr2(&@$, FUNC, $1, $3); }
 			| postfix_expr '('                    ')'
 			{ $$ = newexpr2(&@$, FUNC, $1, NULL); }
-			| postfix_expr '.' { typedef_ign = 1; } ID
-			{
-				typedef_ign = 0;
-				$$ = newexpr2(&@$, $2, $1, newexprid(&@$, $4));
-			}
-			| postfix_expr "->" { typedef_ign = 1; } ID
-			{
-				typedef_ign = 0;
-				$$ = newexpr2(&@$, $2, $1, newexprid(&@$, $4));
-			}
+			| postfix_expr '.' id_or_typeid
+			{ $$ = newexpr2(&@$, $2, $1, newexprid(&@$, $3)); }
+			| postfix_expr "->" id_or_typeid
+			{ $$ = newexpr2(&@$, $2, $1, newexprid(&@$, $3)); }
 			| postfix_expr "++"
 			{ $$ = newexpr1(&@$, $2, $1); }
 			| postfix_expr "--"
