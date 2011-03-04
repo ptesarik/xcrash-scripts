@@ -413,10 +413,25 @@ node_t *reparse_node(node_t *node, int type)
 }
 
 static void
-discard_tail_nodes(struct list_head *list, struct list_head *first)
+discard_parsing(void)
 {
-	while (list->prev != first)
-		freenode(last_node(list));
+	node_t *node, *nnode;
+	list_for_each_entry_safe(node, nnode, &parsed_tree, list)
+		freenode(node);
+
+	struct dynstr *it, *itnext;
+	list_for_each_entry_safe(it, itnext, &raw_contents, list)
+		free(it);
+}
+
+static int
+is_define(struct list_head *tree)
+{
+	if (list_empty(tree))
+		return 0;
+
+	node_t *node = first_node(tree);
+	return (node->type == nt_decl);
 }
 
 /* Parse macro bodies saved during the first stage */
@@ -425,12 +440,13 @@ static void parse_macros(void)
 	struct dynstr *ds, *next;
 
 	list_for_each_entry_safe(ds, next, &raw_cpp, cpp_list) {
-		struct list_head *lastroot;
+		struct list_head savedparsed;
 		struct list_head savedraw;
 		int ret;
 
-		/* Save the original last tree root node */
-		lastroot = parsed_tree.prev;
+		/* Save the original parsed_tree and start a new one */
+		list_add(&savedparsed, &parsed_tree);
+		list_del_init(&parsed_tree);
 
 		/* Save the original raw list and start a new one */
 		list_add(&savedraw, &raw_contents);
@@ -440,24 +456,23 @@ static void parse_macros(void)
 		lex_cpp_mode = 1;
 		start_symbol = START_DIRECTIVE;
 		ret = yyparse();
-		if (ret) {
-			struct dynstr *it, *itnext;
-			list_for_each_entry_safe(it, itnext,
-						 &raw_contents, list)
-				free(it);
-			discard_tail_nodes(&parsed_tree, lastroot);
-		} else {
+		yylex_destroy();
+
+		if (!ret && is_define(&parsed_tree)) {
 			struct dynstr *first, *last;
 			first = list_entry(raw_contents.next,
 					   struct dynstr, list);
 			last = list_entry(raw_contents.prev,
 					  struct dynstr, list);
 			replace_text_list(ds, ds, first, last);
+		} else {
+			discard_parsing();
 		}
+
+		list_splice(&savedparsed, &parsed_tree);
+
 		list_add(&raw_contents, &savedraw);
 		list_del(&savedraw);
-
-		yylex_destroy();
 	}
 }
 
