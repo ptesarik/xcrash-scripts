@@ -117,6 +117,7 @@ static void hidedecls(struct list_head *);
 
 /* CPP tokens */
 %token <token> CPP_DEFINE
+%token <token> CPP_IF CPP_IFDEF CPP_IFNDEF CPP_ELIF CPP_ELSE CPP_ENDIF
 %token <token> CPP_CONCAT	"##"
 %token <str> CPP_IDARG
 
@@ -176,6 +177,7 @@ static void hidedecls(struct list_head *);
 
 /* CPP types */
 %type <node> directive macro_def macro_declarator macro_param
+%type <token> cpp_cond
 
 %error-verbose
 %locations
@@ -208,8 +210,20 @@ translation_unit	: /* empty */
 
 directive		: CPP_DEFINE macro_def
 			{ $$ = $2; }
+			| cpp_cond expr
+			{ $$ = newexpr1(&@$, $1, $2); }
+			| CPP_ELSE
+			{ $$ = newexpr(&@$, $1); }
+			| CPP_ENDIF
+			{ $$ = newexpr(&@$, $1); }
 			| /* empty */
 			{ $$ = NULL; }
+			;
+
+cpp_cond		: CPP_IF
+			| CPP_IFDEF
+			| CPP_IFNDEF
+			| CPP_ELIF
 			;
 
 macro_def		: macro_declarator compound_body

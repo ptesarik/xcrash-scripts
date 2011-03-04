@@ -88,6 +88,30 @@ IS			(u|U|l|L)*
 			BEGIN(cpp_def);
 			return yylval.token = CPP_DEFINE;
 			}
+"if"			{
+			BEGIN(cpp);
+			return yylval.token = CPP_IF;
+			}
+"ifdef"			{
+			BEGIN(cpp);
+			return yylval.token = CPP_IFDEF;
+			}
+"ifndef"		{
+			BEGIN(cpp);
+			return yylval.token = CPP_IFNDEF;
+			}
+"elif"			{
+			BEGIN(cpp);
+			return yylval.token = CPP_ELIF;
+			}
+"else"			{
+			BEGIN(cpp_ign);
+			return yylval.token = CPP_ELSE;
+			}
+"endif"			{
+			BEGIN(cpp_ign);
+			return yylval.token = CPP_ENDIF;
+			}
 (?s:.)			{
 			yylloc.last_text->reuse = 1;
 			BEGIN(cpp_ign);

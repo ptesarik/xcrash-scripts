@@ -269,6 +269,13 @@ static void dump_op(int op)
 	case FOR_CPU_INDEXES:	fputs("for_cpu_indexes", stdout); break;
 	case FRAME_REG:	fputs ("FRAME_REG", stdout); break;
 
+	case CPP_IF:	fputs("#if", stdout); break;
+	case CPP_IFDEF:	fputs("#ifdef", stdout); break;
+	case CPP_IFNDEF:	fputs("#ifndef", stdout); break;
+	case CPP_ELIF:	fputs("#elif", stdout); break;
+	case CPP_ELSE:	fputs("#else", stdout); break;
+	case CPP_ENDIF:	fputs("#endif", stdout); break;
+
 	default:
 		if (op <= 255)
 			printf("%c", op);
