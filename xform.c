@@ -362,6 +362,18 @@ static int target_ptr(node_t *node, void *data)
 	return 0;
 }
 
+/* Replace types with target types */
+static int target_off_t(node_t *item, void *data)
+{
+	/* Convert types to their target equivallents */
+	if (item->type == nt_type && item->t.category == type_typedef &&
+	    !strcmp(item->t.name, "off_t")) {
+		replace_text(item, "toff_t");
+		item->t.name = "toff_t";
+	}
+
+	return 0;
+}
 /************************************************************
  * Translate calls to mkstring()
  *
@@ -779,7 +791,7 @@ static struct xform_desc xforms[] = {
 { "target-off_t.patch", import },
 
 // Use target off_t
-// TBD
+{ "target-off_t-use.patch", simple, target_off_t },
 
 // Provide platform-independent struct pt_regs
 { "arch-pt-regs.patch", import },
