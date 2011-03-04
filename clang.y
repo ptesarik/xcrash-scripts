@@ -598,6 +598,7 @@ id_or_typeid		: ID
 
 direct_suffix_declarator: array_declarator
 			| param_declarator
+			;
 
 func_declarator		: pointer direct_func_declarator
 			{
@@ -656,6 +657,7 @@ param_type_list		: param_list ',' "..."
 			| param_list
 			| /* empty */
 			{ $$ = NULL; }
+			;
 
 param_list		: param_decl
 			| param_list ',' param_decl
