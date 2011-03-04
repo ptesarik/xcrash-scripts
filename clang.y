@@ -142,8 +142,7 @@ static void hidedecls(struct list_head *);
 %type <str> id_or_typeid
 
 /* type type */
-%type <node> type_decl opt_notype_decl notype_decl
-%type <node> type_name typedef_name
+%type <node> type_decl notype_decl type_name typedef_name
 %type <node> type_spec basic_type_list spec_qualifier_list
 %type <node> struct_or_union_spec struct_desc enum_spec enum_desc
 
@@ -311,19 +310,23 @@ decl			: type_decl init_declarator_list ';'
 			{ $$ = newdecl(&@$, $1, NULL); }
 			;
 
-type_decl		: notype_decl
-			| opt_notype_decl type_spec opt_notype_decl
+type_decl		: notype_decl type_spec notype_decl
 			{
 				$$ = $2;
-				if ($1)
-					type_merge($$, $1);
-				if ($3)
-					type_merge($$, $3);
+				type_merge($$, $1);
+				type_merge($$, $3);
 			}
-			;
-
-opt_notype_decl		: /* empty */
-			{ $$ = NULL; }
+			| notype_decl type_spec
+			{
+				$$ = $2;
+				type_merge($$, $1);
+			}
+			|             type_spec notype_decl
+			{
+				$$ = $1;
+				type_merge($$, $2);
+			}
+			|             type_spec
 			| notype_decl
 			;
 
