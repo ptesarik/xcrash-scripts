@@ -219,6 +219,7 @@ void init_predef_types(void);
 /* Parse tree */
 node_t *newnode(const YYLTYPE *, enum node_type, int);
 void freenode(node_t *);
+node_t *dupnode(node_t *);
 
 void set_node_first(node_t *, struct dynstr *);
 void set_node_last(node_t *, struct dynstr *);
