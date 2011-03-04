@@ -568,6 +568,18 @@ printf_spec(node_t *node, void *data)
 	return 0;
 }
 
+static int
+use_ia64_fpreg_t(node_t *node, void *data)
+{
+	if (! (node->type == nt_type && node->t.category == type_struct &&
+	       node->t.name && !strcmp(node->t.name, "ia64_fpreg")) )
+		return 0;
+
+	replace_text(node, "ia64_fpreg_t");
+	reparse_node(node, START_TYPE_NAME);
+	return 0;
+}
+
 static int update_parsed_files(struct list_head *filelist)
 {
 	struct parsed_file *pf;
@@ -778,6 +790,9 @@ static struct xform_desc xforms[] = {
 // Replace remaining ppc64_pt_regs with pt_regs_ppc64
 { "pt-regs-ppc64.patch", rename_struct,
 		"ppc64_pt_regs" TO "pt_regs_ppc64" },
+
+// Replace system struct ia64_fpreg with our ia64_fpreg_t
+{ "use-ia64_fpreg_t.patch", simple, use_ia64_fpreg_t },
 
 // Use platform-independent pt_regs
 // TBD
