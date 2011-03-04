@@ -26,7 +26,7 @@ struct list_head raw_contents;
 struct list_head raw_cpp;
 struct dynstr *lex_input_first, *lex_input_last;
 
-static int eof_seen;
+static int token_at_eof;
 static struct dynstr *lex_input;
 static char *lex_input_ptr;
 
@@ -84,6 +84,7 @@ IS			(u|U|l|L)*
 <cpp_dir>{
 [ \t\v\f]+		/* skip whitespace except newline */
 "define"		{
+			token_at_eof = ';';
 			BEGIN(cpp_def);
 			return yylval.token = CPP_DEFINE;
 			}
@@ -116,11 +117,12 @@ IS			(u|U|l|L)*
 			 * used. And in the worst case we'll add an
 			 * empty expression at the end.
 			 */
-				if (eof_seen)
+				if (!token_at_eof)
 					yyterminate();
 				else {
-					eof_seen = 1;
-					return yylval.token = ';';
+					yylval.token = token_at_eof;
+					token_at_eof = 0;
+					return yylval.token;
 				}
 			}
 
@@ -281,7 +283,7 @@ static size_t curdsoff;
 
 static void init_vars(void)
 {
-	eof_seen = 0;
+	token_at_eof = 0;
 	if (lex_input_first) {
 		lex_input = lex_input_first;
 		lex_input_ptr = lex_input->text;
