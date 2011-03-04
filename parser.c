@@ -106,6 +106,28 @@ void init_predef_types(void)
 		addtypedef(*p);
 }
 
+void
+walk_tree(struct list_head *tree, walkfn *fn, void *data)
+{
+	node_t *item, *next;
+	list_for_each_entry_safe(item, next, tree, list) {
+		int i;
+		for (i = 0; i < item->nchild; ++i)
+			walk_tree(&item->child[i], fn, data);
+		if (fn(item, data))
+			break;
+	}
+}
+
+void
+walk_tree_single(node_t *tree, walkfn *fn, void *data)
+{
+	int i;
+	for (i = 0; i < tree->nchild; ++i)
+		walk_tree(&tree->child[i], fn, data);
+	fn(tree, data);
+}
+
 #if DEBUG
 
 static void dump_chunk(struct dynstr *first, struct dynstr *last)

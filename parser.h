@@ -267,6 +267,11 @@ struct arguments {
 	struct list_head xform_names;
 };
 
+/* Tree walking */
+typedef int walkfn(node_t *, void *);
+void walk_tree(struct list_head *tree, walkfn *fn, void *data);
+void walk_tree_single(node_t *tree, walkfn *fn, void *data);
+
 /* Tree transformation functions */
 int dump_contents(struct list_head *contents, FILE *f);
 
