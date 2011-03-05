@@ -456,10 +456,146 @@ is_define(struct list_head *tree)
 	return (node->type == nt_decl);
 }
 
+/* Completely detach a dynstr list from its surrounding */
+static void
+detach_text(struct dynstr *first, struct dynstr *last)
+{
+	first->list.prev->next = last->list.next;
+	last->list.next->prev = first->list.prev;
+	first->list.prev = &last->list;
+	last->list.next = &first->list;
+}
+
+/* Remove unnecessary defined() calls */
+static int
+remove_defined(node_t *node, void *data)
+{
+	if (! (node->type == nt_expr && node->e.op == FUNC) )
+		return 0;
+	node_t *fn = first_node(&node->child[che_arg1]);
+	if (! (fn->type == nt_expr && fn->e.op == ID &&
+	       fn->e.str && !strcmp(fn->e.str, "defined")) )
+		return 0;
+
+	freenode(fn);
+	node_t *arg = first_node(&node->child[che_arg2]);
+	list_move(&arg->list, &node->list);
+	freenode(node);
+
+	return 0;
+}
+
+static struct dynstr dummydynstr = {
+	.list = LIST_HEAD_INIT(dummydynstr.list),
+	.node_first = LIST_HEAD_INIT(dummydynstr.node_first),
+	.node_last = LIST_HEAD_INIT(dummydynstr.node_last),
+	.text = "",
+};
+static YYLTYPE dummyloc = {
+	.first_text = &dummydynstr,
+	.last_text = &dummydynstr,
+};
+
+#define CPP_STACK_SIZE	32
+
+struct cpp_cond_state {
+	node_t *current;
+	node_t *precond;
+	unsigned stackptr;
+	struct {
+		node_t *node;
+		node_t *precond;
+	} stack[CPP_STACK_SIZE];
+};
+
+static node_t *
+get_cpp_cond(struct cpp_cond_state *state, struct list_head *tree)
+{
+	node_t *dir = first_node(tree);
+	if (! (dir->type == nt_expr) )
+		return NULL;
+
+	int op = dir->e.op;
+	if (op == CPP_IF || op == CPP_IFDEF ||
+	    op == CPP_IFNDEF || op == CPP_ELIF)
+		walk_tree(&dir->child[che_arg1], remove_defined, NULL);
+	else if (! (op == CPP_ELSE || op == CPP_ENDIF) )
+		return NULL;
+
+	node_t *realroot = first_node(&dir->child[che_arg1]);
+	node_t *root = realroot;
+	detach_text(root->first_text, root->last_text);
+	list_del_init(&root->list);
+
+	/* Use the latest condition as base on else-blocks */
+	if (op == CPP_ELSE || op == CPP_ELIF) {
+		node_t *lastcond = state->current;
+		if (state->precond)
+			lastcond = first_node(&lastcond->child[che_arg2]);
+		root = dupnode(lastcond);
+	}
+
+	/* Convert negative conditions into positive */
+	if (op == CPP_IFNDEF || op == CPP_ELSE || op == CPP_ELIF)
+		root = newexpr1(&dummyloc, '!', root);
+
+	/* Include the real condition for #elif */
+	if (op == CPP_ELIF) {
+		state->precond = state->precond
+			? newexpr2(&dummyloc, AND_OP,
+				   dupnode(state->precond), root)
+			: root;
+
+		root = realroot;
+	}
+
+	/* Push new state when starting a conditional block */
+	if (op == CPP_IF || op == CPP_IFDEF || op == CPP_IFNDEF) {
+		state->stack[state->stackptr].node = state->current;
+		state->stack[state->stackptr].precond = state->precond;
+		state->stackptr++;
+
+		state->precond = state->current;
+	}
+
+	/* Add the new condition */
+	if (op == CPP_IF || op == CPP_IFDEF || op == CPP_IFNDEF ||
+	    op == CPP_ELSE || op == CPP_ELIF)
+		state->current = state->precond
+			? newexpr2(&dummyloc, AND_OP,
+				   dupnode(state->precond), root)
+			: root;
+
+	/* Pop the previous state on #endif */
+	if (op == CPP_ENDIF) {
+		--state->stackptr;
+		state->current = state->stack[state->stackptr].node;
+		state->precond = state->stack[state->stackptr].precond;
+	}
+
+	return state->current;
+}
+
+/* Copy the CPP conditions to all dynstr's */
+static void copy_cpp_cond(struct list_head *rawlist)
+{
+	struct dynstr *ds;
+	node_t *cond = NULL;
+	list_for_each_entry(ds, rawlist, list) {
+		if (ds->cpp_cond)
+			cond = ds->cpp_cond;
+		else
+			ds->cpp_cond = cond;
+	}
+}
+
 /* Parse macro bodies saved during the first stage */
 static void parse_macros(void)
 {
 	struct dynstr *ds, *next;
+	struct cpp_cond_state cond_state;
+
+	memset(&cond_state, 0, sizeof cond_state);
 
 	list_for_each_entry_safe(ds, next, &raw_cpp, cpp_list) {
 		struct list_head savedparsed;
@@ -488,6 +624,9 @@ static void parse_macros(void)
 					  struct dynstr, list);
 			replace_text_list(ds, ds, first, last);
 		} else {
+			if (!ret)
+				ds->cpp_cond = get_cpp_cond(&cond_state,
+							    &parsed_tree);
 			discard_parsing();
 		}
 
@@ -496,6 +635,8 @@ static void parse_macros(void)
 		list_add(&raw_contents, &savedraw);
 		list_del(&savedraw);
 	}
+
+	copy_cpp_cond(&raw_contents);
 }
 
 /* Parse an external file */
