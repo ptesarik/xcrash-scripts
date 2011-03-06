@@ -233,6 +233,14 @@ is_direct_call(node_t *node, const char *name)
 	return is_id(fn) && !strcmp(fn->e.str, name);
 }
 
+/* Returns non-zero if @node is type struct @name. */
+static int
+is_struct(node_t *node, const char *name)
+{
+	return (node->type == nt_type && node->t.category == type_struct &&
+		node->t.name && !strcmp(node->t.name, name));
+}
+
 /* Get the @pos-th element from @list */
 static node_t *
 nth_element(struct list_head *list, int pos)
@@ -557,8 +565,7 @@ printf_spec(node_t *node, void *data)
 static int
 use_ia64_fpreg_t(node_t *node, void *data)
 {
-	if (! (node->type == nt_type && node->t.category == type_struct &&
-	       node->t.name && !strcmp(node->t.name, "ia64_fpreg")) )
+	if (!is_struct(node, "ia64_fpreg"))
 		return 0;
 
 	replace_text(node, "ia64_fpreg_t");
@@ -621,8 +628,7 @@ rename_struct_fn(node_t *node, void *data)
 {
 	struct rename_data *rd = data;
 
-	if (node->type == nt_type && node->t.category == type_struct &&
-	    node->t.name && !strcmp(node->t.name, rd->oldname)) {
+	if (is_struct(node, rd->oldname)) {
 		struct dynstr *oldds = text_dynstr(node->t.name);
 		struct dynstr *newds = newdynstr(rd->newname, rd->newlen);
 		replace_text_list(oldds, oldds, newds, newds);
@@ -661,9 +667,7 @@ remove_struct_fn(node_t *node, void *data)
 		return 0;
 
 	node_t *type = nth_element(&node->child[chd_type], 1);
-	if (type && type->type == nt_type &&
-	    type->t.category == type_struct &&
-	    !strcmp(type->t.name, name)) {
+	if (is_struct(type, name)) {
 		remove_text_list(node->first_text,
 				 next_dynstr(node->last_text));
 		freenode(node);
