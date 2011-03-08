@@ -169,6 +169,7 @@ typedef struct node {
 	};
 	struct dynstr *first_text, *last_text;
 	struct list_head first_list, last_list;
+	struct node *parent;
 	int nchild;
 	struct list_head child[];
 } node_t;
@@ -228,8 +229,11 @@ void set_node_last(node_t *, struct dynstr *);
 static inline void
 set_node_child(node_t *parent, int pos, node_t *child)
 {
-	if (child)
+	if (child) {
 		list_add_tail(&parent->child[pos], &child->list);
+		list_for_each_entry(child, &parent->child[pos], list)
+			child->parent = parent;
+	}
 }
 
 static inline node_t *

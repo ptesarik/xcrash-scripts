@@ -495,6 +495,7 @@ remove_defined(node_t *node, void *data)
 	freenode(fn);
 	node_t *arg = first_node(&node->child[che_arg2]);
 	list_move(&arg->list, &node->list);
+	arg->parent = node->parent;
 	freenode(node);
 
 	return 0;
