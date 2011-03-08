@@ -85,6 +85,17 @@ static const char *predef_types[] = {
 
 static LIST_HEAD(files);
 
+struct dynstr dummydynstr = {
+	.list = LIST_HEAD_INIT(dummydynstr.list),
+	.node_first = LIST_HEAD_INIT(dummydynstr.node_first),
+	.node_last = LIST_HEAD_INIT(dummydynstr.node_last),
+	.text = "",
+};
+YYLTYPE dummyloc = {
+	.first_text = &dummydynstr,
+	.last_text = &dummydynstr,
+};
+
 #if DEBUG
 
 static void dump_basic_type(type_t *type);
@@ -500,17 +511,6 @@ remove_defined(node_t *node, void *data)
 
 	return 0;
 }
-
-static struct dynstr dummydynstr = {
-	.list = LIST_HEAD_INIT(dummydynstr.list),
-	.node_first = LIST_HEAD_INIT(dummydynstr.node_first),
-	.node_last = LIST_HEAD_INIT(dummydynstr.node_last),
-	.text = "",
-};
-static YYLTYPE dummyloc = {
-	.first_text = &dummydynstr,
-	.last_text = &dummydynstr,
-};
 
 #define CPP_STACK_SIZE	32
 

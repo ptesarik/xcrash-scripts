@@ -270,6 +270,10 @@ node_t *newexpr2(const YYLTYPE *, int, node_t *, node_t *);
 node_t *newexpr3(const YYLTYPE *, int, node_t *, node_t *, node_t *);
 node_t *newexpr4(const YYLTYPE *, int, node_t *, node_t *, node_t *, node_t *);
 
+/* A dummy (empty) dynstr and location */
+extern struct dynstr dummydynstr;
+extern YYLTYPE dummyloc;
+
 /* Program arguments */
 struct arguments {
 	char *basedir;
