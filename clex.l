@@ -64,6 +64,7 @@ FS			(f|F|l|L)
 IS			(u|U|l|L)*
 
 %s cpp
+%s cpp_condition
 %x cpp_dir
 %x cpp_def
 %x cpp_ign
@@ -89,7 +90,7 @@ IS			(u|U|l|L)*
 			return yylval.token = CPP_DEFINE;
 			}
 "if"			{
-			BEGIN(cpp);
+			BEGIN(cpp); BEGIN(cpp_condition);
 			return yylval.token = CPP_IF;
 			}
 "ifdef"			{
@@ -101,7 +102,7 @@ IS			(u|U|l|L)*
 			return yylval.token = CPP_IFNDEF;
 			}
 "elif"			{
-			BEGIN(cpp);
+			BEGIN(cpp); BEGIN(cpp_condition);
 			return yylval.token = CPP_ELIF;
 			}
 "else"			{
@@ -149,6 +150,8 @@ IS			(u|U|l|L)*
 					return yylval.token;
 				}
 			}
+
+<cpp_condition>"defined"	return yylval.token = CPP_DEFINED;
 
   /* CPP ignored directive */
 ("#"|"%:")[ \t\v\f]*	BEGIN(cpp_ign);

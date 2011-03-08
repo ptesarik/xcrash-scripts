@@ -117,6 +117,7 @@ static void hidedecls(struct list_head *);
 /* CPP tokens */
 %token <token> CPP_DEFINE
 %token <token> CPP_IF CPP_IFDEF CPP_IFNDEF CPP_ELIF CPP_ELSE CPP_ENDIF
+%token <token> CPP_DEFINED
 %token <token> CPP_CONCAT	"##"
 %token <str> CPP_IDARG
 
@@ -991,6 +992,10 @@ unary_expr		: postfix_expr
 			{ $$ = newexpr1(&@$, $1, $2); }
 			| SIZEOF '(' type_name  ')'
 			{ $$ = newexpr1(&@$, SIZEOF_TYPE, $3); }
+			| CPP_DEFINED ID
+			{ $$ = newexpr1(&@$, $1, newexprid(&@2, $2)); }
+			| CPP_DEFINED '(' ID ')'
+			{ $$ = newexpr1(&@$, $1, newexprid(&@3, $3)); }
 			/* HACK: defined as a preprocessor macro */
 			| OFFSETOF '(' type_name ',' unary_expr ')'
 			{ $$ = newexpr2(&@$, $1, $3, $5); }

@@ -559,15 +559,9 @@ is_define(struct list_head *tree)
 static int
 remove_defined(node_t *node, void *data)
 {
-	if (! (node->type == nt_expr && node->e.op == FUNC) )
+	if (! (node->type == nt_expr && node->e.op == CPP_DEFINED) )
 		return 0;
-	node_t *fn = first_node(&node->child[che_arg1]);
-	if (! (fn->type == nt_expr && fn->e.op == ID &&
-	       fn->e.str && !strcmp(fn->e.str, "defined")) )
-		return 0;
-
-	freenode(fn);
-	node_t *arg = first_node(&node->child[che_arg2]);
+	node_t *arg = first_node(&node->child[che_arg1]);
 	list_move(&arg->list, &node->list);
 	arg->parent = node->parent;
 	freenode(node);
