@@ -19,7 +19,6 @@
 
 static void yyerror(const char *);
 
-static void type_add_attr(node_t *, node_t *);
 static void type_merge(node_t *, node_t *);
 
 static declarator_t *newdeclarator(void);
@@ -354,7 +353,10 @@ notype_decl		: attr_spec
 			| type_qualifier
 			{ $$ = newtype(&@$); $$->t.flags = $1; }
 			| notype_decl attr_spec
-			{ $$ = $1; type_add_attr($$, $2); }
+			{
+				$$ = $1;
+				set_node_child($$, cht_attr, $2);
+			}
 			| notype_decl storage_class_spec
 			{ $$ = $1; $$->t.flags |= $2; }
 			| notype_decl type_qualifier
@@ -441,7 +443,7 @@ struct_or_union_spec	: struct_or_union opt_attr struct_desc
 			{
 				$$ = $3;
 				$$->t.category = $1;
-				type_add_attr($$, $2);
+				set_node_child($$, cht_attr, $2);
 				set_node_first($$, @$.first_text);
 			}
 			;
@@ -507,7 +509,7 @@ enum_spec		: ENUM opt_attr enum_desc
 			{
 				$$ = $3;
 				$$->t.category = type_enum;
-				type_add_attr($$, $2);
+				set_node_child($$, cht_attr, $2);
 				set_node_first($$, @$.first_text);
 			}
 			;
@@ -1153,22 +1155,6 @@ newtype_int(const YYLTYPE *loc)
 	ret->t.category = type_basic;
 	ret->t.btype = TYPE_INT;
 	return ret;
-}
-
-/* Append @attr (if any) to @merger */
-static void
-type_add_attr(node_t *merger, node_t *attr)
-{
-	if (list_empty(&merger->child[cht_attr])) {
-		set_node_child(merger, cht_attr, attr);
-	} else if (attr) {
-		struct list_head newattr;
-		node_t *iter;
-		list_add_tail(&newattr, &attr->list);
-		list_for_each_entry(iter, &newattr, list)
-			iter->parent = merger;
-		list_splice(&newattr, merger->child[cht_attr].prev);
-	}
 }
 
 /* Merge the flags and attributes from @other into @merger */

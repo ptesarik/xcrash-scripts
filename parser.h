@@ -226,13 +226,16 @@ node_t *dupnode(node_t *);
 void set_node_first(node_t *, struct dynstr *);
 void set_node_last(node_t *, struct dynstr *);
 
+/* Add @child (possibly a linked list) to the @parent node */
 static inline void
 set_node_child(node_t *parent, int pos, node_t *child)
 {
 	if (child) {
-		list_add_tail(&parent->child[pos], &child->list);
-		list_for_each_entry(child, &parent->child[pos], list)
+		struct list_head childlist;
+		list_add_tail(&childlist, &child->list);
+		list_for_each_entry(child, &childlist, list)
 			child->parent = parent;
+		list_splice(&childlist, parent->child[pos].prev);
 	}
 }
 
