@@ -667,10 +667,23 @@ check_cpp_cond(node_t *node, ...)
 static int
 use_pt_regs_x86_64(node_t *node, void *data)
 {
-	if (!is_struct(node, "pt_regs"))
+	struct parsed_file *pf = data;
+	int cond = check_cpp_cond(node->first_text->cpp_cond,
+			      "X86_64", NULL, NULL);
+	if (!cond && strcmp(pf->name, "unwind_x86_64.h"))
 		return 0;
-	if (check_cpp_cond(node->first_text->cpp_cond,
-			   "X86_64", NULL, NULL) <= 0)
+	else if (cond < 0)
+		return 0;
+
+	if (node->type == nt_decl) {
+		node_t *type = nth_element(&node->child[chd_type], 1);
+		if (is_struct(type, "pt_regs_x86_64")) {
+			remove_text_list(node->first_text,
+					 next_dynstr(node->last_text));
+			freenode(node);
+		}
+		return 0;
+	} else if (!is_struct(node, "pt_regs"))
 		return 0;
 
 	struct dynstr *oldds = text_dynstr(node->t.name);
