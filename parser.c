@@ -341,63 +341,6 @@ static void dump_var(var_t *var)
 	printf("name: %s", var->name);
 }
 
-static void dump_child_pos(node_t *parent, int pos)
-{
-	static const char *const chv_names[] =
-		{ "chv_type", "chv_bitsize", "chv_init", "chv_attr" };
-	static const char *const chd_names[] =
-		{ "chd_type", "chd_var", "chd_decl", "chd_body" };
-
-	switch (parent->type) {
-	case nt_type:
-		switch (pos) {
-		case 0:
-			if (parent->t.category == type_struct ||
-			    parent->t.category == type_union ||
-			    parent->t.category == type_enum)
-				fputs("cht_body", stdout);
-			else if (parent->t.category == type_typeof)
-				fputs("cht_expr", stdout);
-			else
-				fputs("cht_type", stdout);
-			break;
-
-		case 1:
-			if (parent->t.category == type_array)
-				fputs("cht_size", stdout);
-			else
-				fputs("cht_param", stdout);
-			break;
-
-		case cht_attr:
-			fputs("cht_attr", stdout);
-			break;
-
-		default:
-			printf("cht_%d", pos);
-		}
-		break;
-
-	case nt_expr:
-		printf("che_arg%d", pos + 1);
-		break;
-
-	case nt_var:
-		if (pos < chv_max)
-			fputs(chv_names[pos], stdout);
-		else
-			printf("chv_%d", pos);
-		break;
-
-	case nt_decl:
-		if (pos < chd_max)
-			fputs(chd_names[pos], stdout);
-		else
-			printf("chd_%d", pos);
-		break;
-	}
-}
-
 static void dump_node(node_t *node)
 {
 	int i;
@@ -415,14 +358,8 @@ static void dump_node(node_t *node)
 	}
 	putchar('\n');
 
-	for (i = 0; i < node->nchild; ++i) {
-		if (!list_empty(&node->child[i])) {
-			printf("%*s[", depth*indent, "");
-			dump_child_pos(node, i);
-			printf("]:\n");
-		}
+	for (i = 0; i < node->nchild; ++i)
 		dump_tree(&node->child[i]);
-	}
 	printf("%*s)\n", depth*indent, "");
 
 	--depth;

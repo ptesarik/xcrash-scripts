@@ -146,10 +146,11 @@ static void hidedecls(struct list_head *);
 %type <node> type_spec basic_type_list spec_qualifier_list
 %type <node> struct_or_union_spec struct_desc enum_spec enum_desc
 
-%type <abstract> pointer array_declarator direct_suffix_declarator
+%type <abstract> pointer array_declarator
 %type <abstract> param_declarator abstract_param_declarator
+%type <abstract> suffix_declarator_list array_declarator_list
 
-%type <declarator> declarator direct_declarator
+%type <declarator> declarator direct_declarator non_suffix_declarator
 %type <declarator> func_declarators func_declarator direct_func_declarator
 %type <declarator> init_declarator init_declarator_list
 %type <declarator> struct_declarator struct_declarator_list
@@ -598,26 +599,55 @@ declarator		: pointer direct_declarator opt_attr
 			}
 			;
 
-direct_declarator	: id_or_typeid
-			{
-				$$ = newdeclarator();
-				$$->var = newvar(&@$, $1);
-			}
-			| '(' declarator ')'
-			{ $$ = $2; }
-			| direct_declarator direct_suffix_declarator
+direct_declarator	: non_suffix_declarator
+			| non_suffix_declarator suffix_declarator_list
 			{
 				$$ = $1;
 				link_abstract(&$$->abstract, &$2);
 			}
 			;
 
+non_suffix_declarator	: id_or_typeid
+			{
+				$$ = newdeclarator();
+				$$->var = newvar(&@$, $1);
+			}
+			| '(' declarator ')'
+			{ $$ = $2; }
+			;
+
 id_or_typeid		: ID
 			| TYPEID
 			;
 
-direct_suffix_declarator: array_declarator
-			| param_declarator
+suffix_declarator_list	: array_declarator_list param_declarator
+				array_declarator_list
+			{
+				$$ = $1;
+				link_abstract(&$$, &$2);
+				link_abstract(&$$, &$3);
+			}
+			| array_declarator_list param_declarator
+			{
+				$$ = $1;
+				link_abstract(&$$, &$2);
+			}
+			|                       param_declarator
+				array_declarator_list
+			{
+				$$ = $1;
+				link_abstract(&$$, &$2);
+			}
+			|                       param_declarator
+			| array_declarator_list
+			;
+
+array_declarator_list	: array_declarator
+			| array_declarator_list array_declarator
+			{
+				$$ = $1;
+				link_abstract(&$$, &$2);
+			}
 			;
 
 func_declarator		: pointer direct_func_declarator
