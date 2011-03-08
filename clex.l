@@ -327,6 +327,7 @@ struct dynstr *newdynstr(const char *s, size_t len)
 	INIT_LIST_HEAD(&ds->cpp_list);
 	INIT_LIST_HEAD(&ds->node_first);
 	INIT_LIST_HEAD(&ds->node_last);
+	ds->cpp_cond = NULL;
 	ds->len = len;
 	ds->alloc = len + 1;
 	ds->reuse = 0;
