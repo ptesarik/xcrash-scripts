@@ -4,10 +4,12 @@
 
 --- a/defs.h
 +++ b/defs.h
-@@ -5142,4 +5142,6 @@ struct ttimeval {
-         tlong		tv_usec;	/* microseconds */
- };
+@@ -134,6 +134,8 @@ typedef uint64_t tptr __attribute__ ((al
+ 
+ #endif
  
 +typedef tlong	toff_t;
 +
- #endif /* !GDB_COMMON */
+ #define BUFSIZE  (1500)
+ #define NULLCHAR ('\0')
+ 
