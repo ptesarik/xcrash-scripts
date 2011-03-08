@@ -622,9 +622,13 @@ vcheck_cpp_cond(node_t *node, const char **set, const char **unset)
 			return 1;
 		return left + right;
 
+	case EQ_OP:
+		/* No idea about the value of preprocessor defines */
+		return 0;
+
 	default:
 		fprintf(stderr, "%s: Operator %d not supported\n",
-			__func__, node->type);
+			__func__, node->e.op);
 		exit(1);
 	}
 }
