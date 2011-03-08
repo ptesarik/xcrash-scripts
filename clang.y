@@ -1162,9 +1162,12 @@ type_add_attr(node_t *merger, node_t *attr)
 	if (list_empty(&merger->child[cht_attr])) {
 		set_node_child(merger, cht_attr, attr);
 	} else if (attr) {
-		struct list_head *last = merger->child[cht_attr].prev;
-		list_splice(&attr->list, last);
-		list_add(&attr->list, last);
+		struct list_head newattr;
+		node_t *iter;
+		list_add_tail(&newattr, &attr->list);
+		list_for_each_entry(iter, &newattr, list)
+			iter->parent = merger;
+		list_splice(&newattr, merger->child[cht_attr].prev);
 	}
 }
 
@@ -1172,6 +1175,9 @@ type_add_attr(node_t *merger, node_t *attr)
 static void
 type_merge(node_t *merger, node_t *other)
 {
+	node_t *attr;
+	list_for_each_entry(attr, &other->child[cht_attr], list)
+		attr->parent = merger;
 	merger->t.flags |= other->t.flags;
 	list_splice(&other->child[cht_attr], merger->child[cht_attr].prev);
 	INIT_LIST_HEAD(&other->child[cht_attr]);
