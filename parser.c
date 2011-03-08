@@ -446,16 +446,6 @@ discard_parsing(void)
 		free(it);
 }
 
-static int
-is_define(struct list_head *tree)
-{
-	if (list_empty(tree))
-		return 0;
-
-	node_t *node = first_node(tree);
-	return (node->type == nt_decl);
-}
-
 /* Completely detach a dynstr list from its surrounding */
 static void
 detach_text(struct dynstr *first, struct dynstr *last)
@@ -464,6 +454,17 @@ detach_text(struct dynstr *first, struct dynstr *last)
 	last->list.next->prev = first->list.prev;
 	first->list.prev = &last->list;
 	last->list.next = &first->list;
+}
+
+/* Check whether a parsed tree is a "defined()" CPP operator */
+static int
+is_define(struct list_head *tree)
+{
+	if (list_empty(tree))
+		return 0;
+
+	node_t *node = first_node(tree);
+	return (node->type == nt_decl);
 }
 
 /* Remove unnecessary defined() calls */
