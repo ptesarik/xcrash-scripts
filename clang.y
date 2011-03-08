@@ -161,7 +161,8 @@ static void hidedecls(struct list_head *);
 %type <node> shift_expr add_expr mul_expr cast_expr unary_expr primary_expr
 %type <node> string_const
 %type <node> initializer initializer_list array_size postfix_expr
-%type <node> compound_stat compound_body stat argument_expr_list
+%type <node> compound_stat compound_body stat
+%type <node> argument_expr argument_expr_list
 %type <node> opt_attr attr_spec attr_list attribute attr_param_list
 
 /* var type */
@@ -863,9 +864,13 @@ expr			: assign_expr
 			{ $$ = newexpr2(&@$, ',', $1, $3); }
 			;
 
-argument_expr_list	: assign_expr
-			| argument_expr_list ',' assign_expr
+argument_expr_list	: argument_expr
+			| argument_expr_list ',' argument_expr
 			{ list_add_tail(&$3->list, &$1->list); }
+			;
+
+argument_expr		: assign_expr
+			| type_name
 			;
 
 assign_expr		: cond_expr
