@@ -677,13 +677,19 @@ use_pt_regs_x86_64(node_t *node, void *data)
 
 	if (node->type == nt_decl) {
 		node_t *type = nth_element(&node->child[chd_type], 1);
-		if (is_struct(type, "pt_regs_x86_64")) {
+		if (is_struct(type, "pt_regs")) {
 			remove_text_list(node->first_text,
 					 next_dynstr(node->last_text));
 			freenode(node);
 		}
 		return 0;
-	} else if (!is_struct(node, "pt_regs"))
+	}
+
+	/* No change if part of struct pt_regs declaration */
+	if (node->parent->type == nt_decl)
+		return 0;
+
+	if (!is_struct(node, "pt_regs"))
 		return 0;
 
 	struct dynstr *oldds = text_dynstr(node->t.name);
