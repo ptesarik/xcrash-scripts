@@ -188,7 +188,7 @@ typedef struct node {
 /* This type is used only temporarily during parsing */
 typedef struct abstract {
 	node_t *tree;
-	struct list_head *stub;
+	node_t *stub;
 } abstract_t;
 
 /* This type is used only temporarily during parsing */

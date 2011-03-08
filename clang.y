@@ -638,8 +638,7 @@ param_declarator	: '(' param_type_or_idlist ')'
 				node_t *type = newtype(&@$);
 				type->t.category = type_func;
 				set_node_child(type, cht_param, $2);
-				$$.tree = type;
-				$$.stub = &type->child[cht_type];
+				$$.tree = $$.stub = type;
 			}
 			;
 
@@ -655,16 +654,15 @@ pointer			: '*'
 			{
 				node_t *ptr = newtype(&@$);
 				ptr->t.category = type_pointer;
-				$$.tree = ptr;
-				$$.stub = &ptr->child[cht_type];
+				$$.tree = $$.stub = ptr;
 			}
 			| pointer '*'
 			{
 				node_t *ptr = newtype(&@$);
 				ptr->t.category = type_pointer;
 				set_node_child(ptr, cht_type, $1.tree);
-				$$ = $1;
 				$$.tree = ptr;
+				$$.stub = $1.stub;
 			}
 			| pointer type_qualifier_list
 			{ $$ = $1; $$.tree->t.flags |= $2; }
@@ -727,7 +725,8 @@ initializer_list	: initializer
 type_name		: spec_qualifier_list
 			| spec_qualifier_list abstract_declarator
 			{
-				list_add_tail(&$1->list, $2->abstract.stub);
+				set_node_child($2->abstract.stub,
+					       cht_type, $1);
 				$$ = $2->abstract.tree;
 				$$->t.flags = $1->t.flags;
 				free($2);
@@ -767,8 +766,7 @@ array_declarator	: '[' array_size ']'
 				node_t *type = newtype(&@$);
 				type->t.category = type_array;
 				set_node_child(type, cht_size, $2);
-				$$.tree = type;
-				$$.stub = &type->child[cht_type];
+				$$.tree = $$.stub = type;
 			}
 			;
 
@@ -783,8 +781,7 @@ abstract_param_declarator:
 				node_t *type = newtype(&@$);
 				type->t.category = type_func;
 				set_node_child(type, cht_param, $2);
-				$$.tree = type;
-				$$.stub = &type->child[cht_type];
+				$$.tree = $$.stub = type;
 			}
 			;
 
@@ -1203,12 +1200,12 @@ newdeclarator(void)
 static void
 link_abstract(declarator_t *declarator, const abstract_t *abstract)
 {
-	if (declarator->abstract.stub) {
-		list_add_tail(&abstract->tree->list,
-			      declarator->abstract.stub);
-		declarator->abstract.stub = abstract->stub;
-	} else
-		declarator->abstract = *abstract;
+	if (declarator->abstract.stub)
+		set_node_child(declarator->abstract.stub, cht_type,
+			       abstract->tree);
+	else
+		declarator->abstract.tree = abstract->tree;
+	declarator->abstract.stub = abstract->stub;
 }
 
 node_t *
@@ -1228,7 +1225,7 @@ newdecl(const YYLTYPE *loc, node_t *type, declarator_t *declarator)
 		d = nextd;
 
 		if (d->abstract.stub) {
-			list_add_tail(&type->list, d->abstract.stub);
+			set_node_child(d->abstract.stub, cht_type, type);
 			typedup = dupnode(d->abstract.tree);
 			typedup->t.flags = type->t.flags;
 			list_del_init(&type->list);
