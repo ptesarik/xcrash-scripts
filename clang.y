@@ -22,7 +22,7 @@ static void yyerror(const char *);
 static void type_merge(node_t *, node_t *);
 
 static declarator_t *newdeclarator(void);
-static void link_abstract(declarator_t *, const abstract_t *);
+static void link_abstract(abstract_t *, const abstract_t *);
 
 static void addtypedeflist(node_t *);
 static void hidetypedef(const char *);
@@ -586,7 +586,7 @@ spec_qualifier_list	: type_decl
 declarator		: pointer direct_declarator opt_attr
 			{
 				$$ = $2;
-				link_abstract($$, &$1);
+				link_abstract(&$$->abstract, &$1);
 				if ($3)
 					set_node_child($$->var, chv_attr, $3);
 			}
@@ -608,7 +608,7 @@ direct_declarator	: id_or_typeid
 			| direct_declarator direct_suffix_declarator
 			{
 				$$ = $1;
-				link_abstract($$, &$2);
+				link_abstract(&$$->abstract, &$2);
 			}
 			;
 
@@ -623,7 +623,7 @@ direct_suffix_declarator: array_declarator
 func_declarator		: pointer direct_func_declarator
 			{
 				$$ = $2;
-				link_abstract($$, &$1);
+				link_abstract(&$$->abstract, &$1);
 			}
 			|         direct_func_declarator
 			;
@@ -632,7 +632,7 @@ direct_func_declarator	: ID param_declarator
 			{
 				$$ = newdeclarator();
 				$$->var = newvar(&@1, $1);
-				link_abstract($$, &$2);
+				link_abstract(&$$->abstract, &$2);
 			}
 			;
 
@@ -748,7 +748,7 @@ abstract_declarator	: pointer
 			{ $$ = newdeclarator(); $$->abstract = $1; }
 			| direct_abstract_declarator
 			| pointer direct_abstract_declarator
-			{ $$ = $2; link_abstract($$, &$1); }
+			{ $$ = $2; link_abstract(&$$->abstract, &$1); }
 			;
 
 direct_abstract_declarator
@@ -757,11 +757,11 @@ direct_abstract_declarator
 			|                            array_declarator
 			{ $$ = newdeclarator(); $$->abstract = $1; }
 			| direct_abstract_declarator array_declarator
-			{ $$ = $1; link_abstract($$, &$2); }
+			{ $$ = $1; link_abstract(&$$->abstract, &$2); }
 			|                            abstract_param_declarator
 			{ $$ = newdeclarator(); $$->abstract = $1; }
 			| direct_abstract_declarator abstract_param_declarator
-			{ $$ = $1; link_abstract($$, &$2); }
+			{ $$ = $1; link_abstract(&$$->abstract, &$2); }
 			;
 
 array_declarator	: '[' array_size ']'
@@ -1195,14 +1195,13 @@ newdeclarator(void)
 }
 
 static void
-link_abstract(declarator_t *declarator, const abstract_t *abstract)
+link_abstract(abstract_t *parent, const abstract_t *child)
 {
-	if (declarator->abstract.stub)
-		set_node_child(declarator->abstract.stub, cht_type,
-			       abstract->tree);
+	if (parent->stub)
+		set_node_child(parent->stub, cht_type, child->tree);
 	else
-		declarator->abstract.tree = abstract->tree;
-	declarator->abstract.stub = abstract->stub;
+		parent->tree = child->tree;
+	parent->stub = child->stub;
 }
 
 node_t *
