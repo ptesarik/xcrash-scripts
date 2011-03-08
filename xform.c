@@ -239,6 +239,8 @@ is_direct_call(node_t *node, const char *name)
 static int
 is_struct(node_t *node, const char *name)
 {
+	if (!node)
+		return 0;
 	return (node->type == nt_type && node->t.category == type_struct &&
 		node->t.name && !strcmp(node->t.name, name));
 }
