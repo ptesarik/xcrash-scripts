@@ -9,7 +9,9 @@
 #   5. Move unwind_i.h to end
 
 undef $/;
-my @list = split(/\s+/, <>);
+my $list = <>;
+$list =~ s/\bconfigure\.c\b//;
+my @list = split(/\s+/, $list);
 
 my @begin;
 my @end;
