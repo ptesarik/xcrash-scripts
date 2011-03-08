@@ -5,6 +5,8 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <stdarg.h>
+
 #include "parser.h"
 #include "clang.tab.h"
 
@@ -560,6 +562,104 @@ printf_spec(node_t *node, void *data)
 	walk_tree_single(spec, printf_spec_one, NULL);
 
 	return 0;
+}
+
+/* Check whether a CPP condition is met. The condition is met if:
+ * - at least one of the identifiers in @set is set
+ * - none of the identifiers in @unset is set
+ *
+ * Returns:
+ *   >0  if condition is met
+ *   <0  if condition cannot be met
+ *    0  if indeterminate (e.g. no condition at all)
+ */
+static int
+vcheck_cpp_cond(node_t *node, const char **set, const char **unset)
+{
+	const char **p;
+	int left, right;
+
+	if (!node)
+		return 0;
+
+	if (node->type != nt_expr) {
+		fprintf(stderr, "%s: Cannot handle node type %d\n",
+			__func__, node->type);
+		exit(1);
+	}
+
+	switch (node->e.op) {
+	case ID:
+		for (p = unset; *p; ++p)
+			if (!strcmp(*p, node->e.str))
+				return -1;
+		for (p = set; *p; ++p)
+			if (!strcmp(*p, node->e.str))
+				return 1;
+		return 0;
+
+	case '!':
+		return -vcheck_cpp_cond(first_node(&node->child[che_arg1]),
+					set, unset);
+
+	case AND_OP:
+		left = vcheck_cpp_cond(first_node(&node->child[che_arg1]),
+				       set, unset);
+		if (left < 0)
+			return -1;
+		right = vcheck_cpp_cond(first_node(&node->child[che_arg2]),
+					set, unset);
+		if (right < 0)
+			return -1;
+		return left + right;
+
+	case OR_OP:
+		left = vcheck_cpp_cond(first_node(&node->child[che_arg1]),
+				       set, unset);
+		if (left > 0)
+			return 1;
+		right = vcheck_cpp_cond(first_node(&node->child[che_arg2]),
+					set, unset);
+		if (right > 0)
+			return 1;
+		return left + right;
+
+	default:
+		fprintf(stderr, "%s: Operator %d not supported\n",
+			__func__, node->type);
+		exit(1);
+	}
+}
+
+static int
+check_cpp_cond(node_t *node, ...)
+{
+	const char *name;
+	const char **set, **unset;
+	va_list va;
+	int i, n;
+
+	/* Count the arguments */
+	va_start(va, node);
+	n = 2;
+	while (va_arg(va, const char *))
+		++n;
+	while (va_arg(va, const char *))
+		++n;
+	va_end(va);
+
+	va_start(va, node);
+	set = alloca(n * sizeof(const char *));
+	for (i = 0; (name = va_arg(va, const char *)); ++i)
+		set[i] = name;
+	set[i++] = NULL;
+	unset = &set[i];
+	for (i = 0; (name = va_arg(va, const char *)); ++i)
+		unset[i] = name;
+	unset[i++] = NULL;
+	va_end(va);
+
+	return vcheck_cpp_cond(node, set, unset);
 }
 
 static int
