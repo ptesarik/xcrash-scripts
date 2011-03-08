@@ -663,6 +663,24 @@ check_cpp_cond(node_t *node, ...)
 }
 
 static int
+use_pt_regs_x86_64(node_t *node, void *data)
+{
+	if (!is_struct(node, "pt_regs"))
+		return 0;
+	if (check_cpp_cond(node->first_text->cpp_cond,
+			   "X86_64", NULL, NULL) <= 0)
+		return 0;
+
+	struct dynstr *oldds = text_dynstr(node->t.name);
+	struct dynstr *newds = newdynstr("pt_regs_x86_64",
+					 strlen("pt_regs_x86_64"));
+	replace_text_list(oldds, oldds, newds, newds);
+	node->t.name = newds->text;
+	reparse_node(node, START_TYPE_NAME);
+	return 0;
+}
+
+static int
 use_ia64_fpreg_t(node_t *node, void *data)
 {
 	if (!is_struct(node, "ia64_fpreg"))
@@ -873,6 +891,9 @@ static struct xform_desc xforms[] = {
 
 // Provide platform-independent struct pt_regs
 { "arch-pt-regs.patch", import },
+
+// Use platform-independent pt_regs_x86_64
+{ "pt-regs-x86_64.patch", simple, use_pt_regs_x86_64 },
 
 // Remove struct ppc64_pt_regs
 { "remove-ppc64_pt_regs.patch", remove_struct,  "ppc64_pt_regs" },
