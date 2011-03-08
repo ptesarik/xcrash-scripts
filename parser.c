@@ -456,6 +456,20 @@ detach_text(struct dynstr *first, struct dynstr *last)
 	last->list.next = &first->list;
 }
 
+/* Check whether @tree is a CPP conditional */
+static int
+is_cpp_cond(struct list_head *tree)
+{
+	node_t *dir = first_node(tree);
+	if (! (dir->type == nt_expr) )
+		return 0;
+
+	int op = dir->e.op;
+	return (op == CPP_IF || op == CPP_IFDEF ||
+		op == CPP_IFNDEF || op == CPP_ELIF ||
+		op == CPP_ELSE || op == CPP_ENDIF);
+}
+
 /* Check whether a parsed tree is a "defined()" CPP operator */
 static int
 is_define(struct list_head *tree)
@@ -513,15 +527,9 @@ static node_t *
 get_cpp_cond(struct cpp_cond_state *state, struct list_head *tree)
 {
 	node_t *dir = first_node(tree);
-	if (! (dir->type == nt_expr) )
-		return NULL;
-
 	int op = dir->e.op;
-	if (op == CPP_IF || op == CPP_IFDEF ||
-	    op == CPP_IFNDEF || op == CPP_ELIF)
-		walk_tree(&dir->child[che_arg1], remove_defined, NULL);
-	else if (! (op == CPP_ELSE || op == CPP_ENDIF) )
-		return NULL;
+
+	walk_tree(&dir->child[che_arg1], remove_defined, NULL);
 
 	node_t *realroot = first_node(&dir->child[che_arg1]);
 	node_t *root = realroot;
@@ -577,24 +585,13 @@ get_cpp_cond(struct cpp_cond_state *state, struct list_head *tree)
 	return state->current;
 }
 
-/* Copy the CPP conditions to all dynstr's */
-static void copy_cpp_cond(struct list_head *rawlist)
-{
-	struct dynstr *ds;
-	node_t *cond = NULL;
-	list_for_each_entry(ds, rawlist, list) {
-		if (ds->cpp_cond)
-			cond = ds->cpp_cond;
-		else
-			ds->cpp_cond = cond;
-	}
-}
-
 /* Parse macro bodies saved during the first stage */
 static void parse_macros(void)
 {
 	struct dynstr *ds, *next;
 	struct cpp_cond_state cond_state;
+	struct dynstr *cond_ds = NULL;
+	node_t *lastcond;
 
 	memset(&cond_state, 0, sizeof cond_state);
 
@@ -625,9 +622,16 @@ static void parse_macros(void)
 					  struct dynstr, list);
 			replace_text_list(ds, ds, first, last);
 		} else {
-			if (!ret)
-				ds->cpp_cond = get_cpp_cond(&cond_state,
-							    &parsed_tree);
+			if (!ret && is_cpp_cond(&parsed_tree)) {
+				if (!cond_ds)
+					cond_ds = ds;
+				while (cond_ds != ds) {
+					cond_ds->cpp_cond = lastcond;
+					cond_ds = next_dynstr(cond_ds);
+				}
+				lastcond = get_cpp_cond(&cond_state,
+							&parsed_tree);
+			}
 			discard_parsing();
 		}
 
@@ -637,7 +641,11 @@ static void parse_macros(void)
 		list_del(&savedraw);
 	}
 
-	copy_cpp_cond(&raw_contents);
+	if (cond_ds)
+		while (cond_ds != ds) {
+			cond_ds->cpp_cond = lastcond;
+			cond_ds = next_dynstr(cond_ds);
+		}
 }
 
 /* Parse an external file */
