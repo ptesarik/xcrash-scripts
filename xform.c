@@ -726,7 +726,7 @@ static int simple(const char *patchname, struct list_head *filelist,
 		return res;
 
 	list_for_each_entry(pf, filelist, list) {
-		walk_tree(&pf->parsed, xform_fn, NULL);
+		walk_tree(&pf->parsed, xform_fn, pf);
 	}
 	return quilt_new(patchname, filelist);
 }
