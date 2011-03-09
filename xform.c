@@ -213,6 +213,22 @@ static int target_ptr(node_t *node, void *data)
 	return 0;
 }
 
+/* Replace struct timeval with ttimeval */
+static int target_timeval(node_t *node, void *data)
+{
+	static const char newname[] = "ttimeval";
+	struct parsed_file *pf = data;
+
+	if (is_struct(node, "timeval")) {
+		struct dynstr *oldds = text_dynstr(node->t.name);
+		struct dynstr *newds = newdynstr(newname, sizeof newname - 1);
+		replace_text_list(oldds, oldds, newds, newds);
+		node->t.name = newds->text;
+		pf->clean = 0;
+	}
+	return 0;
+}
+
 /* Replace types with target types */
 static int target_off_t(node_t *item, void *data)
 {
@@ -713,8 +729,7 @@ static struct xform_desc xforms[] = {
 { "target-timeval.patch", import },
 
 // Use target timeval
-{ "target-timeval-use.patch", rename_struct,
-		"timeval" TO "ttimeval" },
+{ "target-timeval-use.patch", simple, target_timeval },
 
 // Introduce target off_t
 { "target-off_t.patch", import },
