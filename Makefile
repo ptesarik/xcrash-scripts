@@ -14,7 +14,8 @@ clang.tab.c clang.tab.h: clang.y
 clex.yy.o: clex.yy.c clang.tab.h parser.h
 clang.tab.o: clang.tab.c parser.h
 parser.o: parser.c parser.h clang.tab.h
-xform.o: xform.c parser.h clang.tab.h
+tools.o: tools.c parser.h tools.h clang.tab.h
+xform.o: xform.c parser.h tools.h clang.tab.h
 
-xcrashify: clex.yy.o clang.tab.o parser.o xform.o
+xcrashify: clex.yy.o clang.tab.o parser.o tools.o xform.o
 	$(CC) $^ -o $@
