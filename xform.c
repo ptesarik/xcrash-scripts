@@ -224,14 +224,57 @@ static int target_ptr(node_t *node, void *data)
 }
 
 /* Replace struct timeval with ttimeval */
-static int target_timeval(node_t *node, void *data)
+
+struct varsearch {
+	const char *varname;
+	node_t *found;
+};
+
+static int
+checkvar(node_t *node, void *data)
+{
+	struct varsearch *vs = data;
+
+	if (!is_id(node) || strcmp(node->e.str, vs->varname))
+		return 0;
+	vs->found = node;
+	return 1;
+}
+
+static int
+checkselect(node_t *node, void *data)
+{
+	struct varsearch *vs = data;
+
+	if (!is_direct_call(node, "select"))
+		return 0;
+
+	node_t *arg = nth_element(&node->child[che_arg2], 5);
+	walk_tree_single(arg, checkvar, vs);
+	return !!vs->found;
+}
+
+static int
+target_timeval(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
+	struct list_head *scope;
 
-	if (is_struct(node, "timeval")) {
-		replace_type_name(node, "ttimeval");
-		pf->clean = 0;
+	if (!is_struct(node, "timeval"))
+		return 0;
+
+	if (node->parent->type == nt_var) {
+		struct varsearch vs;
+		vs.varname = node->parent->v.name;
+		vs.found = NULL;
+		scope = find_scope(&pf->parsed, node);
+		walk_tree(scope, checkselect, &vs);
+		if (vs.found)
+			return 0;
 	}
+
+	replace_type_name(node, "ttimeval");
+	pf->clean = 0;
 	return 0;
 }
 
