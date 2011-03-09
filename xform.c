@@ -113,6 +113,16 @@ nth_element(struct list_head *list, int pos)
 	return NULL;
 }
 
+/* Change the name in @node->t.name */
+static void
+replace_type_name(node_t *node, const char *newname)
+{
+	struct dynstr *oldds = text_dynstr(node->t.name);
+	struct dynstr *newds = newdynstr(newname, strlen(newname));
+	replace_text_list(oldds, oldds, newds, newds);
+	node->t.name = newds->text;
+}
+
 /************************************************************
  * Use target types
  *
@@ -216,14 +226,10 @@ static int target_ptr(node_t *node, void *data)
 /* Replace struct timeval with ttimeval */
 static int target_timeval(node_t *node, void *data)
 {
-	static const char newname[] = "ttimeval";
 	struct parsed_file *pf = data;
 
 	if (is_struct(node, "timeval")) {
-		struct dynstr *oldds = text_dynstr(node->t.name);
-		struct dynstr *newds = newdynstr(newname, sizeof newname - 1);
-		replace_text_list(oldds, oldds, newds, newds);
-		node->t.name = newds->text;
+		replace_type_name(node, "ttimeval");
 		pf->clean = 0;
 	}
 	return 0;
@@ -237,8 +243,7 @@ static int target_off_t(node_t *node, void *data)
 	/* Convert types to their target equivallents */
 	if (node->type == nt_type && node->t.category == type_typedef &&
 	    !strcmp(node->t.name, "off_t")) {
-		replace_text(node, "toff_t");
-		node->t.name = "toff_t";
+		replace_type_name(node, "toff_t");
 		pf->clean = 0;
 	}
 
