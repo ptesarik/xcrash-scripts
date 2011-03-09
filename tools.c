@@ -132,6 +132,28 @@ check_cpp_cond(node_t *node, ...)
 	return vcheck_cpp_cond(node, set, unset);
 }
 
+/************************************************************
+ * Related to the parsed tree
+ *
+ */
+
+struct list_head *
+find_scope(struct list_head *tree, node_t *node)
+{
+	for (; node; node = node->parent) {
+		if (node->type != nt_decl)
+			continue;
+		if (list_empty(&node->child[chd_var]))
+			continue;
+		node_t *var = first_node(&node->child[chd_var]);
+		if (list_empty(&var->child[chv_type]))
+			continue;
+		node_t *type = first_node(&var->child[chv_type]);
+		if (type->t.category == type_func)
+			return &node->child[chd_body];
+	}
+	return tree;
+}
 
 /************************************************************
  * System interfaces
