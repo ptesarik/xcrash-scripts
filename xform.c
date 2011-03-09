@@ -588,52 +588,6 @@ static int simple(const char *patchname, struct list_head *filelist,
 	return quilt_new(patchname, filelist);
 }
 
-/* Rename a struct */
-
-struct rename_data {
-	struct parsed_file *pf;
-	const char *oldname;
-	const char *newname;
-	size_t newlen;
-};
-
-#define TO	"\0"
-
-static int
-rename_struct_fn(node_t *node, void *data)
-{
-	struct rename_data *rd = data;
-
-	if (is_struct(node, rd->oldname)) {
-		struct dynstr *oldds = text_dynstr(node->t.name);
-		struct dynstr *newds = newdynstr(rd->newname, rd->newlen);
-		replace_text_list(oldds, oldds, newds, newds);
-		node->t.name = newds->text;
-		rd->pf->clean = 0;
-	}
-	return 0;
-}
-
-static int
-rename_struct(const char *patchname, struct list_head *filelist,
-	       void *arg)
-{
-	struct rename_data rd;
-	int res;
-
-	rd.oldname = arg;
-	rd.newname = arg + strlen(arg) + 1;
-	rd.newlen = strlen(rd.newname);
-
-	if ( (res = update_parsed_files(filelist)) )
-		return res;
-
-	list_for_each_entry(rd.pf, filelist, list) {
-		walk_tree(&rd.pf->parsed, rename_struct_fn, &rd);
-	}
-	return quilt_new(patchname, filelist);
-}
-
 struct remove_data {
 	struct parsed_file *pf;
 	const char *name;
