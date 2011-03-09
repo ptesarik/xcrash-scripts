@@ -62,6 +62,7 @@ H			[a-fA-F0-9]
 E			[Ee][+-]?{D}+
 FS			(f|F|l|L)
 IS			(u|U|l|L)*
+CPP			("#"|"%:")[ \t\v\f]*
 
 %s cpp
 %s cpp_condition
@@ -83,7 +84,7 @@ IS			(u|U|l|L)*
 
   /* CPP directive (start) */
 <cpp_dir>{
-[ \t\v\f]+		/* skip whitespace except newline */
+{CPP}			/* skip whitespace except newline */
 "define"		{
 			token_at_eof = ';';
 			BEGIN(cpp_def);
@@ -158,13 +159,13 @@ IS			(u|U|l|L)*
 				}
 
   /* CPP ignored directive */
-("#"|"%:")[ \t\v\f]*	BEGIN(cpp_ign);
-<cpp_ign>(.|\\\n)	{
-	if (!lex_input && !yylloc.last_text->reuse)
+{CPP}	{
+	if (!lex_input)
 		list_add_tail(&yylloc.last_text->cpp_list, &raw_cpp);
+	BEGIN(cpp_ign);
 	yylloc.last_text->reuse = 1;
-	/* and eat up the directive */
 	}
+<cpp_ign>(.|\\\n)	/* and eat up the directive */
 <cpp_ign>\n		{
 	yylloc.last_text->reuse = 0;
 	BEGIN(INITIAL);
