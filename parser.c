@@ -448,6 +448,15 @@ void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 	newlast->list.next = oldlast->list.next;
 	newlast->list.next->prev = &newlast->list;
 
+	if (oldfirst->cpp_cond != oldlast->cpp_cond) {
+		fputs("Replacing CPP conditionals not supported\n", stderr);
+		exit(1);
+	}
+	for (it = &newfirst->list; it != newlast->list.next; it = it->next) {
+		struct dynstr *ds = list_entry(it, struct dynstr, list);
+		ds->cpp_cond = oldfirst->cpp_cond;
+	}
+
 	list_for_each_entry_safe(node, nnode,
 				 &oldfirst->node_first, first_list)
 		set_node_first(node, newfirst);
