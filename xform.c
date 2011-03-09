@@ -96,7 +96,7 @@ static int
 quilt_new(const char *name, struct list_head *filelist)
 {
 	int n = list_count(filelist);
-	const char **argv = calloc(sizeof(char*), n + 4);
+	const char **argv = alloca((n+4) * sizeof(char*));
 	struct parsed_file *pf;
 	int i, res;
 
