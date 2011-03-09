@@ -184,6 +184,36 @@ typedef_to_target(node_t *item)
 	return 0;
 }
 
+/* Convert a target typedef into a GDB variant */
+static int
+ttype_to_gdb(node_t *item)
+{
+	static const struct {
+		const char *old;
+		char *new;
+	} subst[] = {
+		{ "tulonglong", "bfd_vma" },
+		{ "tlonglong", "bfd_signed_vma" },
+		{ "tulong", "bfd_vma" },
+		{ "tlong", "bfd_signed_vma" },
+		/* The following types may need changing: */
+		{ "tuint", "unsigned int" },
+		{ "tint", "int" },
+		{ "tushort", "short" },
+		{ "tshort", "unsigned short" },
+	};
+	int i;
+
+	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
+		if (!strcmp(item->t.name, subst[i].old)) {
+			replace_text(item, subst[i].new);
+			reparse_node(item, START_TYPE_NAME);
+			return 1;
+		}
+	}
+	return 0;
+}
+
 /* Replace types with target types */
 static int target_types(node_t *item, void *data)
 {
@@ -196,8 +226,13 @@ static int target_types(node_t *item, void *data)
 			modified = btype_to_target(item);
 		else if (item->t.category == type_typedef)
 			modified = typedef_to_target(item);
-		if (modified)
+		if (modified) {
+			if (!strcmp(pf->name, "defs.h") &&
+			    check_cpp_cond(item->first_text->cpp_cond,
+					   "GDB_COMMON", NULL, NULL) >= 0)
+				ttype_to_gdb(item);
 			pf->clean = 0;
+		}
 	}
 
 	return 0;
