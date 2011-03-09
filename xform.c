@@ -545,6 +545,11 @@ use_ia64_fpreg_t(node_t *node, void *data)
 	return 0;
 }
 
+/************************************************************
+ * Transformation functions
+ *
+ */
+
 static int update_parsed_files(struct list_head *filelist)
 {
 	struct parsed_file *pf;
@@ -562,11 +567,6 @@ static int update_parsed_files(struct list_head *filelist)
 	uptodate = 1;
 	return 0;
 }
-
-/************************************************************
- * Transformation functions
- *
- */
 
 static int import(const char *patchname, struct list_head *flist, void *arg)
 {
@@ -588,48 +588,6 @@ static int simple(const char *patchname, struct list_head *filelist,
 
 	list_for_each_entry(pf, filelist, list) {
 		walk_tree(&pf->parsed, xform_fn, pf);
-	}
-	return quilt_new(patchname, filelist);
-}
-
-struct remove_data {
-	struct parsed_file *pf;
-	const char *name;
-};
-
-/* Remove the definition of a named struct */
-static int
-remove_struct_fn(node_t *node, void *data)
-{
-	struct remove_data *rd = data;
-
-	if (node->type != nt_decl)
-		return 0;
-
-	node_t *type = nth_element(&node->child[chd_type], 1);
-	if (is_struct(type, rd->name)) {
-		remove_text_list(node->first_text,
-				 next_dynstr(node->last_text));
-		freenode(node);
-		rd->pf->clean = 0;
-	}
-	return 0;
-}
-
-static int
-remove_struct(const char *patchname, struct list_head *filelist,
-	      void *arg)
-{
-	struct remove_data rd;
-	int res;
-
-	rd.name = arg;
-
-	if ( (res = update_parsed_files(filelist)) )
-		return res;
-
-	list_for_each_entry(rd.pf, filelist, list) {
-		walk_tree(&rd.pf->parsed, remove_struct_fn, &rd);
 	}
 	return quilt_new(patchname, filelist);
 }
