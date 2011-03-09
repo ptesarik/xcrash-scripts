@@ -94,11 +94,11 @@ IS			(u|U|l|L)*
 			return yylval.token = CPP_IF;
 			}
 "ifdef"			{
-			BEGIN(cpp);
+			BEGIN(cpp); BEGIN(cpp_condition);
 			return yylval.token = CPP_IFDEF;
 			}
 "ifndef"		{
-			BEGIN(cpp);
+			BEGIN(cpp); BEGIN(cpp_condition);
 			return yylval.token = CPP_IFNDEF;
 			}
 "elif"			{
@@ -152,6 +152,10 @@ IS			(u|U|l|L)*
 			}
 
 <cpp_condition>"defined"	return yylval.token = CPP_DEFINED;
+<cpp_condition>{L}({L}|{D})*	{
+				yylval.str = yylloc.first_text->text;
+				return ID;
+				}
 
   /* CPP ignored directive */
 ("#"|"%:")[ \t\v\f]*	BEGIN(cpp_ign);
