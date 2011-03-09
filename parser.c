@@ -440,7 +440,7 @@ static void dump_tree(struct list_head *tree)
 void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		       struct dynstr *newfirst, struct dynstr *newlast)
 {
-	struct list_head *it, *next;
+	struct list_head *it, *next, *follow;
 	node_t *node, *nnode;
 
 	newfirst->list.prev = oldfirst->list.prev;
@@ -456,7 +456,8 @@ void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		set_node_last(node, newlast);
 
 	it = &oldfirst->list;
-	while (it != &oldlast->list) {
+	follow = oldlast->list.next;
+	while (it != follow) {
 		struct dynstr *ds = list_entry(it, struct dynstr, list);
 		list_del(&ds->node_first);
 		list_del(&ds->node_last);
