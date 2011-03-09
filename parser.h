@@ -240,13 +240,13 @@ set_node_child(node_t *parent, int pos, node_t *child)
 }
 
 static inline node_t *
-first_node(struct list_head *nodelist)
+first_node(const struct list_head *nodelist)
 {
 	return list_entry(nodelist->next, node_t, list);
 }
 
 static inline node_t *
-last_node(struct list_head *nodelist)
+last_node(const struct list_head *nodelist)
 {
 	return list_entry(nodelist->prev, node_t, list);
 }
