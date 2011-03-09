@@ -514,6 +514,19 @@ use_pt_regs_x86_64(node_t *node, void *data)
 	return 0;
 }
 
+/* Rename ppc64_pt_regs to pt_regs_ppc64 */
+static int
+use_pt_regs_ppc64(node_t *node, void *data)
+{
+	struct parsed_file *pf = data;
+
+	if (is_struct(node, "ppc64_pt_regs")) {
+		replace_type_name(node, "pt_regs_ppc64");
+		pf->clean = 0;
+	}
+	return 0;
+}
+
 static int
 use_ia64_fpreg_t(node_t *node, void *data)
 {
@@ -752,8 +765,7 @@ static struct xform_desc xforms[] = {
 { "remove-ppc64_pt_regs.patch", remove_struct,  "ppc64_pt_regs" },
 
 // Replace remaining ppc64_pt_regs with pt_regs_ppc64
-{ "pt-regs-ppc64.patch", rename_struct,
-		"ppc64_pt_regs" TO "pt_regs_ppc64" },
+{ "pt-regs-ppc64.patch", simple, use_pt_regs_ppc64 },
 
 // Replace system struct ia64_fpreg with our ia64_fpreg_t
 { "use-ia64_fpreg_t.patch", simple, use_ia64_fpreg_t },
