@@ -137,20 +137,18 @@ btype_to_target(node_t *item)
 		char *new;
 	} subst[] = {
 		{ TYPE_UNSIGNED|TYPE_LONG|TYPE_LONGLONG, "tulonglong" },
-		{ TYPE_LONG|TYPE_LONGLONG|TYPE_INT, "tlonglong" },
 		{ TYPE_LONG|TYPE_LONGLONG, "tlonglong" },
 		{ TYPE_UNSIGNED|TYPE_LONG, "tulong" },
 		{ TYPE_LONG, "tlong" },
-		{ TYPE_UNSIGNED|TYPE_INT, "tuint" },
-		{ TYPE_INT, "tint" },
-		{ TYPE_UNSIGNED|TYPE_SHORT|TYPE_INT, "tushort" },
+		{ TYPE_UNSIGNED, "tuint" },
+		{ 0, "tint" },
 		{ TYPE_UNSIGNED|TYPE_SHORT, "tushort" },
 		{ TYPE_SHORT, "tshort" },
 	};
 	int i;
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
-		if (item->t.btype == subst[i].old) {
+		if ((item->t.btype & ~TYPE_INT) == subst[i].old) {
 			replace_text(item, subst[i].new);
 			item->t.category = type_typedef;
 			item->t.name = subst[i].new;
