@@ -230,15 +230,15 @@ static int target_timeval(node_t *node, void *data)
 }
 
 /* Replace types with target types */
-static int target_off_t(node_t *item, void *data)
+static int target_off_t(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
 
 	/* Convert types to their target equivallents */
-	if (item->type == nt_type && item->t.category == type_typedef &&
-	    !strcmp(item->t.name, "off_t")) {
-		replace_text(item, "toff_t");
-		item->t.name = "toff_t";
+	if (node->type == nt_type && node->t.category == type_typedef &&
+	    !strcmp(node->t.name, "off_t")) {
+		replace_text(node, "toff_t");
+		node->t.name = "toff_t";
 		pf->clean = 0;
 	}
 
