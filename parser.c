@@ -746,6 +746,7 @@ int parse_file(struct parsed_file *pf)
 		list_del_init(&parsed_tree);
 		list_add_tail(&pf->raw, &raw_contents);
 		list_del_init(&raw_contents);
+		pf->clean = 1;
 	}
 
 	return ret;

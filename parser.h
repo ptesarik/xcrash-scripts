@@ -296,6 +296,7 @@ struct parsed_file {
 	const char *name;
 	struct list_head parsed;
 	struct list_head raw;
+	int clean;
 };
 
 int parse_file(struct parsed_file *);

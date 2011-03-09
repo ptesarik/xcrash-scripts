@@ -59,9 +59,12 @@ writeout_files(struct list_head *filelist)
 {
 	struct parsed_file *pf;
 	int res;
-	list_for_each_entry(pf, filelist, list)
+	list_for_each_entry(pf, filelist, list) {
+		if (pf->clean)
+			continue;
 		if ( (res = writeout(pf->name, &pf->raw)) )
 			return res;
+	}
 	return 0;
 }
 
@@ -111,8 +114,11 @@ quilt_new(const char *name, struct list_head *filelist)
 	i = 0;
 	argv[i++] = QUILT;
 	argv[i++] = "add";
-	list_for_each_entry(pf, filelist, list)
+	list_for_each_entry(pf, filelist, list) {
+		if (pf->clean)
+			continue;
 		argv[i++] = pf->name;
+	}
 	argv[i] = NULL;
 	if ( (res = run_command(QUILT, argv)) )
 		return res;
@@ -260,7 +266,7 @@ nth_element(struct list_head *list, int pos)
  */
 
 /* Convert a basic type into its target equivallent */
-static void
+static int
 btype_to_target(node_t *item)
 {
 	static const struct {
@@ -285,13 +291,14 @@ btype_to_target(node_t *item)
 			replace_text(item, subst[i].new);
 			item->t.category = type_typedef;
 			item->t.name = subst[i].new;
-			break;
+			return 1;
 		}
 	}
+	return 0;
 }
 
 /* Convert a typedef into its target equivallent */
-static void
+static int
 typedef_to_target(node_t *item)
 {
 	static const struct {
@@ -310,20 +317,26 @@ typedef_to_target(node_t *item)
 		if (!strcmp(item->t.name, subst[i].old)) {
 			replace_text(item, subst[i].new);
 			item->t.name = subst[i].new;
-			break;
+			return 1;
 		}
 	}
+	return 0;
 }
 
 /* Replace types with target types */
 static int target_types(node_t *item, void *data)
 {
+	struct parsed_file *pf = data;
+
 	/* Convert types to their target equivallents */
 	if (item->type == nt_type) {
+		int modified = 0;
 		if (item->t.category == type_basic)
-			btype_to_target(item);
+			modified = btype_to_target(item);
 		else if (item->t.category == type_typedef)
-			typedef_to_target(item);
+			modified = typedef_to_target(item);
+		if (modified)
+			pf->clean = 0;
 	}
 
 	return 0;
@@ -332,6 +345,8 @@ static int target_types(node_t *item, void *data)
 /* Replace sizeof pointers with target pointers */
 static int target_ptr(node_t *node, void *data)
 {
+	struct parsed_file *pf = data;
+
 	if (! (node->type == nt_expr && node->e.op == SIZEOF_TYPE) )
 		return 0;
 
@@ -339,6 +354,7 @@ static int target_ptr(node_t *node, void *data)
 	if (arg->type == nt_type && arg->t.category == type_pointer) {
 		replace_text(arg, "tptr");
 		reparse_node(arg, START_TYPE_NAME);
+		pf->clean = 0;
 	}
 
 	return 0;
@@ -347,11 +363,14 @@ static int target_ptr(node_t *node, void *data)
 /* Replace types with target types */
 static int target_off_t(node_t *item, void *data)
 {
+	struct parsed_file *pf = data;
+
 	/* Convert types to their target equivallents */
 	if (item->type == nt_type && item->t.category == type_typedef &&
 	    !strcmp(item->t.name, "off_t")) {
 		replace_text(item, "toff_t");
 		item->t.name = "toff_t";
+		pf->clean = 0;
 	}
 
 	return 0;
@@ -387,6 +406,8 @@ mkstring_typecast(node_t *node, void *data)
 static int
 mkstring_variadic(node_t *node, void *data)
 {
+	struct parsed_file *pf = data;
+
 	if (!is_direct_call(node, "mkstring"))
 		return 0;
 
@@ -408,6 +429,7 @@ mkstring_variadic(node_t *node, void *data)
 	}
 
 	reparse_node(node, START_EXPR);
+	pf->clean = 0;
 	return 0;
 }
 
@@ -440,6 +462,8 @@ get_read_fn(node_t *type)
 static int
 convert_readmem(node_t *node, void *data)
 {
+	struct parsed_file *pf = data;
+
 	if (!is_direct_call(node, "readmem"))
 		return 0;
 
@@ -482,12 +506,15 @@ convert_readmem(node_t *node, void *data)
 	}
 
 	reparse_node(node, START_EXPR);
+	pf->clean = 0;
 	return 0;
 }
 
 static int
 printf_spec_one(node_t *node, void *data)
 {
+	struct parsed_file *pf = data;
+
 	if (node->type != nt_expr || node->e.op != STRING_CONST)
 		return 0;
 
@@ -534,9 +561,10 @@ printf_spec_one(node_t *node, void *data)
 		replace_text_list(node->first_text, node->last_text,
 				  list_entry(ds.next, struct dynstr, list),
 				  list_entry(ds.prev, struct dynstr, list));
+		reparse_node(node, START_EXPR);
+		pf->clean = 0;
 	}
 
-	reparse_node(node, START_EXPR);
 	return 0;
 }
 
@@ -557,7 +585,7 @@ printf_spec(node_t *node, void *data)
 		return 0;
 
 	node_t *spec = nth_element(&node->child[che_arg2], pos);
-	walk_tree_single(spec, printf_spec_one, NULL);
+	walk_tree_single(spec, printf_spec_one, data);
 
 	return 0;
 }
@@ -681,6 +709,7 @@ use_pt_regs_x86_64(node_t *node, void *data)
 			remove_text_list(node->first_text,
 					 next_dynstr(node->last_text));
 			freenode(node);
+			pf->clean = 0;
 		}
 		return 0;
 	}
@@ -698,17 +727,21 @@ use_pt_regs_x86_64(node_t *node, void *data)
 	replace_text_list(oldds, oldds, newds, newds);
 	node->t.name = newds->text;
 	reparse_node(node, START_TYPE_NAME);
+	pf->clean = 0;
 	return 0;
 }
 
 static int
 use_ia64_fpreg_t(node_t *node, void *data)
 {
+	struct parsed_file *pf = data;
+
 	if (!is_struct(node, "ia64_fpreg"))
 		return 0;
 
 	replace_text(node, "ia64_fpreg_t");
 	reparse_node(node, START_TYPE_NAME);
+	pf->clean = 0;
 	return 0;
 }
 
@@ -755,6 +788,7 @@ static int simple(const char *patchname, struct list_head *filelist,
 /* Rename a struct */
 
 struct rename_data {
+	struct parsed_file *pf;
 	const char *oldname;
 	const char *newname;
 	size_t newlen;
@@ -772,6 +806,7 @@ rename_struct_fn(node_t *node, void *data)
 		struct dynstr *newds = newdynstr(rd->newname, rd->newlen);
 		replace_text_list(oldds, oldds, newds, newds);
 		node->t.name = newds->text;
+		rd->pf->clean = 0;
 	}
 	return 0;
 }
@@ -780,7 +815,6 @@ static int
 rename_struct(const char *patchname, struct list_head *filelist,
 	       void *arg)
 {
-	struct parsed_file *pf;
 	struct rename_data rd;
 	int res;
 
@@ -791,25 +825,32 @@ rename_struct(const char *patchname, struct list_head *filelist,
 	if ( (res = update_parsed_files(filelist)) )
 		return res;
 
-	list_for_each_entry(pf, filelist, list) {
-		walk_tree(&pf->parsed, rename_struct_fn, &rd);
+	list_for_each_entry(rd.pf, filelist, list) {
+		walk_tree(&rd.pf->parsed, rename_struct_fn, &rd);
 	}
 	return quilt_new(patchname, filelist);
 }
+
+struct remove_data {
+	struct parsed_file *pf;
+	const char *name;
+};
 
 /* Remove the definition of a named struct */
 static int
 remove_struct_fn(node_t *node, void *data)
 {
-	const char *name = data;
+	struct remove_data *rd = data;
+
 	if (node->type != nt_decl)
 		return 0;
 
 	node_t *type = nth_element(&node->child[chd_type], 1);
-	if (is_struct(type, name)) {
+	if (is_struct(type, rd->name)) {
 		remove_text_list(node->first_text,
 				 next_dynstr(node->last_text));
 		freenode(node);
+		rd->pf->clean = 0;
 	}
 	return 0;
 }
@@ -818,14 +859,16 @@ static int
 remove_struct(const char *patchname, struct list_head *filelist,
 	      void *arg)
 {
-	struct parsed_file *pf;
+	struct remove_data rd;
 	int res;
+
+	rd.name = arg;
 
 	if ( (res = update_parsed_files(filelist)) )
 		return res;
 
-	list_for_each_entry(pf, filelist, list) {
-		walk_tree(&pf->parsed, remove_struct_fn, arg);
+	list_for_each_entry(rd.pf, filelist, list) {
+		walk_tree(&rd.pf->parsed, remove_struct_fn, &rd);
 	}
 	return quilt_new(patchname, filelist);
 }
