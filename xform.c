@@ -475,6 +475,34 @@ printf_spec(node_t *node, void *data)
  *
  */
 
+/* Remove declarations of struct @oldname and rename all other
+ * struct @oldname to struct @newname
+ * Returns non-zero if @node was modified
+ */
+static int
+replace_struct(node_t *node, const char *oldname, const char *newname)
+{
+	if (node->type == nt_decl) {
+		node_t *type = nth_element(&node->child[chd_type], 1);
+		if (!is_struct(type, oldname))
+			return 0;
+		remove_text_list(node->first_text,
+				 next_dynstr(node->last_text));
+		freenode(node);
+		return 1;
+	}
+
+	/* No change if part of struct pt_regs declaration */
+	if (node->parent->type == nt_decl)
+		return 0;
+
+	if (!is_struct(node, oldname))
+		return 0;
+
+	replace_type_name(node, newname);
+	return 1;
+}
+
 static int
 use_pt_regs_x86_64(node_t *node, void *data)
 {
@@ -486,44 +514,20 @@ use_pt_regs_x86_64(node_t *node, void *data)
 	else if (cond < 0)
 		return 0;
 
-	if (node->type == nt_decl) {
-		node_t *type = nth_element(&node->child[chd_type], 1);
-		if (is_struct(type, "pt_regs")) {
-			remove_text_list(node->first_text,
-					 next_dynstr(node->last_text));
-			freenode(node);
-			pf->clean = 0;
-		}
-		return 0;
-	}
+	if (replace_struct(node, "pt_regs", "pt_regs_x86_64"))
+		pf->clean = 0;
 
-	/* No change if part of struct pt_regs declaration */
-	if (node->parent->type == nt_decl)
-		return 0;
-
-	if (!is_struct(node, "pt_regs"))
-		return 0;
-
-	struct dynstr *oldds = text_dynstr(node->t.name);
-	struct dynstr *newds = newdynstr("pt_regs_x86_64",
-					 strlen("pt_regs_x86_64"));
-	replace_text_list(oldds, oldds, newds, newds);
-	node->t.name = newds->text;
-	reparse_node(node, START_TYPE_NAME);
-	pf->clean = 0;
 	return 0;
 }
 
-/* Rename ppc64_pt_regs to pt_regs_ppc64 */
 static int
 use_pt_regs_ppc64(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
 
-	if (is_struct(node, "ppc64_pt_regs")) {
-		replace_type_name(node, "pt_regs_ppc64");
+	if (replace_struct(node, "ppc64_pt_regs", "pt_regs_ppc64"))
 		pf->clean = 0;
-	}
+
 	return 0;
 }
 
@@ -715,10 +719,7 @@ static struct xform_desc xforms[] = {
 // Use platform-independent pt_regs_x86_64
 { "pt-regs-x86_64.patch", simple, use_pt_regs_x86_64 },
 
-// Remove struct ppc64_pt_regs
-{ "remove-ppc64_pt_regs.patch", remove_struct,  "ppc64_pt_regs" },
-
-// Replace remaining ppc64_pt_regs with pt_regs_ppc64
+// Replace ppc64_pt_regs with pt_regs_ppc64
 { "pt-regs-ppc64.patch", simple, use_pt_regs_ppc64 },
 
 // Replace system struct ia64_fpreg with our ia64_fpreg_t
