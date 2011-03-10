@@ -338,6 +338,7 @@ struct dynstr *newdynstr(const char *s, size_t len)
 	ds->cpp_cond = NULL;
 	ds->len = len;
 	ds->alloc = len + 1;
+	ds->refcount = 0;
 	ds->reuse = 0;
 	memcpy(ds->text, s, len);
 	ds->text[ds->len] = '\0';

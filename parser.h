@@ -10,6 +10,7 @@ struct dynstr {
 	struct list_head node_first, node_last;
 	struct node *cpp_cond;
 	size_t len, alloc;
+	int refcount;		/* external references (with node->str) */
 	int reuse;
 	char text[];
 };
@@ -214,6 +215,16 @@ node_t *dupnode(node_t *);
 
 void set_node_first(node_t *, struct dynstr *);
 void set_node_last(node_t *, struct dynstr *);
+
+/* Set @node's string reference */
+static inline void
+set_node_str(node_t *node, struct dynstr *str)
+{
+	if (node->str)
+		--node->str->refcount;
+	if ( (node->str = str) )
+		++node->str->refcount;
+}
 
 /* Add @child (possibly a linked list) to the @parent node */
 static inline void

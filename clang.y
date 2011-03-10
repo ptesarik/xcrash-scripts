@@ -1134,6 +1134,9 @@ dupnode(node_t *node)
 			set_node_child(ret, i, dupnode(child));
 	}
 
+	if (ret->str)
+		++ret->str->refcount;
+
 	ret->first_text = node->first_text;
 	list_add(&ret->first_list, &ret->first_text->node_first);
 	ret->last_text = node->last_text;
@@ -1151,6 +1154,8 @@ freenode(node_t *node)
 		list_for_each_entry_safe(child, next, &node->child[i], list)
 			freenode(child);
 	}
+	if (node->str)
+		--node->str->refcount;
 	list_del(&node->list);
 	list_del(&node->first_list);
 	list_del(&node->last_list);
@@ -1181,7 +1186,7 @@ node_t *
 newtype_name(const YYLTYPE *loc, struct dynstr *name)
 {
 	node_t *node = newtype(loc);
-	node->str = name;
+	set_node_str(node, name);
 	return node;
 }
 
@@ -1214,7 +1219,7 @@ node_t *
 newvar(const YYLTYPE *loc, struct dynstr *name)
 {
 	node_t *node = newnode(loc, nt_var, chv_max);
-	node->str = name;
+	set_node_str(node, name);
 	return node;
 }
 
@@ -1304,7 +1309,7 @@ node_t *
 newexprstr(const YYLTYPE *loc, struct dynstr *str)
 {
 	node_t *ret = newexpr(loc, STRING_CONST);
-	ret->str = str;
+	set_node_str(ret, str);
 	return ret;
 }
 
@@ -1312,7 +1317,7 @@ node_t *
 newexprchar(const YYLTYPE *loc, struct dynstr *str)
 {
 	node_t *ret = newexpr(loc, CHAR_CONST);
-	ret->str = str;
+	set_node_str(ret, str);
 	return ret;
 }
 
@@ -1320,7 +1325,7 @@ node_t *
 newexprid(const YYLTYPE *loc, struct dynstr *id)
 {
 	node_t *ret = newexpr(loc, ID);
-	ret->str = id;
+	set_node_str(ret, id);
 	return ret;
 }
 

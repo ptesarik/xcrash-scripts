@@ -120,7 +120,7 @@ replace_type_name(node_t *node, const char *newname)
 {
 	struct dynstr *oldds = node->str;
 	struct dynstr *newds = newdynstr(newname, strlen(newname));
-	node->str = newds;
+	set_node_str(node, newds);
 	replace_text_list(oldds, oldds, newds, newds);
 }
 
@@ -150,7 +150,7 @@ btype_to_target(node_t *item)
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
 		if ((item->t.btype & ~TYPE_INT) == subst[i].old) {
-			item->str = replace_text(item, subst[i].new);
+			set_node_str(item, replace_text(item, subst[i].new));
 			item->t.category = type_typedef;
 			return 1;
 		}
@@ -176,7 +176,7 @@ typedef_to_target(node_t *item)
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
 		if (!strcmp(item->str->text, subst[i].old)) {
-			item->str = replace_text(item, subst[i].new);
+			set_node_str(item, replace_text(item, subst[i].new));
 			return 1;
 		}
 	}
