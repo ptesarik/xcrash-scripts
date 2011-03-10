@@ -63,7 +63,7 @@ static void hidedecls(struct list_head *);
 	int token;
 	unsigned tflags;	/* type flags */
 	unsigned long btype;
-	char *str;
+	struct dynstr *str;
 	abstract_t abstract;
 	declarator_t *declarator;
 	node_t *node;
@@ -388,7 +388,7 @@ attribute		: /* empty */
 			{ $$ = newexprid(&@$, $1); }
 			/* HACK: should change context in lexer... */
 			| CONST
-			{ $$ = newexprid(&@$, "const"); }
+			{ $$ = newexprid(&@$, @$.first_text); }
 			;
 
 attr_param_list		: /* empty */
@@ -1178,10 +1178,10 @@ newtype(const YYLTYPE *loc)
 }
 
 node_t *
-newtype_name(const YYLTYPE *loc, const char *name)
+newtype_name(const YYLTYPE *loc, struct dynstr *name)
 {
 	node_t *node = newtype(loc);
-	node->t.name = name;
+	node->str = name;
 	return node;
 }
 
@@ -1211,10 +1211,10 @@ type_merge(node_t *merger, node_t *other)
 }
 
 node_t *
-newvar(const YYLTYPE *loc, const char *name)
+newvar(const YYLTYPE *loc, struct dynstr *name)
 {
 	node_t *node = newnode(loc, nt_var, chv_max);
-	node->v.name = name;
+	node->str = name;
 	return node;
 }
 
@@ -1285,42 +1285,42 @@ newexpr(const YYLTYPE *loc, int op)
 }
 
 node_t *
-newexprnum(const YYLTYPE *loc, const char *str)
+newexprnum(const YYLTYPE *loc, struct dynstr *str)
 {
 	node_t *ret = newexpr(loc, INT_CONST);
-	ret->e.num = strtol(str, (char**)NULL, 0);
+	ret->e.num = strtol(str->text, (char**)NULL, 0);
 	return ret;
 }
 
 node_t *
-newexprfloat(const YYLTYPE *loc, const char *str)
+newexprfloat(const YYLTYPE *loc, struct dynstr *str)
 {
 	node_t *ret = newexpr(loc, FLOAT_CONST);
-	ret->e.f = strtod(str, (char**)NULL);
+	ret->e.f = strtod(str->text, (char**)NULL);
 	return ret;
 }
 
 node_t *
-newexprstr(const YYLTYPE *loc, const char *str)
+newexprstr(const YYLTYPE *loc, struct dynstr *str)
 {
 	node_t *ret = newexpr(loc, STRING_CONST);
-	ret->e.str = str;
+	ret->str = str;
 	return ret;
 }
 
 node_t *
-newexprchar(const YYLTYPE *loc, const char *str)
+newexprchar(const YYLTYPE *loc, struct dynstr *str)
 {
 	node_t *ret = newexpr(loc, CHAR_CONST);
-	ret->e.str = str;
+	ret->str = str;
 	return ret;
 }
 
 node_t *
-newexprid(const YYLTYPE *loc, const char *id)
+newexprid(const YYLTYPE *loc, struct dynstr *id)
 {
 	node_t *ret = newexpr(loc, ID);
-	ret->e.str = id;
+	ret->str = id;
 	return ret;
 }
 
@@ -1435,7 +1435,7 @@ addtypedeflist(node_t *first)
 	node_t *node = first;
 	do {
 		if (node->type == nt_var)
-			addtypedef(node->v.name);
+			addtypedef(node->str->text);
 		node = list_entry(node->list.next, node_t, list);
 	} while (node != first);
 }
@@ -1469,8 +1469,8 @@ hidevars(struct list_head *vars)
 {
 	node_t *node;
 	list_for_each_entry(node, vars, list) {
-		if (node->type == nt_var && node->v.name)
-			hidetypedef(node->v.name);
+		if (node->type == nt_var && node->str)
+			hidetypedef(node->str->text);
 	}
 }
 
@@ -1495,7 +1495,7 @@ hidefnparams(declarator_t *first)
 			hidedecls(&tree->child[cht_param]);
 		else
 			fprintf(stderr, "Ouch! %s is not a function!\n",
-				decl->var->v.name);
+				decl->var->str->text);
 
 		decl = list_entry(decl->list.next, declarator_t, list);
 	} while (decl != first);

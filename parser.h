@@ -94,10 +94,7 @@ enum basic_type {
 typedef struct type {
 	enum type_category category;
 	unsigned flags;		/* see TF_xxx macros below */
-	union {
-		unsigned long btype;
-		const char *name;
-	};
+	unsigned long btype;
 } type_t;
 
 /* storage type flag bitmask: */
@@ -116,13 +113,8 @@ typedef struct expr {
 	union {
 		long num;
 		double f;
-		const char *str;
 	};
 } expr_t;
-
-typedef struct var {
-	const char *name;
-} var_t;
 
 enum {
 	cht_expr = 0,
@@ -165,8 +157,8 @@ typedef struct node {
 	union {
 		type_t t;
 		expr_t e;
-		var_t v;
 	};
+	struct dynstr *str;
 	struct dynstr *first_text, *last_text;
 	struct list_head first_list, last_list;
 	struct node *parent;
@@ -181,9 +173,6 @@ typedef struct node {
 #define expr_node(ptr) ({	\
         const expr_t *__ptr = (ptr);	\
         (node_t *)( (char *)__ptr - offsetof(node_t,e) );})
-#define var_node(ptr) ({	\
-        const var_t *__ptr = (ptr);	\
-        (node_t *)( (char *)__ptr - offsetof(node_t,v) );})
 
 /* This type is used only temporarily during parsing */
 typedef struct abstract {
@@ -252,19 +241,19 @@ last_node(const struct list_head *nodelist)
 }
 
 node_t *newtype(const YYLTYPE *);
-node_t *newtype_name(const YYLTYPE *, const char *);
+node_t *newtype_name(const YYLTYPE *, struct dynstr *);
 node_t *newtype_int(const YYLTYPE *);
 
-node_t *newvar(const YYLTYPE *, const char *);
+node_t *newvar(const YYLTYPE *, struct dynstr *);
 
 node_t *newdecl(const YYLTYPE *, node_t *, declarator_t *);
 
 node_t *newexpr(const YYLTYPE *, int);
-node_t *newexprnum(const YYLTYPE *, const char *);
-node_t *newexprfloat(const YYLTYPE *, const char *);
-node_t *newexprstr(const YYLTYPE *, const char *);
-node_t *newexprchar(const YYLTYPE *, const char *);
-node_t *newexprid(const YYLTYPE *, const char *);
+node_t *newexprnum(const YYLTYPE *, struct dynstr *);
+node_t *newexprfloat(const YYLTYPE *, struct dynstr *);
+node_t *newexprstr(const YYLTYPE *, struct dynstr *);
+node_t *newexprchar(const YYLTYPE *, struct dynstr *);
+node_t *newexprid(const YYLTYPE *, struct dynstr *);
 node_t *newexpr1(const YYLTYPE *, int, node_t *);
 node_t *newexpr2(const YYLTYPE *, int, node_t *, node_t *);
 node_t *newexpr3(const YYLTYPE *, int, node_t *, node_t *, node_t *);

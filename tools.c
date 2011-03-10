@@ -57,10 +57,10 @@ vcheck_cpp_cond(node_t *node, const char **set, const char **unset)
 	switch (node->e.op) {
 	case ID:
 		for (p = unset; *p; ++p)
-			if (!strcmp(*p, node->e.str))
+			if (!strcmp(*p, node->str->text))
 				return -1;
 		for (p = set; *p; ++p)
-			if (!strcmp(*p, node->e.str))
+			if (!strcmp(*p, node->str->text))
 				return 1;
 		return 0;
 

@@ -99,9 +99,9 @@ YYLTYPE dummyloc = {
 #if DEBUG
 
 static void dump_basic_type(type_t *type);
-static void dump_type(type_t *type, int showflags);
-static void dump_expr(expr_t *expr);
-static void dump_var(var_t *var);
+static void dump_type(node_t *node, int showflags);
+static void dump_expr(node_t *node);
+static void dump_var(node_t *node);
 static void dump_tree(struct list_head *tree);
 
 static int indent = 2;
@@ -179,8 +179,9 @@ static void dump_basic_type(type_t *type)
 	}
 }
 
-static void dump_type(type_t *type, int showflags)
+static void dump_type(node_t *node, int showflags)
 {
+	type_t *type = &node->t.
 	if (showflags) {
 		putchar('[');
 		if (type->flags & TF_CONST)
@@ -317,8 +318,10 @@ static void dump_op(int op)
 	}
 }
 
-static void dump_expr(expr_t *expr)
+static void dump_expr(node_t *node)
 {
+	expr_t *expr = &node->e;
+
 	switch (expr->op) {
 	case INT_CONST:
 		printf("%ld", expr->num);
@@ -329,16 +332,16 @@ static void dump_expr(expr_t *expr)
 	case ID:
 	case STRING_CONST:
 	case CHAR_CONST:
-		fputs(expr->str, stdout);
+		fputs(node->str->text, stdout);
 		break;
 	default:
 		dump_op(expr->op);
 	}
 }
 
-static void dump_var(var_t *var)
+static void dump_var(node_t *node)
 {
-	printf("name: %s", var->name);
+	printf("name: %s", node->str->text);
 }
 
 static void dump_child_pos(node_t *parent, int pos)

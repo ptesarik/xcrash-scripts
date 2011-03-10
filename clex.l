@@ -124,12 +124,12 @@ CPP			("#"|"%:")[ \t\v\f]*
 <cpp_def>[ \t\v\f]+		/* skip whitespace except newline */
 <cpp_def>{L}({L}|{D})*/\(	{
 				BEGIN(cpp);
-				yylval.str = yylloc.first_text->text;
+				yylval.str = yylloc.first_text;
 				return CPP_IDARG;
 				}
 <cpp_def>{L}({L}|{D})*		{
 				BEGIN(cpp);
-				yylval.str = yylloc.first_text->text;
+				yylval.str = yylloc.first_text;
 				return ID;
 				}
 
@@ -154,7 +154,7 @@ CPP			("#"|"%:")[ \t\v\f]*
 
 <cpp_condition>"defined"	return yylval.token = CPP_DEFINED;
 <cpp_condition>{L}({L}|{D})*	{
-				yylval.str = yylloc.first_text->text;
+				yylval.str = yylloc.first_text;
 				return ID;
 				}
 
@@ -267,7 +267,7 @@ CPP			("#"|"%:")[ \t\v\f]*
 3DFX({L}|{D})*		|	/* HACK */
 3DLABS({L}|{D})*	{	/* HACK */
 				int type;
-				yylval.str = yylloc.first_text->text;
+				yylval.str = yylloc.first_text;
 				if( (type = lex_input_type()) >= 0)
 					return type;
 				else if (istypedef(yytext))
@@ -278,23 +278,23 @@ CPP			("#"|"%:")[ \t\v\f]*
 0[xX]{H}+{IS}?		|
 0{D}+{IS}?		|
 {D}+{IS}?		{
-				yylval.str = yylloc.first_text->text;
+				yylval.str = yylloc.first_text;
 				return INT_CONST;
 			}
 
 {D}+{E}{FS}?		|
 {D}*"."{D}+({E})?{FS}?	|
 {D}+"."{D}*({E})?{FS}?	{
-				yylval.str = yylloc.first_text->text;
+				yylval.str = yylloc.first_text;
 				return FLOAT_CONST;
 			}
 
 L?\'(?s:\\.|[^\\'])*\'	{ /* fix highlight: ' */
-				yylval.str = yylloc.first_text->text;
+				yylval.str = yylloc.first_text;
 				return CHAR_CONST;
 			}
 L?\"(?s:\\.|[^\\"])*\"	{ /* fix highlight: " */
-				yylval.str = yylloc.first_text->text;
+				yylval.str = yylloc.first_text;
 				return STRING_CONST;
 			}
 <*>\\\n?		/* continuation lines */

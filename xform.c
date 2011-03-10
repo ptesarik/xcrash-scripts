@@ -13,11 +13,12 @@ static const char *basedir;
  *
  */
 
-static void
+static struct dynstr *
 replace_text(node_t *node, const char *text)
 {
 	struct dynstr *ds = newdynstr(text, strlen(text));
 	replace_text_list(node->first_text, node->last_text, ds, ds);
+	return ds;
 }
 
 /* Remove text nodes from @remove up to, but not including @keep. */
@@ -87,7 +88,7 @@ is_direct_call(node_t *node, const char *name)
 		return 0;
 
 	node_t *fn = first_node(&node->child[che_arg1]);
-	return is_id(fn) && !strcmp(fn->e.str, name);
+	return is_id(fn) && !strcmp(fn->str->text, name);
 }
 
 /* Returns non-zero if @node is type struct @name. */
@@ -97,7 +98,7 @@ is_struct(node_t *node, const char *name)
 	if (!node)
 		return 0;
 	return (node->type == nt_type && node->t.category == type_struct &&
-		node->t.name && !strcmp(node->t.name, name));
+		node->str && !strcmp(node->str->text, name));
 }
 
 /* Get the @pos-th element from @list */
@@ -117,10 +118,10 @@ nth_element(struct list_head *list, int pos)
 static void
 replace_type_name(node_t *node, const char *newname)
 {
-	struct dynstr *oldds = text_dynstr(node->t.name);
+	struct dynstr *oldds = node->str;
 	struct dynstr *newds = newdynstr(newname, strlen(newname));
+	node->str = newds;
 	replace_text_list(oldds, oldds, newds, newds);
-	node->t.name = newds->text;
 }
 
 /************************************************************
@@ -149,9 +150,8 @@ btype_to_target(node_t *item)
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
 		if ((item->t.btype & ~TYPE_INT) == subst[i].old) {
-			replace_text(item, subst[i].new);
+			item->str = replace_text(item, subst[i].new);
 			item->t.category = type_typedef;
-			item->t.name = subst[i].new;
 			return 1;
 		}
 	}
@@ -175,9 +175,8 @@ typedef_to_target(node_t *item)
 	int i;
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
-		if (!strcmp(item->t.name, subst[i].old)) {
-			replace_text(item, subst[i].new);
-			item->t.name = subst[i].new;
+		if (!strcmp(item->str->text, subst[i].old)) {
+			item->str = replace_text(item, subst[i].new);
 			return 1;
 		}
 	}
@@ -205,7 +204,7 @@ ttype_to_gdb(node_t *item)
 	int i;
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
-		if (!strcmp(item->t.name, subst[i].old)) {
+		if (!strcmp(item->str->text, subst[i].old)) {
 			replace_text(item, subst[i].new);
 			reparse_node(item, START_TYPE_NAME);
 			return 1;
@@ -268,7 +267,7 @@ checkvar(node_t *node, void *data)
 {
 	struct varsearch *vs = data;
 
-	if (!is_id(node) || strcmp(node->e.str, vs->varname))
+	if (!is_id(node) || strcmp(node->str->text, vs->varname))
 		return 0;
 	vs->found = node;
 	return 1;
@@ -298,7 +297,7 @@ target_timeval(node_t *node, void *data)
 
 	if (node->parent->type == nt_var) {
 		struct varsearch vs;
-		vs.varname = node->parent->v.name;
+		vs.varname = node->parent->str->text;
 		vs.found = NULL;
 		scope = find_scope(&pf->parsed, node);
 		walk_tree(scope, checkselect, &vs);
@@ -318,7 +317,7 @@ static int target_off_t(node_t *node, void *data)
 
 	/* Convert types to their target equivallents */
 	if (node->type == nt_type && node->t.category == type_typedef &&
-	    !strcmp(node->t.name, "off_t")) {
+	    !strcmp(node->str->text, "off_t")) {
 		replace_type_name(node, "toff_t");
 		pf->clean = 0;
 	}
@@ -339,15 +338,16 @@ mkstring_typecast(node_t *node, void *data)
 	if (!is_id(node))
 		return 0;
 
-	if (!strcmp(node->e.str, "LONG_DEC") ||
-	    !strcmp(node->e.str, "LONG_HEX")) {
+	const char *id = node->str->text;
+	if (!strcmp(id, "LONG_DEC") ||
+	    !strcmp(id, "LONG_HEX")) {
 		*typecast = "(ulong)";
 		return 1;
-	} else if (!strcmp(node->e.str, "INT_DEC") ||
-		   !strcmp(node->e.str, "INT_HEX")) {
+	} else if (!strcmp(id, "INT_DEC") ||
+		   !strcmp(id, "INT_HEX")) {
 		*typecast = "(uint)";
 		return 1;
-	} else if (!strcmp(node->e.str, "LONGLONG_HEX")) {
+	} else if (!strcmp(id, "LONGLONG_HEX")) {
 		*typecast = "(ulonglong)";
 		return 1;
 	} else
@@ -395,15 +395,16 @@ get_read_fn(node_t *type)
 		case TYPE_LONG | TYPE_LONGLONG:	return "readlonglong";
 		}
 	} else if (type->t.category == type_typedef) {
-		if (!strcmp(type->t.name, "ushort"))
+		const char *name = type->str->text;
+		if (!strcmp(name, "ushort"))
 			return "readshort";
-		else if (!strcmp(type->t.name, "uint"))
+		else if (!strcmp(name, "uint"))
 			return "readint";
-		else if (!strcmp(type->t.name, "ulong"))
+		else if (!strcmp(name, "ulong"))
 			return "readlong";
-		else if (!strcmp(type->t.name, "longlong") ||
-			 !strcmp(type->t.name, "ulonglong") ||
-			 !strcmp(type->t.name, "uint64_t"))
+		else if (!strcmp(name, "longlong") ||
+			 !strcmp(name, "ulonglong") ||
+			 !strcmp(name, "uint64_t"))
 			return "readlonglong";
 	} else if (type->t.category == type_pointer)
 		return "readptr";
