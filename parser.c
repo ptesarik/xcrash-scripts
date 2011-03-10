@@ -602,8 +602,15 @@ get_cpp_cond(struct cpp_cond_state *state, struct list_head *tree)
 
 	node_t *realroot = first_node(&dir->child[che_arg1]);
 	node_t *root = realroot;
-	detach_text(root->first_text, root->last_text);
-	list_del_init(&root->list);
+
+	if (op == CPP_ELSE || op == CPP_ENDIF) {
+		/* Do nothing for directives without arguments,
+		 * because their @root is an invalid pointer.
+		 */
+	} else {
+		detach_text(root->first_text, root->last_text);
+		list_del_init(&root->list);
+	}
 
 	/* Use the latest condition as base on else-blocks */
 	if (op == CPP_ELSE || op == CPP_ELIF) {
