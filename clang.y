@@ -22,6 +22,7 @@ static void yyerror(const char *);
 static void type_merge(node_t *, node_t *);
 
 static declarator_t *newdeclarator(void);
+static void freedeclarator(declarator_t *);
 static void link_abstract(abstract_t *, const abstract_t *);
 
 static void addtypedeflist(node_t *);
@@ -177,6 +178,10 @@ static void hidedecls(struct list_head *);
 /* CPP types */
 %type <node> directive macro_def macro_declarator macro_param
 %type <token> cpp_cond
+
+%destructor { if ($$) freenode($$); }		<node>
+%destructor { if ($$.tree) freenode($$.tree); }	<abstract>
+%destructor { freedeclarator($$); }		<declarator>
 
 %error-verbose
 %locations
@@ -1229,6 +1234,24 @@ newdeclarator(void)
 	declarator_t *ret = calloc(sizeof(declarator_t), 1);
 	INIT_LIST_HEAD(&ret->list);
 	return ret;
+}
+
+static void
+freedeclarator(declarator_t *declarator)
+{
+	declarator_t *d, *nextd;
+
+	nextd = declarator;
+	do {
+		d = nextd;
+		if (d->abstract.tree)
+			freenode(d->abstract.tree);
+		if (d->var)
+			freenode(d->var);
+
+		nextd = list_entry(d->list.next, declarator_t, list);
+		free(d);
+	} while(nextd != declarator);
 }
 
 static void
