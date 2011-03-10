@@ -21,6 +21,8 @@ static void yyerror(const char *);
 
 static void type_merge(node_t *, node_t *);
 
+static void freenodelist(node_t *);
+
 static declarator_t *newdeclarator(void);
 static void freedeclarator(declarator_t *);
 static void link_abstract(abstract_t *, const abstract_t *);
@@ -179,7 +181,7 @@ static void hidedecls(struct list_head *);
 %type <node> directive macro_def macro_declarator macro_param
 %type <token> cpp_cond
 
-%destructor { if ($$) freenode($$); }		<node>
+%destructor { if ($$) freenodelist($$); }	<node>
 %destructor { if ($$.tree) freenode($$.tree); }	<abstract>
 %destructor { freedeclarator($$); }		<declarator>
 
@@ -1165,6 +1167,17 @@ freenode(node_t *node)
 	list_del(&node->first_list);
 	list_del(&node->last_list);
 	free(node);
+}
+
+static void
+freenodelist(node_t *nodelist)
+{
+	struct list_head list;
+	node_t *node, *nnode;
+
+	list_add(&list, &nodelist->list);
+	list_for_each_entry_safe(node, nnode, &list, list)
+		freenode(node);
 }
 
 void
