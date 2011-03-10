@@ -16,6 +16,8 @@
  */
 
 %{
+#include <stdlib.h>
+
 #include "parser.h"
 #include "clang.tab.h"
 
@@ -343,6 +345,15 @@ struct dynstr *newdynstr(const char *s, size_t len)
 	memcpy(ds->text, s, len);
 	ds->text[ds->len] = '\0';
 	return ds;
+}
+
+void freedynstr(struct dynstr *ds)
+{
+	if (ds->refcount) {
+		fputs("Attempt to free an in-use dynstr!\n", stderr);
+		abort();
+	}
+	free(ds);
 }
 
 #define ALLOC_INC	256

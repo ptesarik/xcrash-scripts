@@ -475,7 +475,7 @@ void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		list_del(&ds->node_last);
 
 		next = it->next;
-		free(ds);
+		freedynstr(ds);
 		it = next;
 	}
 }
@@ -526,9 +526,9 @@ discard_parsing(void)
 	list_for_each_entry_safe(node, nnode, &parsed_tree, list)
 		freenode(node);
 
-	struct dynstr *it, *itnext;
-	list_for_each_entry_safe(it, itnext, &raw_contents, list)
-		free(it);
+	struct dynstr *ds, *dsnext;
+	list_for_each_entry_safe(ds, dsnext, &raw_contents, list)
+		freedynstr(ds);
 }
 
 /* Completely detach a dynstr list from its surrounding */
@@ -728,7 +728,7 @@ int parse_file(struct parsed_file *pf)
 	list_for_each_entry_safe(node, nextnode, &pf->parsed, list)
 		freenode(node);
 	list_for_each_entry_safe(ds, nextds, &pf->raw, list)
-		free(ds);
+		freedynstr(ds);
 
 	if (!strcmp(pf->name, "-"))
 		yyin = stdin;

@@ -41,7 +41,7 @@ remove_text_list(struct dynstr *remove, struct dynstr *keep)
 
 		next = it->next;
 		list_del(it);
-		free(ds);
+		freedynstr(ds);
 		it = next;
 	}
 }
@@ -66,7 +66,7 @@ remove_text_list_rev(struct dynstr *remove, struct dynstr *keep)
 
 		next = it->prev;
 		list_del(it);
-		free(ds);
+		freedynstr(ds);
 		it = next;
 	}
 }

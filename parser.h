@@ -16,6 +16,7 @@ struct dynstr {
 };
 
 struct dynstr *newdynstr(const char *, size_t);
+void freedynstr(struct dynstr *ds);
 
 #define next_dynstr(ds)	\
 	(list_entry((ds)->list.next, struct dynstr, list))
