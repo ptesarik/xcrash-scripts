@@ -64,11 +64,8 @@ static void hidedecls(struct list_head *);
 	unsigned tflags;	/* type flags */
 	unsigned long btype;
 	char *str;
-	type_t *type;
 	abstract_t abstract;
 	declarator_t *declarator;
-	expr_t *expr;
-	var_t *var;
 	node_t *node;
 }
 
