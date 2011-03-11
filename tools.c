@@ -192,6 +192,51 @@ dynstr_bol(struct list_head *list, struct dynstr **ds, size_t *pos)
 	}
 }
 
+/* Create a new dynstr that contains a newline and the indentation
+ * of @startds:@startoff.
+ * This is useful to re-create the indentation of a split decl.
+ */
+struct dynstr *
+dynstr_dup_indent(struct list_head *list,
+		  struct dynstr *startds, size_t startoff)
+{
+	struct dynstr *bol = startds;
+	size_t boloff = startoff;
+	dynstr_bol(list, &bol, &boloff);
+
+	size_t len = 0;
+	struct dynstr *ds = bol;
+	size_t off = boloff;
+	while (ds != startds && dynstr_isspace(ds)) {
+		len += ds->len - off;
+		ds = next_dynstr(ds);
+		off = 0;
+	}
+
+	int i = 0;
+	while (i < startoff && isspace(ds->text[i]))
+		++i, ++len;
+
+	struct dynstr *newds = newdynstr(NULL, len + 1);
+	char *p = newds->text;
+	*p++ = '\n';
+
+	ds = bol;
+	off = boloff;
+	while (len) {
+		size_t curlen = ds->len - off;
+		if (curlen > len)
+			curlen = len;
+		memcpy(p, ds->text + off, curlen);
+		p += curlen;
+		len -= curlen;
+		ds = next_dynstr(ds);
+		off = 0;
+	}
+
+	return newds;
+}
+
 /************************************************************
  * Related to the parsed tree
  *

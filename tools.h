@@ -9,6 +9,8 @@ int dynstr_isspace(struct dynstr *ds);
 struct dynstr *dynstr_delspace(struct list_head *list, struct dynstr *ds);
 struct dynstr *dynstr_delspace_rev(struct list_head *list, struct dynstr *ds);
 void dynstr_bol(struct list_head *list, struct dynstr **ds, size_t *pos);
+struct dynstr *dynstr_dup_indent(struct list_head *list,
+				 struct dynstr *startds, size_t startoff);
 
 static inline struct dynstr *
 dynstr_del(struct dynstr *ds)
