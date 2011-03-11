@@ -124,6 +124,7 @@ static void hidedecls(struct list_head *);
 /* start symbol pseudo-tokens */
 %token START_TYPE_NAME
 %token START_EXPR
+%token START_DECL
 %token START_DIRECTIVE
 
 /* other pseudo-tokens */
@@ -205,6 +206,8 @@ translation_unit	: /* empty */
 			| START_TYPE_NAME type_name
 			{ list_add_tail(&$2->list, &parsed_tree); }
 			| START_EXPR expr
+			{ list_add_tail(&$2->list, &parsed_tree); }
+			| START_DECL decl
 			{ list_add_tail(&$2->list, &parsed_tree); }
 			| START_DIRECTIVE directive
 			{
