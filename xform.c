@@ -466,6 +466,7 @@ convert_readmem(node_t *node, void *data)
 	replace_text(first_node(&node->child[che_arg1]), newfn);
 
 	/* Replace the 4th argument */
+	nullify_str(arg);
 	if (mult) {
 		remove_text_list(arg->first_text, mult->first_text);
 		remove_text_list_rev(arg->last_text, mult->last_text);
