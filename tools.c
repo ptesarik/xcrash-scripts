@@ -156,6 +156,46 @@ find_scope(struct list_head *tree, node_t *node)
 }
 
 /************************************************************
+ * Split nodes
+ *
+ */
+
+/* Add a new split_node to @splitlist */
+struct split_node *
+split_add(struct list_head *splitlist, node_t *node,
+	  struct dynstr *oldds, struct dynstr *newds)
+{
+	struct split_node *split = malloc(sizeof(struct split_node));
+	split->oldds = oldds;
+	split->newds = newds;
+	INIT_LIST_HEAD(&split->nodes);
+	split_addnode(split, node);
+	list_add(&split->list, splitlist);
+	return split;
+}
+
+/* Remove @split from its list and free it */
+void
+split_remove(struct split_node *split)
+{
+	list_del(&split->list);
+	free(split);
+}
+
+/* Search @splitlist for a split @ds with text changed to @newtext */
+struct split_node *
+split_search(struct list_head *splitlist, struct dynstr *ds,
+	     const char *newtext)
+{
+	struct split_node *split;
+	list_for_each_entry(split, splitlist, list)
+		if (split->oldds == ds &&
+		    !strcmp(split->newds->text, newtext))
+			return split;
+	return NULL;
+}
+
+/************************************************************
  * System interfaces
  *
  */
