@@ -181,7 +181,7 @@ static void dump_basic_type(type_t *type)
 
 static void dump_type(node_t *node, int showflags)
 {
-	type_t *type = &node->t.
+	type_t *type = &node->t;
 	if (showflags) {
 		putchar('[');
 		if (type->flags & TF_CONST)
@@ -216,19 +216,19 @@ static void dump_type(node_t *node, int showflags)
 		break;
 
 	case type_typedef:
-		fputs(type->name, stdout);
+		fputs(node->str->text, stdout);
 		break;
 
 	case type_struct:
-		printf("struct %s", type->name);
+		printf("struct %s", node->str->text);
 		break;
 
 	case type_union:
-		printf("union %s", type->name);
+		printf("union %s", node->str->text);
 		break;
 
 	case type_enum:
-		printf("enum %s", type->name);
+		printf("enum %s", node->str->text);
 		break;
 
 	case type_pointer:
@@ -411,9 +411,9 @@ static void dump_node(node_t *node)
 	dump_chunk(node->first_text, node->last_text);
 	printf("%*s", depth*indent, "");
 	switch (node->type) {
-	case nt_type: dump_type(&node->t, 1); break;
-	case nt_expr: dump_expr(&node->e); break;
-	case nt_var:  dump_var (&node->v); break;
+	case nt_type: dump_type(node, 1); break;
+	case nt_expr: dump_expr(node); break;
+	case nt_var:  dump_var (node); break;
 	case nt_decl: fputs("decl", stdout); break;
 	}
 	putchar('\n');
