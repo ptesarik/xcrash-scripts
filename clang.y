@@ -433,6 +433,7 @@ basic_type_list		: BASIC_TYPE
 			}
 			| basic_type_list BASIC_TYPE
 			{
+				$$ = $1;
 				/* "long" can be repeated */
 				if ($2 == TYPE_LONG &&
 				    $$->t.btype & TYPE_LONG)
@@ -917,7 +918,10 @@ expr			: assign_expr
 
 argument_expr_list	: argument_expr
 			| argument_expr_list ',' argument_expr
-			{ list_add_tail(&$3->list, &$1->list); }
+			{
+				$$ = $1;
+				list_add_tail(&$3->list, &$$->list);
+			}
 			;
 
 argument_expr		: assign_expr
