@@ -29,17 +29,13 @@ replace_text(node_t *node, const char *text)
 	return ds;
 }
 
-/* Remove text nodes from @remove up to, but not including @keep. */
+/* Remove text nodes from @ds up to, but not including @keep. */
 static void
-remove_text_list(struct dynstr *remove, struct dynstr *keep)
+remove_text_list(struct dynstr *ds, struct dynstr *keep)
 {
-	struct list_head *it, *next;
-
-	it = &remove->list;
-	while (it != &keep->list) {
+	while (ds != keep) {
 		node_t *node, *nnode;
-		struct dynstr *ds = list_entry(it, struct dynstr, list);
-
+		
 		list_for_each_entry_safe(node, nnode,
 					 &ds->node_first, first_list)
 			set_node_first(node, &dummydynstr);
@@ -47,23 +43,16 @@ remove_text_list(struct dynstr *remove, struct dynstr *keep)
 					 &ds->node_last, last_list)
 			set_node_last(node, &dummydynstr);
 
-		next = it->next;
-		list_del(it);
-		freedynstr(ds);
-		it = next;
+		ds = dynstr_del(ds);
 	}
 }
 
-/* Remove text nodes from @remove backwards up to, but not including @keep. */
+/* Remove text nodes from @ds backwards up to, but not including @keep. */
 static void
-remove_text_list_rev(struct dynstr *remove, struct dynstr *keep)
+remove_text_list_rev(struct dynstr *ds, struct dynstr *keep)
 {
-	struct list_head *it, *next;
-
-	it = &remove->list;
-	while (it != &keep->list) {
+	while (ds != keep) {
 		node_t *node, *nnode;
-		struct dynstr *ds = list_entry(it, struct dynstr, list);
 
 		list_for_each_entry_safe(node, nnode,
 					 &ds->node_first, first_list)
@@ -72,10 +61,7 @@ remove_text_list_rev(struct dynstr *remove, struct dynstr *keep)
 					 &ds->node_last, last_list)
 			set_node_last(node, &dummydynstr);
 
-		next = it->prev;
-		list_del(it);
-		freedynstr(ds);
-		it = next;
+		ds = dynstr_del_rev(ds);
 	}
 }
 
