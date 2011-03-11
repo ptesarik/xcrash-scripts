@@ -111,17 +111,14 @@ nth_element(struct list_head *list, int pos)
 
 static LIST_HEAD(splitlist);
 
-/* Set a new @type for all vars in @varlist */
+/* Replace all nodes in @nodelist with a copy of @newnode */
 static void
-set_var_type(struct list_head *varlist, node_t *type)
+replace_nodes(struct list_head *nodelist, node_t *newnode)
 {
-	node_t *var;
-	list_for_each_entry(var, varlist, list) {
-		node_t *child, *nchild;
-		list_for_each_entry_safe(child, nchild,
-					 &var->child[chv_type], list)
-			freenode(child);
-		set_node_child(var, chv_type, dupnode(type));
+	node_t *node, *nnode;
+	list_for_each_entry_safe(node, nnode, nodelist, list) {
+		list_add(&node->list, &dupnode(newnode)->list);
+		freenode(node);
 	}
 }
 
@@ -143,20 +140,13 @@ replace_type(node_t *node, const char *newtext)
 		newds = node->str;
 
 		if (split) {
-			set_var_type(&split->nodes, node);
+			replace_nodes(&split->nodes, node);
 			split_remove(split);
 		}
-	} else {
-		node_t *parent = node->parent;
-		if (parent->type != nt_var) {
-			fputs("Don't know how to split non-vars\n", stderr);
-			exit(1);
-		}
-		if (!split)
-			split_add(&splitlist, parent, oldds, newds);
-		else
-			split_addnode(split, parent);
-	}
+	} else if (!split)
+		split_add(&splitlist, node, oldds, newds);
+	else
+		split_addnode(split, node);
 	return node;
 }
 
@@ -726,18 +716,20 @@ type_split(struct list_head *raw, struct split_node *split)
 	loc.first_text = loc.last_text = split->newds;
 	newdecl = newnode(&loc, nt_decl, chd_max);
 
-	point = first_node(&split->nodes)->parent->first_text;
+	node_t *olddecl = typed_parent(first_node(&split->nodes), nt_decl);
+	point = olddecl->first_text;
 	struct dynstr *indent = dynstr_dup_indent(raw, point, 0);
 
 	insert_text_list(point, split->newds, split->newds);
 	ds = newdynstr(" ", 1);
-	node_t *var, *nvar;
-	list_for_each_entry_safe(var, nvar, &split->nodes, list) {
+	node_t *type, *ntype;
+	list_for_each_entry_safe(type, ntype, &split->nodes, list) {
 		if (!ds)
 			ds = newdynstr(", ", 2);
 		insert_text_list(point, ds, ds);
 		ds = NULL;
 
+		node_t *var = typed_parent(type, nt_var);
 		struct dynstr *nextds = next_dynstr(var->last_text);
 		detach_text(var->first_text, var->last_text);
 		insert_text_list(point, var->first_text, var->last_text);
