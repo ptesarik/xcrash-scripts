@@ -194,6 +194,22 @@ find_scope(struct list_head *tree, node_t *node)
 	return tree;
 }
 
+static int
+nullify_str_fn(node_t *node, void *data)
+{
+	set_node_str(node, NULL);
+	return 0;
+}
+
+/* Remove all str references (recursively), so any dynstr can
+ * be modified freely.
+ */
+void
+nullify_str(node_t *node)
+{
+	walk_tree_single(node, nullify_str_fn, NULL);
+}
+
 /************************************************************
  * Split nodes
  *
