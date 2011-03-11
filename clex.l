@@ -467,17 +467,9 @@ dynstr_read(void *buf, size_t max_size)
 static int
 lex_input_type(void)
 {
-	node_t *node;
-
-	if (!lex_input_first)
-		return -1;
-
-	list_for_each_entry(node, &curds->node_first, first_list) {
-		if (node->type == nt_expr && node->e.op == ID)
-			return ID;
-		if (node->type == nt_type && node->t.category == type_typedef)
-			return TYPEID;
-	}
+	if (lex_input_first &&
+	    (curds->token == ID || curds->token == TYPEID))
+		return curds->token;
 
 	return -1;
 }
