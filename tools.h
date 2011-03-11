@@ -34,6 +34,15 @@ dynstr_del_rev(struct dynstr *ds)
 struct list_head *find_scope(struct list_head *tree, node_t *node);
 void nullify_str(node_t *node);
 
+/* Return the parent of @node with a given @type (or NULL if not found) */
+static inline node_t *
+typed_parent(node_t *node, enum node_type type)
+{
+	while (node && node->type != type)
+		node = node->parent;
+	return node;
+}
+
 /* Split nodes */
 struct split_node {
 	struct list_head list;
