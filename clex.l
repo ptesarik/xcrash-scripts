@@ -469,9 +469,12 @@ dynstr_read(void *buf, size_t max_size)
 static int
 lex_input_type(void)
 {
-	if (lex_input_first &&
-	    (curds->token == ID || curds->token == TYPEID))
-		return curds->token;
+	if (lex_input_first) {
+		if (curds->token == ID || curds->token == TYPEID)
+			return curds->token;
+		else if (curds->token == BASIC_TYPE)
+			return TYPEID;
+	}
 
 	return -1;
 }
