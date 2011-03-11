@@ -108,14 +108,35 @@ nth_element(struct list_head *list, int pos)
 	return NULL;
 }
 
+static LIST_HEAD(splitlist);
+
 /* Change the name in @node->t.name */
 static void
 replace_type_name(node_t *node, const char *newname)
 {
 	struct dynstr *oldds = node->str;
-	struct dynstr *newds = newdynstr(newname, strlen(newname));
+	struct split_node *split = split_search(&splitlist, oldds, newname);
+	struct dynstr *newds = split
+		? split->newds
+		: newdynstr_token(newname, oldds->token);
 	set_node_str(node, newds);
-	replace_text_list(oldds, oldds, newds, newds);
+	if (!oldds->refcount) {
+		if (split) {
+			list_splice(&split->list, &node->parent->list);
+			split_remove(split);
+		}
+		replace_text_list(oldds, oldds, newds, newds);
+	} else {
+		node_t *parent = node->parent;
+		if (parent->type != nt_var) {
+			fputs("Don't know how to split non-vars\n", stderr);
+			exit(1);
+		}
+		if (!split)
+			split_add(&splitlist, parent, oldds, newds);
+		else
+			split_addnode(split, parent);
+	}
 }
 
 /************************************************************
@@ -666,6 +687,88 @@ static int simple(const char *patchname, struct list_head *filelist,
 	return quilt_new(patchname, filelist);
 }
 
+static struct dynstr *
+remove_comma(struct list_head *list, struct dynstr *ds)
+{
+	ds = dynstr_delspace(list, ds);
+	if (&ds->list != list && ds->token == ',')
+		ds = dynstr_delspace(list, dynstr_del(ds));
+	else {
+		ds = dynstr_delspace_rev(list, prev_dynstr(ds));
+		if (&ds->list != list && ds->token == ',')
+			ds = dynstr_delspace_rev(list, dynstr_del_rev(ds));
+	}
+	return ds;
+}
+
+static void
+type_split(struct list_head *raw, struct split_node *split)
+{
+	node_t *firstvar = first_node(&split->nodes);
+	node_t *olddecl = firstvar->parent;
+	node_t *newdecl;
+	struct dynstr *ds, *point = olddecl->first_text;
+	YYLTYPE loc;
+
+	loc.first_text = NULL;
+	for (ds = olddecl->first_text; ds != split->oldds;
+	     ds = next_dynstr(ds)) {
+		struct dynstr *newds = newdynstr(ds->text, ds->len);
+		insert_text_list(point, newds, newds);
+		if (!loc.first_text)
+			loc.first_text = newds;
+	}
+	insert_text_list(point, split->newds, split->newds);
+	if (!loc.first_text)
+		loc.first_text = split->newds;
+
+	loc.last_text = split->newds;
+	newdecl = newnode(&loc, nt_decl, chd_max);
+
+	ds = newdynstr(" ", 1);
+	node_t *var, *nvar;
+	list_for_each_entry_safe(var, nvar, &split->nodes, list) {
+		if (var != firstvar)
+			ds = newdynstr(", ", 2);
+		insert_text_list(point, ds, ds);
+
+		struct dynstr *nextds = next_dynstr(var->last_text);
+		detach_text(var->first_text, var->last_text);
+		insert_text_list(point, var->first_text, var->last_text);
+		remove_comma(raw, nextds);
+
+		freenode(var);
+	}
+
+	ds = newdynstr(";", 1);
+	insert_text_list(point, ds, ds);
+	set_node_last(newdecl, ds);
+	reparse_node(newdecl, START_DECL);
+}
+
+/* Helper for substituting types */
+static int
+type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
+{
+	struct parsed_file *pf;
+	int res;
+
+	if ( (res = update_parsed_files(filelist)) )
+		return res;
+
+	list_for_each_entry(pf, filelist, list) {
+		walk_tree(&pf->parsed, xform_fn, pf);
+
+		struct split_node *split, *nsplit;
+		list_for_each_entry_safe(split, nsplit, &splitlist, list) {
+			type_split(&pf->raw, split);
+			split_remove(split);
+		}
+	}
+
+	return quilt_new(patchname, filelist);
+}
+
 /************************************************************
  * Main entry point for the transformations
  *
@@ -737,22 +840,22 @@ static struct xform_desc xforms[] = {
 { "target-timeval.patch", import },
 
 // Use target timeval
-{ "target-timeval-use.patch", simple, target_timeval },
+{ "target-timeval-use.patch", type_subst, target_timeval },
 
 // Introduce target off_t
 { "target-off_t.patch", import },
 
 // Use target off_t
-{ "target-off_t-use.patch", simple, target_off_t },
+{ "target-off_t-use.patch", type_subst, target_off_t },
 
 // Provide platform-independent struct pt_regs
 { "arch-pt-regs.patch", import },
 
 // Use platform-independent pt_regs_x86_64
-{ "pt-regs-x86_64.patch", simple, use_pt_regs_x86_64 },
+{ "pt-regs-x86_64.patch", type_subst, use_pt_regs_x86_64 },
 
 // Replace ppc64_pt_regs with pt_regs_ppc64
-{ "pt-regs-ppc64.patch", simple, use_pt_regs_ppc64 },
+{ "pt-regs-ppc64.patch", type_subst, use_pt_regs_ppc64 },
 
 // Replace system struct ia64_fpreg with our ia64_fpreg_t
 { "use-ia64_fpreg_t.patch", simple, use_ia64_fpreg_t },
