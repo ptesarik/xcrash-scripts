@@ -24,6 +24,7 @@ newdynstr_token(const char *text, int token)
 static struct dynstr *
 replace_text(node_t *node, const char *text)
 {
+	nullify_str(node);
 	struct dynstr *ds = newdynstr_token(text, node->first_text->token);
 	replace_text_list(node->first_text, node->last_text, ds, ds);
 	return ds;
