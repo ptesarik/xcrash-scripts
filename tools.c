@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
@@ -179,7 +180,7 @@ dynstr_bol(struct list_head *list, struct dynstr **ds, size_t *pos)
 	size_t off = *pos;
 	char *p = NULL;
 	while (&iter->list != list &&
-	       !(p = memchr(iter->text, '\n', off)) ) {
+	       !(p = memrchr(iter->text, '\n', off)) ) {
 		iter = prev_dynstr(iter);
 		off = (&iter->list != list ? iter->len : 0);
 	}
