@@ -440,6 +440,16 @@ static void dump_tree(struct list_head *tree)
 
 #endif	/* DEBUG */
 
+/* Completely detach a dynstr list from its surrounding */
+void
+detach_text(struct dynstr *first, struct dynstr *last)
+{
+	first->list.prev->next = last->list.next;
+	last->list.next->prev = first->list.prev;
+	first->list.prev = &last->list;
+	last->list.next = &first->list;
+}
+
 static void
 implant_text_list(struct list_head *prev, struct list_head *next,
 		  struct dynstr *first, struct dynstr *last)
@@ -543,16 +553,6 @@ discard_parsing(void)
 	struct dynstr *ds, *dsnext;
 	list_for_each_entry_safe(ds, dsnext, &raw_contents, list)
 		freedynstr(ds);
-}
-
-/* Completely detach a dynstr list from its surrounding */
-static void
-detach_text(struct dynstr *first, struct dynstr *last)
-{
-	first->list.prev->next = last->list.next;
-	last->list.next->prev = first->list.prev;
-	first->list.prev = &last->list;
-	last->list.next = &first->list;
 }
 
 /* Check whether @tree is a CPP conditional */
