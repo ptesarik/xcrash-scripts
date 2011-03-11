@@ -427,7 +427,7 @@ type_spec		: basic_type_list
 
 basic_type_list		: BASIC_TYPE
 			{
-				$$ = newtype(&@$);
+				$$ = newtype_name(&@$, @1.first_text);
 				$$->t.category = type_basic;
 				$$->t.btype = $1;
 			}
