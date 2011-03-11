@@ -47,16 +47,12 @@ static void hidedecls(struct list_head *);
 	}								\
       else								\
 	{								\
-	  struct dynstr *ds = newdynstr(NULL, 0);			\
 	  (Current).first_line	 = (Current).last_line	 =		\
 	    YYRHSLOC(Rhs, 0).last_line;					\
 	  (Current).first_column = (Current).last_column =		\
 	    YYRHSLOC(Rhs, 0).last_column;				\
-	  (Current).first_text   = (Current).last_text   = ds;		\
-	  list_add_tail(&ds->list,					\
-			(yychar != YYEMPTY && yychar != YYEOF)		\
-			? &yylloc.first_text->list			\
-			: &raw_contents);				\
+	  (Current).first_text   = (Current).last_text   =		\
+	    YYRHSLOC(Rhs, 0).last_text;					\
 	}								\
     while (0)
 
