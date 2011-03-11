@@ -38,6 +38,9 @@ static void store_yytext(const char *s);
 static void init_vars(void);
 #define YY_USER_INIT	init_vars()
 
+static int store_token(int);
+static int store_btype(int);
+
 static size_t dynstr_read(void *, size_t);
 static int lex_input_type(void);
 
@@ -90,31 +93,31 @@ CPP			("#"|"%:")[ \t\v\f]*
 "define"		{
 			token_at_eof = ';';
 			BEGIN(cpp_def);
-			return yylval.token = CPP_DEFINE;
+			return store_token(CPP_DEFINE);
 			}
 "if"			{
 			BEGIN(cpp); BEGIN(cpp_condition);
-			return yylval.token = CPP_IF;
+			return store_token(CPP_IF);
 			}
 "ifdef"			{
 			BEGIN(cpp); BEGIN(cpp_condition);
-			return yylval.token = CPP_IFDEF;
+			return store_token(CPP_IFDEF);
 			}
 "ifndef"		{
 			BEGIN(cpp); BEGIN(cpp_condition);
-			return yylval.token = CPP_IFNDEF;
+			return store_token(CPP_IFNDEF);
 			}
 "elif"			{
 			BEGIN(cpp); BEGIN(cpp_condition);
-			return yylval.token = CPP_ELIF;
+			return store_token(CPP_ELIF);
 			}
 "else"			{
 			BEGIN(cpp_ign);
-			return yylval.token = CPP_ELSE;
+			return store_token(CPP_ELSE);
 			}
 "endif"			{
 			BEGIN(cpp_ign);
-			return yylval.token = CPP_ENDIF;
+			return store_token(CPP_ENDIF);
 			}
 (?s:.)			{
 			yylloc.last_text->reuse = 1;
@@ -126,17 +129,15 @@ CPP			("#"|"%:")[ \t\v\f]*
 <cpp_def>[ \t\v\f]+		/* skip whitespace except newline */
 <cpp_def>{L}({L}|{D})*/\(	{
 				BEGIN(cpp);
-				yylval.str = yylloc.first_text;
-				return CPP_IDARG;
+				return store_token(CPP_IDARG);
 				}
 <cpp_def>{L}({L}|{D})*		{
 				BEGIN(cpp);
-				yylval.str = yylloc.first_text;
-				return ID;
+				return store_token(ID);
 				}
 
   /* CPP directive (during define) */
-<cpp>"##"		return yylval.token = CPP_CONCAT;
+<cpp>"##"		return store_token(CPP_CONCAT);
 <cpp><<EOF>>		{
 			/* Simulate a terminating semicolon at the end
 			 * of each macro. This is often needed to make
@@ -148,17 +149,14 @@ CPP			("#"|"%:")[ \t\v\f]*
 				if (!token_at_eof)
 					yyterminate();
 				else {
-					yylval.token = token_at_eof;
+					int ret = token_at_eof;
 					token_at_eof = 0;
-					return yylval.token;
+					return store_token(ret);
 				}
 			}
 
-<cpp_condition>"defined"	return yylval.token = CPP_DEFINED;
-<cpp_condition>{L}({L}|{D})*	{
-				yylval.str = yylloc.first_text;
-				return ID;
-				}
+<cpp_condition>"defined"	return store_token(CPP_DEFINED);
+<cpp_condition>{L}({L}|{D})*	return store_token(ID);
 
   /* CPP ignored directive */
 {CPP}	{
@@ -173,132 +171,121 @@ CPP			("#"|"%:")[ \t\v\f]*
 	BEGIN(INITIAL);
 	}
 
-"..."			return yylval.token = ELLIPSIS;
-">>="			return yylval.token = SHR_ASSIGN;
-"<<="			return yylval.token = SHL_ASSIGN;
-"+="			return yylval.token = ADD_ASSIGN;
-"-="			return yylval.token = SUB_ASSIGN;
-"*="			return yylval.token = MUL_ASSIGN;
-"/="			return yylval.token = DIV_ASSIGN;
-"%="			return yylval.token = MOD_ASSIGN;
-"&="			return yylval.token = AND_ASSIGN;
-"^="			return yylval.token = XOR_ASSIGN;
-"|="			return yylval.token = OR_ASSIGN;
-">>"			return yylval.token = SHR_OP;
-"<<"			return yylval.token = SHL_OP;
-"++"			return yylval.token = INC_OP;
-"--"			return yylval.token = DEC_OP;
-"->"			return yylval.token = PTR_OP;
-"&&"			return yylval.token = AND_OP;
-"||"			return yylval.token = OR_OP;
-"<="			return yylval.token = LE_OP;
-">="			return yylval.token = GE_OP;
-"=="			return yylval.token = EQ_OP;
-"!="			return yylval.token = NE_OP;
-";"			return yylval.token = ';';
-("{"|"<%")		return yylval.token = '{';
-("}"|"%>")		return yylval.token = '}';
-","			return yylval.token = ',';
-":"			return yylval.token = ':';
-"="			return yylval.token = '=';
-"("			return yylval.token = '(';
-")"			return yylval.token = ')';
-("["|"<:")		return yylval.token = '[';
-("]"|":>")		return yylval.token = ']';
-"."			return yylval.token = '.';
-"&"			return yylval.token = '&';
-"!"			return yylval.token = '!';
-"~"			return yylval.token = '~';
-"-"			return yylval.token = '-';
-"+"			return yylval.token = '+';
-"*"			return yylval.token = '*';
-"/"			return yylval.token = '/';
-"%"			return yylval.token = '%';
-"<"			return yylval.token = '<';
-">"			return yylval.token = '>';
-"^"			return yylval.token = '^';
-"|"			return yylval.token = '|';
-"?"			return yylval.token = '?';
+"..."			return store_token(ELLIPSIS);
+">>="			return store_token(SHR_ASSIGN);
+"<<="			return store_token(SHL_ASSIGN);
+"+="			return store_token(ADD_ASSIGN);
+"-="			return store_token(SUB_ASSIGN);
+"*="			return store_token(MUL_ASSIGN);
+"/="			return store_token(DIV_ASSIGN);
+"%="			return store_token(MOD_ASSIGN);
+"&="			return store_token(AND_ASSIGN);
+"^="			return store_token(XOR_ASSIGN);
+"|="			return store_token(OR_ASSIGN);
+">>"			return store_token(SHR_OP);
+"<<"			return store_token(SHL_OP);
+"++"			return store_token(INC_OP);
+"--"			return store_token(DEC_OP);
+"->"			return store_token(PTR_OP);
+"&&"			return store_token(AND_OP);
+"||"			return store_token(OR_OP);
+"<="			return store_token(LE_OP);
+">="			return store_token(GE_OP);
+"=="			return store_token(EQ_OP);
+"!="			return store_token(NE_OP);
+";"			return store_token(';');
+("{"|"<%")		return store_token('{');
+("}"|"%>")		return store_token('}');
+","			return store_token(',');
+":"			return store_token(':');
+"="			return store_token('=');
+"("			return store_token('(');
+")"			return store_token(')');
+("["|"<:")		return store_token('[');
+("]"|":>")		return store_token(']');
+"."			return store_token('.');
+"&"			return store_token('&');
+"!"			return store_token('!');
+"~"			return store_token('~');
+"-"			return store_token('-');
+"+"			return store_token('+');
+"*"			return store_token('*');
+"/"			return store_token('/');
+"%"			return store_token('%');
+"<"			return store_token('<');
+">"			return store_token('>');
+"^"			return store_token('^');
+"|"			return store_token('|');
+"?"			return store_token('?');
 
-"__attribute__"		return yylval.token = ATTRIBUTE;
-"auto"			return yylval.token = AUTO;
-"break"			return yylval.token = BREAK;
-"case"			return yylval.token = CASE;
-"const"			return yylval.token = CONST;
-"continue"		return yylval.token = CONTINUE;
-"default"		return yylval.token = DEFAULT;
-"do"			return yylval.token = DO;
-"else"			return yylval.token = ELSE;
-"enum"			return yylval.token = ENUM;
-"extern"		return yylval.token = EXTERN;
-"for"			return yylval.token = FOR;
-"goto"			return yylval.token = GOTO;
-"if"			return yylval.token = IF;
-"inline"		return yylval.token = INLINE;
-"__inline__"		return yylval.token = INLINE;
-"register"		return yylval.token = REGISTER;
-"return"		return yylval.token = RETURN;
-"sizeof"		return yylval.token = SIZEOF;
-"static"		return yylval.token = STATIC;
-"struct"		return yylval.token = STRUCT;
-"switch"		return yylval.token = SWITCH;
-"typedef"		return yylval.token = TYPEDEF;
-"__typeof__"		return yylval.token = TYPEOF;
-"union"			return yylval.token = UNION;
-"volatile"		return yylval.token = VOLATILE;
-"while"			return yylval.token = WHILE;
+"__attribute__"		return store_token(ATTRIBUTE);
+"auto"			return store_token(AUTO);
+"break"			return store_token(BREAK);
+"case"			return store_token(CASE);
+"const"			return store_token(CONST);
+"continue"		return store_token(CONTINUE);
+"default"		return store_token(DEFAULT);
+"do"			return store_token(DO);
+"else"			return store_token(ELSE);
+"enum"			return store_token(ENUM);
+"extern"		return store_token(EXTERN);
+"for"			return store_token(FOR);
+"goto"			return store_token(GOTO);
+"if"			return store_token(IF);
+"inline"		return store_token(INLINE);
+"__inline__"		return store_token(INLINE);
+"register"		return store_token(REGISTER);
+"return"		return store_token(RETURN);
+"sizeof"		return store_token(SIZEOF);
+"static"		return store_token(STATIC);
+"struct"		return store_token(STRUCT);
+"switch"		return store_token(SWITCH);
+"typedef"		return store_token(TYPEDEF);
+"__typeof__"		return store_token(TYPEOF);
+"union"			return store_token(UNION);
+"volatile"		return store_token(VOLATILE);
+"while"			return store_token(WHILE);
 
-"char"			yylval.btype = TYPE_CHAR;	return BASIC_TYPE;
-"double"		yylval.btype = TYPE_DOUBLE;	return BASIC_TYPE;
-"int"			yylval.btype = TYPE_INT;	return BASIC_TYPE;
-"float"			yylval.btype = TYPE_FLOAT;	return BASIC_TYPE;
-"long"			yylval.btype = TYPE_LONG;	return BASIC_TYPE;
-"short"			yylval.btype = TYPE_SHORT;	return BASIC_TYPE;
-"signed"		yylval.btype = TYPE_SIGNED;	return BASIC_TYPE;
-"unsigned"		yylval.btype = TYPE_UNSIGNED;	return BASIC_TYPE;
-"void"			yylval.btype = TYPE_VOID;	return BASIC_TYPE;
+"char"			return store_btype(TYPE_CHAR);
+"double"		return store_btype(TYPE_DOUBLE);
+"int"			return store_btype(TYPE_INT);
+"float"			return store_btype(TYPE_FLOAT);
+"long"			return store_btype(TYPE_LONG);
+"short"			return store_btype(TYPE_SHORT);
+"signed"		return store_btype(TYPE_SIGNED);
+"unsigned"		return store_btype(TYPE_UNSIGNED);
+"void"			return store_btype(TYPE_VOID);
 
 	/* HACKs */
-"FRAME_REG"		return yylval.token = FRAME_REG;
-"for_cpu_indexes"	return yylval.token = FOR_CPU_INDEXES;
-"offsetof"		return yylval.token = OFFSETOF;
-"struct_offset"		return yylval.token = OFFSETOF;
+"FRAME_REG"		return store_token(FRAME_REG);
+"for_cpu_indexes"	return store_token(FOR_CPU_INDEXES);
+"offsetof"		return store_token(OFFSETOF);
+"struct_offset"		return store_token(OFFSETOF);
 
 {L}({L}|{D})*		|
 3COM({L}|{D})*		|	/* HACK */
 3DFX({L}|{D})*		|	/* HACK */
 3DLABS({L}|{D})*	{	/* HACK */
-				int type;
-				yylval.str = yylloc.first_text;
-				if( (type = lex_input_type()) >= 0)
-					return type;
+				int oldtype = lex_input_type();
+				if(oldtype>= 0)
+					return store_token(oldtype);
 				else if (istypedef(yytext))
-					return TYPEID;
-				return ID;
+					return store_token(TYPEID);
+				return store_token(ID);
 			}
 
 0[xX]{H}+{IS}?		|
 0{D}+{IS}?		|
-{D}+{IS}?		{
-				yylval.str = yylloc.first_text;
-				return INT_CONST;
-			}
+{D}+{IS}?		return store_token(INT_CONST);
 
 {D}+{E}{FS}?		|
 {D}*"."{D}+({E})?{FS}?	|
-{D}+"."{D}*({E})?{FS}?	{
-				yylval.str = yylloc.first_text;
-				return FLOAT_CONST;
-			}
+{D}+"."{D}*({E})?{FS}?	return store_token(FLOAT_CONST);
 
-L?\'(?s:\\.|[^\\'])*\'	{ /* fix highlight: ' */
-				yylval.str = yylloc.first_text;
-				return CHAR_CONST;
-			}
-L?\"(?s:\\.|[^\\"])*\"	{ /* fix highlight: " */
-				yylval.str = yylloc.first_text;
-				return STRING_CONST;
-			}
+L?\'(?s:\\.|[^\\'])*\'	/* (hilight) ' */ return store_token(CHAR_CONST);
+				
+L?\"(?s:\\.|[^\\"])*\"	/* (hilight) " */ return store_token(STRING_CONST);
+
 <*>\\\n?		/* continuation lines */
 [ \t\v\n\f]+		/* skip whitespace */
 .			/* ignore bad characters */
@@ -338,9 +325,10 @@ struct dynstr *newdynstr(const char *s, size_t len)
 	INIT_LIST_HEAD(&ds->node_first);
 	INIT_LIST_HEAD(&ds->node_last);
 	ds->cpp_cond = NULL;
+	ds->token = 0;
+	ds->refcount = 0;
 	ds->len = len;
 	ds->alloc = len + 1;
-	ds->refcount = 0;
 	ds->reuse = 0;
 	memcpy(ds->text, s, len);
 	ds->text[ds->len] = '\0';
@@ -434,6 +422,26 @@ static void store_yytext(const char *s)
 		list_add_tail(&ds->list, &raw_contents);
 	}
 	yylloc.first_text = yylloc.last_text = ds;
+}
+
+static int
+store_token(int token)
+{
+	if (token == ID || token == TYPEID || token == CPP_IDARG ||
+	    token == INT_CONST || token == FLOAT_CONST ||
+	    token == CHAR_CONST || token == STRING_CONST)
+		yylval.str = yylloc.first_text;
+	else if (token != BASIC_TYPE)
+		yylval.token = token;
+	yylloc.last_text->token = token;
+	return token;
+}
+
+static int
+store_btype(int btype)
+{
+	yylval.btype = btype;
+	return store_token(BASIC_TYPE);
 }
 
 static size_t

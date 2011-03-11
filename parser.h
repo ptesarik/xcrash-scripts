@@ -9,8 +9,9 @@ struct dynstr {
 	struct list_head cpp_list;
 	struct list_head node_first, node_last;
 	struct node *cpp_cond;
-	size_t len, alloc;
+	int token;
 	int refcount;		/* external references (with node->str) */
+	size_t len, alloc;
 	int reuse;
 	char text[];
 };
