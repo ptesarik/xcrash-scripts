@@ -14,9 +14,17 @@ static const char *basedir;
  */
 
 static struct dynstr *
+newdynstr_token(const char *text, int token)
+{
+	struct dynstr *ret = newdynstr(text, strlen(text));
+	ret->token = token;
+	return ret;
+}
+
+static struct dynstr *
 replace_text(node_t *node, const char *text)
 {
-	struct dynstr *ds = newdynstr(text, strlen(text));
+	struct dynstr *ds = newdynstr_token(text, node->first_text->token);
 	replace_text_list(node->first_text, node->last_text, ds, ds);
 	return ds;
 }
@@ -453,7 +461,7 @@ convert_readmem(node_t *node, void *data)
 		remove_text_list(arg->first_text, mult->first_text);
 		remove_text_list_rev(arg->last_text, mult->last_text);
 	} else {
-		struct dynstr *ds = newdynstr("1", 1);
+		struct dynstr *ds = newdynstr_token("1", INT_CONST);
 		replace_text_list(arg->first_text, arg->last_text, ds, ds);
 	}
 
@@ -493,6 +501,7 @@ printf_spec_one(node_t *node, void *data)
 			memcpy(pfx, start, len);
 			pfx[len] = '\"';
 			struct dynstr *dspfx = newdynstr(pfx, len + 1);
+			dspfx->token = STRING_CONST;
 			list_add_tail(&dspfx->list, &ds);
 
 			/* Create the PRI identifier */
@@ -500,6 +509,7 @@ printf_spec_one(node_t *node, void *data)
 			char *pri = calloc(len + 1, sizeof(char));
 			memcpy(stpcpy(pri, "PRI"), spec, len - 3);
 			struct dynstr *dspri = newdynstr(pri, len);
+			dspri->token = ID;
 			list_add_tail(&dspri->list, &ds);
 
 			/* Re-open the tail string */
@@ -512,7 +522,7 @@ printf_spec_one(node_t *node, void *data)
 	if (!list_empty(&ds)) {
 		if (strcmp(start, "\"\"")) {
 			struct dynstr *dslast =
-				newdynstr(start, strlen(start));
+				newdynstr_token(start, STRING_CONST);
 			list_add_tail(&dslast->list, &ds);
 		}
 		replace_text_list(node->first_text, node->last_text,
