@@ -586,6 +586,7 @@ replace_struct(node_t *node, const char *oldname, const char *newname)
 		node_t *type = nth_element(&node->child[chd_type], 1);
 		if (!is_struct(type, oldname))
 			return 0;
+		nullify_str(node);
 		remove_text_list(node->first_text,
 				 next_dynstr(node->last_text));
 		freenode(node);
