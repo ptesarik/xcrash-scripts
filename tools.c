@@ -171,6 +171,27 @@ dynstr_delspace_rev(struct list_head *list, struct dynstr *ds)
 	return ds;
 }
 
+/* Find the beginning of the line starting from @ds:@pos */
+void
+dynstr_bol(struct list_head *list, struct dynstr **ds, size_t *pos)
+{
+	struct dynstr *iter = *ds;
+	size_t off = *pos;
+	char *p = NULL;
+	while (&iter->list != list &&
+	       !(p = memchr(iter->text, '\n', off)) ) {
+		iter = prev_dynstr(iter);
+		off = (&iter->list != list ? iter->len : 0);
+	}
+	if (p && (off = p - iter->text + 1) < iter->len) {
+		*ds = iter;
+		*pos = off;
+	} else {
+		*ds = next_dynstr(iter);
+		*pos = 0;
+	}
+}
+
 /************************************************************
  * Related to the parsed tree
  *
