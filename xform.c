@@ -125,22 +125,19 @@ set_var_type(struct list_head *varlist, node_t *type)
 	}
 }
 
-/* Change the name in @node->t.name */
+/* Change the type definition of @node */
 static node_t *
-replace_type_name(node_t *node, const char *newname)
+replace_type(node_t *node, const char *newtext)
 {
 	struct dynstr *oldds = node->str;
-	struct split_node *split = split_search(&splitlist, oldds, newname);
+	struct split_node *split = split_search(&splitlist, oldds, newtext);
 	struct dynstr *newds = split
 		? split->newds
-		: newdynstr_token(newname, oldds->token);
+		: newdynstr_token(newtext, oldds->token);
 	set_node_str(node, NULL);
 	if (!oldds->refcount) {
-		if (node->t.category == type_basic)
-			replace_text_list(node->first_text, node->last_text,
-					  newds, newds);
-		else
-			replace_text_list(oldds, oldds, newds, newds);
+		replace_text_list(node->first_text, node->last_text,
+				  newds, newds);
 
 		node = reparse_node(node, START_TYPE_NAME);
 		newds = node->str;
@@ -189,7 +186,7 @@ btype_to_target(node_t *item)
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
 		if ((item->t.btype & ~TYPE_INT) == subst[i].old)
-			return replace_type_name(item, subst[i].new);
+			return replace_type(item, subst[i].new);
 	}
 	return NULL;
 }
@@ -212,7 +209,7 @@ typedef_to_target(node_t *item)
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
 		if (!strcmp(item->str->text, subst[i].old))
-			return replace_type_name(item, subst[i].new);
+			return replace_type(item, subst[i].new);
 	}
 	return NULL;
 }
@@ -239,7 +236,7 @@ ttype_to_gdb(node_t *item)
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
 		if (!strcmp(item->str->text, subst[i].old))
-			return replace_type_name(item, subst[i].new);
+			return replace_type(item, subst[i].new);
 	}
 	return 0;
 }
@@ -337,7 +334,7 @@ target_timeval(node_t *node, void *data)
 			return 0;
 	}
 
-	replace_type_name(node, "ttimeval");
+	replace_type(node, "struct ttimeval");
 	pf->clean = 0;
 	return 0;
 }
@@ -350,7 +347,7 @@ static int target_off_t(node_t *node, void *data)
 	/* Convert types to their target equivallents */
 	if (node->type == nt_type && node->t.category == type_typedef &&
 	    !strcmp(node->str->text, "off_t")) {
-		replace_type_name(node, "toff_t");
+		replace_type(node, "toff_t");
 		pf->clean = 0;
 	}
 
@@ -589,7 +586,7 @@ printf_spec(node_t *node, void *data)
  */
 
 /* Remove declarations of struct @oldname and rename all other
- * struct @oldname to struct @newname
+ * struct @oldname to @newname
  * Returns non-zero if @node was modified
  */
 static int
@@ -612,7 +609,7 @@ replace_struct(node_t *node, const char *oldname, const char *newname)
 	if (!is_struct(node, oldname))
 		return 0;
 
-	replace_type_name(node, newname);
+	replace_type(node, newname);
 	return 1;
 }
 
@@ -627,7 +624,7 @@ use_pt_regs_x86_64(node_t *node, void *data)
 	else if (cond < 0)
 		return 0;
 
-	if (replace_struct(node, "pt_regs", "pt_regs_x86_64"))
+	if (replace_struct(node, "pt_regs", "struct pt_regs_x86_64"))
 		pf->clean = 0;
 
 	return 0;
@@ -638,7 +635,7 @@ use_pt_regs_ppc64(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
 
-	if (replace_struct(node, "ppc64_pt_regs", "pt_regs_ppc64"))
+	if (replace_struct(node, "ppc64_pt_regs", "struct pt_regs_ppc64"))
 		pf->clean = 0;
 
 	return 0;
@@ -722,33 +719,23 @@ remove_comma(struct list_head *list, struct dynstr *ds)
 static void
 type_split(struct list_head *raw, struct split_node *split)
 {
-	node_t *firstvar = first_node(&split->nodes);
-	node_t *olddecl = firstvar->parent;
+	struct dynstr *ds, *point;
 	node_t *newdecl;
-	struct dynstr *ds, *point = olddecl->first_text;
 	YYLTYPE loc;
 
-	loc.first_text = NULL;
-	for (ds = olddecl->first_text; ds != split->oldds;
-	     ds = next_dynstr(ds)) {
-		struct dynstr *newds = newdynstr(ds->text, ds->len);
-		insert_text_list(point, newds, newds);
-		if (!loc.first_text)
-			loc.first_text = newds;
-	}
-	insert_text_list(point, split->newds, split->newds);
-	if (!loc.first_text)
-		loc.first_text = split->newds;
-
-	loc.last_text = split->newds;
+	loc.first_text = loc.last_text = split->newds;
 	newdecl = newnode(&loc, nt_decl, chd_max);
+
+	point = first_node(&split->nodes)->parent->first_text;
+	insert_text_list(point, split->newds, split->newds);
 
 	ds = newdynstr(" ", 1);
 	node_t *var, *nvar;
 	list_for_each_entry_safe(var, nvar, &split->nodes, list) {
-		if (var != firstvar)
+		if (!ds)
 			ds = newdynstr(", ", 2);
 		insert_text_list(point, ds, ds);
+		ds = NULL;
 
 		struct dynstr *nextds = next_dynstr(var->last_text);
 		detach_text(var->first_text, var->last_text);
