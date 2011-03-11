@@ -584,6 +584,7 @@ init_declarator		: declarator '=' initializer
 			{
 				$$ = $1;
 				set_node_child($$->var, chv_init, $3);
+				set_node_last($$->var, @$.last_text);
 			}
 			| declarator
 			;
@@ -598,12 +599,15 @@ declarator		: pointer direct_declarator opt_attr
 				link_abstract(&$$->abstract, &$1);
 				if ($3)
 					set_node_child($$->var, chv_attr, $3);
+				set_node_first($$->var, @$.first_text);
+				set_node_last($$->var, @$.last_text);
 			}
 			|         direct_declarator opt_attr
 			{
 				$$ = $1;
 				if ($2)
 					set_node_child($$->var, chv_attr, $2);
+				set_node_last($$->var, @$.last_text);
 			}
 			;
 
@@ -621,7 +625,11 @@ non_suffix_declarator	: id_or_typeid
 				$$->var = newvar(&@$, $1);
 			}
 			| '(' declarator ')'
-			{ $$ = $2; }
+			{
+				$$ = $2;
+				set_node_first($$->var, @$.first_text);
+				set_node_last($$->var, @$.last_text);
+			}
 			;
 
 id_or_typeid		: ID
@@ -786,7 +794,12 @@ abstract_declarator	: pointer
 			{ $$ = newdeclarator(); $$->abstract = $1; }
 			| direct_abstract_declarator
 			| pointer direct_abstract_declarator
-			{ $$ = $2; link_abstract(&$$->abstract, &$1); }
+			{
+				$$ = $2;
+				link_abstract(&$$->abstract, &$1);
+				set_node_first($$->abstract.tree,
+					       @$.first_text);
+			}
 			;
 
 direct_abstract_declarator
