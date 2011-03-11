@@ -321,6 +321,7 @@ static void init_vars(void)
 struct dynstr *newdynstr(const char *s, size_t len)
 {
 	struct dynstr *ds = malloc(sizeof(struct dynstr) + len + 1);
+	INIT_LIST_HEAD(&ds->list);
 	INIT_LIST_HEAD(&ds->cpp_list);
 	INIT_LIST_HEAD(&ds->node_first);
 	INIT_LIST_HEAD(&ds->node_last);
