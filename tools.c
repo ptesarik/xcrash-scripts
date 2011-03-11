@@ -1,4 +1,5 @@
 #include <string.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -130,6 +131,44 @@ check_cpp_cond(node_t *node, ...)
 	va_end(va);
 
 	return vcheck_cpp_cond(node, set, unset);
+}
+
+/************************************************************
+ * Related to raw contents
+ *
+ */
+
+/* Return non-zero if @ds is all whitespace */
+int
+dynstr_isspace(struct dynstr *ds)
+{
+	int i;
+	for (i = 0; i < ds->len; ++i)
+		if (!isspace(ds->text[i]))
+			return 0;
+	return 1;
+}
+
+/* Remove all whitespace at @ds.
+ * Returns the following dynstr.
+ */
+struct dynstr *
+dynstr_delspace(struct list_head *list, struct dynstr *ds)
+{
+	while (&ds->list != list && dynstr_isspace(ds))
+		ds = dynstr_del(ds);
+	return ds;
+}
+
+/* Remove all whitespace at @ds going backwards.
+ * Returns the preceding dynstr.
+ */
+struct dynstr *
+dynstr_delspace_rev(struct list_head *list, struct dynstr *ds)
+{
+	while (&ds->list != list && dynstr_isspace(ds))
+		ds = dynstr_del_rev(ds);
+	return ds;
 }
 
 /************************************************************
