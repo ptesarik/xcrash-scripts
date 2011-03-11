@@ -727,8 +727,9 @@ type_split(struct list_head *raw, struct split_node *split)
 	newdecl = newnode(&loc, nt_decl, chd_max);
 
 	point = first_node(&split->nodes)->parent->first_text;
-	insert_text_list(point, split->newds, split->newds);
+	struct dynstr *indent = dynstr_dup_indent(raw, point, 0);
 
+	insert_text_list(point, split->newds, split->newds);
 	ds = newdynstr(" ", 1);
 	node_t *var, *nvar;
 	list_for_each_entry_safe(var, nvar, &split->nodes, list) {
@@ -748,6 +749,8 @@ type_split(struct list_head *raw, struct split_node *split)
 	ds = newdynstr(";", 1);
 	insert_text_list(point, ds, ds);
 	set_node_last(newdecl, ds);
+
+	insert_text_list(point, indent, indent);
 	reparse_node(newdecl, START_DECL);
 }
 
