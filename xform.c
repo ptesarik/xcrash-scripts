@@ -116,8 +116,8 @@ static void
 replace_nodes(struct list_head *nodelist, node_t *newnode)
 {
 	node_t *node, *nnode;
-	list_for_each_entry_safe(node, nnode, nodelist, list) {
-		list_add(&node->list, &dupnode(newnode)->list);
+	list_for_each_entry_safe(node, nnode, nodelist, split_list) {
+		list_add(&dupnode(newnode)->list, &node->list);
 		freenode(node);
 	}
 }
@@ -716,14 +716,15 @@ type_split(struct list_head *raw, struct split_node *split)
 	loc.first_text = loc.last_text = split->newds;
 	newdecl = newnode(&loc, nt_decl, chd_max);
 
-	node_t *olddecl = typed_parent(first_node(&split->nodes), nt_decl);
+	node_t *firstvar = list_entry(split->nodes.next, node_t, split_list);
+	node_t *olddecl = typed_parent(firstvar, nt_decl);
 	point = olddecl->first_text;
 	struct dynstr *indent = dynstr_dup_indent(raw, point, 0);
 
 	insert_text_list(point, split->newds, split->newds);
 	ds = newdynstr(" ", 1);
 	node_t *type, *ntype;
-	list_for_each_entry_safe(type, ntype, &split->nodes, list) {
+	list_for_each_entry_safe(type, ntype, &split->nodes, split_list) {
 		if (!ds)
 			ds = newdynstr(", ", 2);
 		insert_text_list(point, ds, ds);

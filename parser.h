@@ -165,6 +165,7 @@ typedef struct node {
 	struct dynstr *first_text, *last_text;
 	struct list_head first_list, last_list;
 	struct node *parent;
+	struct list_head split_list;
 	int nchild;
 	struct list_head child[];
 } node_t;

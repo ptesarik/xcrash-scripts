@@ -60,7 +60,7 @@ struct split_node *split_search(struct list_head *splitlist,
 static inline void
 split_addnode(struct split_node *split, node_t *node)
 {
-	list_move_tail(&node->list, &split->nodes);
+	list_add(&node->split_list, &split->nodes);
 }
 
 
