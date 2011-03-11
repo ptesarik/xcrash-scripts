@@ -360,6 +360,7 @@ mkstring_variadic(node_t *node, void *data)
 	node_t *opt = nth_element(&node->child[che_arg2], 4);
 	if (is_direct_call(opt, "MKSTR")) {
 		node_t *arg = nth_element(&opt->child[che_arg2], 1);
+		nullify_str(opt);
 		remove_text_list(opt->first_text, arg->first_text);
 		remove_text_list_rev(opt->last_text, arg->last_text);
 	}
