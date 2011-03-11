@@ -440,16 +440,30 @@ static void dump_tree(struct list_head *tree)
 
 #endif	/* DEBUG */
 
+static void
+implant_text_list(struct list_head *prev, struct list_head *next,
+		  struct dynstr *first, struct dynstr *last)
+{
+	first->list.prev = prev;
+	prev->next = &first->list;
+	last->list.next = next;
+	next->prev = &last->list;	
+}
+
+void insert_text_list(struct dynstr *where,
+		      struct dynstr *first, struct dynstr *last)
+{
+	implant_text_list(where->list.prev, &where->list, first, last);
+}
+
 void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		       struct dynstr *newfirst, struct dynstr *newlast)
 {
 	struct list_head *it, *next, *follow;
 	node_t *node, *nnode;
 
-	newfirst->list.prev = oldfirst->list.prev;
-	newfirst->list.prev->next = &newfirst->list;
-	newlast->list.next = oldlast->list.next;
-	newlast->list.next->prev = &newlast->list;
+	implant_text_list(oldfirst->list.prev, oldlast->list.next,
+			  newfirst, newlast);
 
 	if (oldfirst->cpp_cond != oldlast->cpp_cond) {
 		fputs("Replacing CPP conditionals not supported\n", stderr);

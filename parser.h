@@ -289,6 +289,8 @@ void walk_tree_single(node_t *tree, walkfn *fn, void *data);
 /* Tree transformation functions */
 int dump_contents(struct list_head *contents, FILE *f);
 
+void insert_text_list(struct dynstr *where,
+		      struct dynstr *first, struct dynstr *last);
 void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		       struct dynstr *newfirst, struct dynstr *newlast);
 
