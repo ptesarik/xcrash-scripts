@@ -156,7 +156,7 @@ replace_type(node_t *node, const char *newtext)
  */
 
 /* Convert a basic type into its target equivallent */
-static node_t *
+static char *
 btype_to_target(node_t *item)
 {
 	static const struct {
@@ -176,13 +176,13 @@ btype_to_target(node_t *item)
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
 		if ((item->t.btype & ~TYPE_INT) == subst[i].old)
-			return replace_type(item, subst[i].new);
+			return subst[i].new;
 	}
 	return NULL;
 }
 
 /* Convert a typedef into its target equivallent */
-static node_t *
+static char *
 typedef_to_target(node_t *item)
 {
 	static const struct {
@@ -199,14 +199,14 @@ typedef_to_target(node_t *item)
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
 		if (!strcmp(item->str->text, subst[i].old))
-			return replace_type(item, subst[i].new);
+			return subst[i].new;
 	}
 	return NULL;
 }
 
 /* Convert a target typedef into a GDB variant */
-static node_t *
-ttype_to_gdb(node_t *item)
+static char *
+ttype_to_gdb(const char *text)
 {
 	static const struct {
 		const char *old;
@@ -225,8 +225,8 @@ ttype_to_gdb(node_t *item)
 	int i;
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
-		if (!strcmp(item->str->text, subst[i].old))
-			return replace_type(item, subst[i].new);
+		if (!strcmp(text, subst[i].old))
+			return subst[i].new;
 	}
 	return 0;
 }
@@ -238,17 +238,17 @@ static int target_types(node_t *item, void *data)
 
 	/* Convert types to their target equivallents */
 	if (item->type == nt_type) {
-		node_t *modified = NULL;
+		char *modified = NULL;
 		if (item->t.category == type_basic)
 			modified = btype_to_target(item);
 		else if (item->t.category == type_typedef)
 			modified = typedef_to_target(item);
 		if (modified) {
-			item = modified;
 			if (!strcmp(pf->name, "defs.h") &&
 			    check_cpp_cond(item->first_text->cpp_cond,
 					   "GDB_COMMON", NULL, NULL) >= 0)
-				ttype_to_gdb(item);
+				modified = ttype_to_gdb(modified);
+			replace_type(item, modified);
 			pf->clean = 0;
 		}
 	}
