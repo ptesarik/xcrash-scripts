@@ -111,8 +111,22 @@ nth_element(struct list_head *list, int pos)
 
 static LIST_HEAD(splitlist);
 
-/* Change the name in @node->t.name */
+/* Set a new @type for all vars in @varlist */
 static void
+set_var_type(struct list_head *varlist, node_t *type)
+{
+	node_t *var;
+	list_for_each_entry(var, varlist, list) {
+		node_t *child, *nchild;
+		list_for_each_entry_safe(child, nchild,
+					 &var->child[chv_type], list)
+			freenode(child);
+		set_node_child(var, chv_type, dupnode(type));
+	}
+}
+
+/* Change the name in @node->t.name */
+static node_t *
 replace_type_name(node_t *node, const char *newname)
 {
 	struct dynstr *oldds = node->str;
@@ -120,13 +134,21 @@ replace_type_name(node_t *node, const char *newname)
 	struct dynstr *newds = split
 		? split->newds
 		: newdynstr_token(newname, oldds->token);
-	set_node_str(node, newds);
+	set_node_str(node, NULL);
 	if (!oldds->refcount) {
+		if (node->t.category == type_basic)
+			replace_text_list(node->first_text, node->last_text,
+					  newds, newds);
+		else
+			replace_text_list(oldds, oldds, newds, newds);
+
+		node = reparse_node(node, START_TYPE_NAME);
+		newds = node->str;
+
 		if (split) {
-			list_splice(&split->list, &node->parent->list);
+			set_var_type(&split->nodes, node);
 			split_remove(split);
 		}
-		replace_text_list(oldds, oldds, newds, newds);
 	} else {
 		node_t *parent = node->parent;
 		if (parent->type != nt_var) {
@@ -138,6 +160,7 @@ replace_type_name(node_t *node, const char *newname)
 		else
 			split_addnode(split, parent);
 	}
+	return node;
 }
 
 /************************************************************
@@ -146,7 +169,7 @@ replace_type_name(node_t *node, const char *newname)
  */
 
 /* Convert a basic type into its target equivallent */
-static int
+static node_t *
 btype_to_target(node_t *item)
 {
 	static const struct {
@@ -165,17 +188,14 @@ btype_to_target(node_t *item)
 	int i;
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
-		if ((item->t.btype & ~TYPE_INT) == subst[i].old) {
-			set_node_str(item, replace_text(item, subst[i].new));
-			item->t.category = type_typedef;
-			return 1;
-		}
+		if ((item->t.btype & ~TYPE_INT) == subst[i].old)
+			return replace_type_name(item, subst[i].new);
 	}
-	return 0;
+	return NULL;
 }
 
 /* Convert a typedef into its target equivallent */
-static int
+static node_t *
 typedef_to_target(node_t *item)
 {
 	static const struct {
@@ -191,16 +211,14 @@ typedef_to_target(node_t *item)
 	int i;
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
-		if (!strcmp(item->str->text, subst[i].old)) {
-			set_node_str(item, replace_text(item, subst[i].new));
-			return 1;
-		}
+		if (!strcmp(item->str->text, subst[i].old))
+			return replace_type_name(item, subst[i].new);
 	}
-	return 0;
+	return NULL;
 }
 
 /* Convert a target typedef into a GDB variant */
-static int
+static node_t *
 ttype_to_gdb(node_t *item)
 {
 	static const struct {
@@ -220,11 +238,8 @@ ttype_to_gdb(node_t *item)
 	int i;
 
 	for (i = 0; i < sizeof(subst)/sizeof(subst[0]); ++i) {
-		if (!strcmp(item->str->text, subst[i].old)) {
-			replace_text(item, subst[i].new);
-			reparse_node(item, START_TYPE_NAME);
-			return 1;
-		}
+		if (!strcmp(item->str->text, subst[i].old))
+			return replace_type_name(item, subst[i].new);
 	}
 	return 0;
 }
@@ -236,12 +251,13 @@ static int target_types(node_t *item, void *data)
 
 	/* Convert types to their target equivallents */
 	if (item->type == nt_type) {
-		int modified = 0;
+		node_t *modified = NULL;
 		if (item->t.category == type_basic)
 			modified = btype_to_target(item);
 		else if (item->t.category == type_typedef)
 			modified = typedef_to_target(item);
 		if (modified) {
+			item = modified;
 			if (!strcmp(pf->name, "defs.h") &&
 			    check_cpp_cond(item->first_text->cpp_cond,
 					   "GDB_COMMON", NULL, NULL) >= 0)
