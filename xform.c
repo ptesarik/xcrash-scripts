@@ -538,6 +538,7 @@ printf_spec_one(node_t *node, void *data)
 				newdynstr_token(start, STRING_CONST);
 			list_add_tail(&dslast->list, &ds);
 		}
+		nullify_str(node);
 		replace_text_list(node->first_text, node->last_text,
 				  list_entry(ds.next, struct dynstr, list),
 				  list_entry(ds.prev, struct dynstr, list));
