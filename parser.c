@@ -516,19 +516,13 @@ int dump_contents(struct list_head *contents, FILE *f)
 /* Re-parse a node from the current raw contents */
 node_t *reparse_node(node_t *node, int type)
 {
-	struct dynstr *oldfirst = node->first_text,
-		*oldlast = node->last_text;
-	struct list_head nodepos;
 	node_t *newnode;
 	int res;
 
-	list_add(&nodepos, &node->list);
-	freenode(node);
-
 	INIT_LIST_HEAD(&parsed_tree);
 	INIT_LIST_HEAD(&raw_contents);
-	lex_input_first = oldfirst;
-	lex_input_last = oldlast;
+	lex_input_first = node->first_text;
+	lex_input_last = node->last_text;
 	lex_cpp_mode = 0;
 	start_symbol = type;
 	res = yyparse();
@@ -541,10 +535,14 @@ node_t *reparse_node(node_t *node, int type)
 	}
 
 	newnode = first_node(&parsed_tree);
+	newnode->parent = node->parent;
+	list_add(&newnode->list, &node->list);
+
+	struct dynstr *oldfirst = node->first_text,
+		*oldlast = node->last_text;
+	freenode(node);
 	replace_text_list(oldfirst, oldlast,
 			  newnode->first_text, newnode->last_text);
-	list_add(&newnode->list, &nodepos);
-	list_del(&nodepos);
 
 	return newnode;
 }
