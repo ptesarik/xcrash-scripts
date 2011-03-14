@@ -22,39 +22,38 @@ if ($reverse) {
     $rxfalse = $rx;
 }
 
-my $output = 1;
-my $inverted = 0;
+my $remove = 0;
+my $ignored = 0;
 my @savedctx;
 while(<>) {
     if (! /^\s*#/) {
-	print if $output;
+	print unless $remove;
 	next;
     }
 
     if (/^\s*#\s*if/) {
-	push @savedctx, $output, $inverted;
+	push @savedctx, $remove, $ignored;
+	$ignored = 1;
     }
 
     if (/$rxtrue/o) {
-	$inverted = 1;
+	$ignored = 0;
+	$remove = 0 unless $remove < 0;
     } elsif (/$rxfalse/o) {
-	$inverted = !$output;
-	$output = 0;
+	$ignored = 0;
+	$remove = 1 unless $remove < 0;
+    } elsif ($ignored) {
+	print unless $remove;
     } elsif (/^\s*#\s*else/) {
-	if ($output && !$inverted) {
-	    print;
-	} else {
-	    $output = !$inverted;
-	    $inverted = !$inverted;
-	}
-    } elsif (/\s*#\s*endif/) {
-	print if $output && !$inverted;
-    } elsif ($output) {
+	--$remove;
+    } elsif (/^\s*#\s*endif/) {
+	# do nothing
+    } elsif (!$remove) {
 	print;
     }
 
     if (/^\s*#\s*endif/) {
-	$inverted = pop @savedctx;
-	$output = pop @savedctx;
+	$ignored = pop @savedctx;
+	$remove = pop @savedctx;
     }
 }
