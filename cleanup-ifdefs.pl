@@ -24,7 +24,6 @@ if ($reverse) {
 
 my $output = 1;
 my $inverted = 0;
-my $nest = 0;
 my @savedctx;
 while(<>) {
     if (! /^\s*#/) {
@@ -34,7 +33,6 @@ while(<>) {
 
     if (/^\s*#\s*if/) {
 	push @savedctx, $output, $inverted;
-	++$nest;
     }
 
     if (/$rxtrue/o) {
@@ -58,6 +56,5 @@ while(<>) {
     if (/^\s*#\s*endif/) {
 	$inverted = pop @savedctx;
 	$output = pop @savedctx;
-	--$nest;
     }
 }
