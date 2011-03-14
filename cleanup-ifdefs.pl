@@ -9,11 +9,11 @@ if ($macro eq "-r") {
 
 my $rxtrue, my $rxfalse;
 if ($macro eq "0") {
-    $rxtrue = "^\\s*#if\\s+\\b0\\b";
-    $rxfalse = "^\\s*#if\\s+\\b1\\b";
+    $rxtrue = "^\\s*#\\s*if\\s+\\b0\\b";
+    $rxfalse = "^\\s*#\\s*if\\s+\\b1\\b";
 } else {
-    $rxtrue = "^\\s*#ifdef\\s+\\b$macro\\b";
-    $rxfalse = "^\\s*#ifndef\\s+\\b$macro\\b";
+    $rxtrue = "^\\s*#\\s*ifdef\\s+\\b$macro\\b";
+    $rxfalse = "^\\s*#\\s*ifndef\\s+\\b$macro\\b";
 }
 
 if ($reverse) {
@@ -32,7 +32,7 @@ while(<>) {
 	next;
     }
 
-    if (/^\s*#if/) {
+    if (/^\s*#\s*if/) {
 	push @savedctx, $output, $inverted;
 	++$nest;
     }
@@ -42,20 +42,20 @@ while(<>) {
     } elsif (/$rxfalse/o) {
 	$inverted = !$output;
 	$output = 0;
-    } elsif (/^\s*#else/) {
+    } elsif (/^\s*#\s*else/) {
 	if ($output && !$inverted) {
 	    print;
 	} else {
 	    $output = !$inverted;
 	    $inverted = !$inverted;
 	}
-    } elsif (/\s*#endif/) {
+    } elsif (/\s*#\s*endif/) {
 	print if $output && !$inverted;
     } elsif ($output) {
 	print;
     }
 
-    if (/^\s*#endif/) {
+    if (/^\s*#\s*endif/) {
 	$inverted = pop @savedctx;
 	$output = pop @savedctx;
 	--$nest;
