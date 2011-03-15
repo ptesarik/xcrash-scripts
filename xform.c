@@ -306,9 +306,11 @@ find_gdb_print_options(node_t *node, void *data)
 			return walk_continue;
 
 		node_t *left = nth_element(&expr->child[che_arg1], 1);
-		if (left->type == nt_expr && left->e.op == ID)
+		if (left->type == nt_expr && left->e.op == ID) {
 			add_gdb_common_decl(left->str->text);
-		else
+			walk_tree(&expr->child[che_arg2],
+				  mark_node_gdb_common, NULL);
+		} else
 			fputs("Unknown left hand side type\n", stderr);
 	} else if (node->type == nt_decl) {
 		/* mark func declaration too */
