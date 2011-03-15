@@ -755,12 +755,9 @@ use_ia64_fpreg_t(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
 
-	if (!is_struct(node, "ia64_fpreg"))
-		return walk_continue;
+	if (replace_struct(node, "ia64_fpreg", "ia64_fpreg_t"))
+		pf->clean = 0;
 
-	replace_text(node, "ia64_fpreg_t");
-	reparse_node(node, START_TYPE_NAME);
-	pf->clean = 0;
 	return walk_continue;
 }
 
