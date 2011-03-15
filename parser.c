@@ -117,16 +117,23 @@ void init_predef_types(void)
 		addtypedef(*p);
 }
 
+static inline enum walk_action
+walk_children(node_t *node, walkfn *fn, void *data)
+{
+	int i;
+	for (i = 0; i < node->nchild; ++i)
+		if (walk_tree(&node->child[i], fn, data) == walk_terminate)
+			return walk_terminate;
+	return walk_continue;
+}
+
 enum walk_action
 walk_tree(struct list_head *tree, walkfn *fn, void *data)
 {
 	node_t *item, *next;
 	list_for_each_entry_safe(item, next, tree, list) {
-		int i;
-		for (i = 0; i < item->nchild; ++i)
-			if (walk_tree(&item->child[i],
-				      fn, data) == walk_terminate)
-				return walk_terminate;
+		if (walk_children(item, fn, data) == walk_terminate)
+			return walk_terminate;
 		if (fn(item, data) == walk_terminate)
 			return walk_terminate;
 	}
@@ -136,10 +143,8 @@ walk_tree(struct list_head *tree, walkfn *fn, void *data)
 enum walk_action
 walk_tree_single(node_t *tree, walkfn *fn, void *data)
 {
-	int i;
-	for (i = 0; i < tree->nchild; ++i)
-		if (walk_tree(&tree->child[i], fn, data) == walk_terminate)
-			return walk_terminate;
+	if (walk_children(tree, fn, data) == walk_terminate)
+		return walk_terminate;
 	return fn(tree, data);
 }
 
