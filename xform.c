@@ -16,18 +16,10 @@ static int update_parsed_files(struct list_head *filelist);
  */
 
 static struct dynstr *
-newdynstr_token(const char *text, int token)
-{
-	struct dynstr *ret = newdynstr(text, strlen(text));
-	ret->token = token;
-	return ret;
-}
-
-static struct dynstr *
 replace_text(node_t *node, const char *text)
 {
 	nullify_str(node);
-	struct dynstr *ds = newdynstr_token(text, node->first_text->token);
+	struct dynstr *ds = newdynstr(text, strlen(text));
 	replace_text_list(node->first_text, node->last_text, ds, ds);
 	return ds;
 }
@@ -132,7 +124,7 @@ replace_type(node_t *node, const char *newtext)
 	struct split_node *split = split_search(&splitlist, oldds, newtext);
 	struct dynstr *newds = split
 		? split->newds
-		: newdynstr_token(newtext, oldds->token);
+		: newdynstr(newtext, strlen(newtext));
 	set_node_str(node, NULL);
 	if (!oldds->refcount) {
 		replace_text_list(node->first_text, node->last_text,
@@ -603,7 +595,7 @@ convert_readmem(node_t *node, void *data)
 		remove_text_list(arg->first_text, mult->first_text);
 		remove_text_list_rev(arg->last_text, mult->last_text);
 	} else {
-		struct dynstr *ds = newdynstr_token("1", INT_CONST);
+		struct dynstr *ds = newdynstr("1", 1);
 		replace_text_list(arg->first_text, arg->last_text, ds, ds);
 	}
 
@@ -664,7 +656,7 @@ printf_spec_one(node_t *node, void *data)
 	if (!list_empty(&ds)) {
 		if (strcmp(start, "\"\"")) {
 			struct dynstr *dslast =
-				newdynstr_token(start, STRING_CONST);
+				newdynstr(start, strlen(start));
 			list_add_tail(&dslast->list, &ds);
 		}
 		nullify_str(node);
