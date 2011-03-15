@@ -117,26 +117,30 @@ void init_predef_types(void)
 		addtypedef(*p);
 }
 
-void
+enum walk_action
 walk_tree(struct list_head *tree, walkfn *fn, void *data)
 {
 	node_t *item, *next;
 	list_for_each_entry_safe(item, next, tree, list) {
 		int i;
 		for (i = 0; i < item->nchild; ++i)
-			walk_tree(&item->child[i], fn, data);
-		if (fn(item, data))
-			break;
+			if (walk_tree(&item->child[i],
+				      fn, data) == walk_terminate)
+				return walk_terminate;
+		if (fn(item, data) == walk_terminate)
+			return walk_terminate;
 	}
+	return walk_continue;
 }
 
-void
+enum walk_action
 walk_tree_single(node_t *tree, walkfn *fn, void *data)
 {
 	int i;
 	for (i = 0; i < tree->nchild; ++i)
-		walk_tree(&tree->child[i], fn, data);
-	fn(tree, data);
+		if (walk_tree(&tree->child[i], fn, data) == walk_terminate)
+			return walk_terminate;
+	return fn(tree, data);
 }
 
 #if DEBUG
@@ -585,17 +589,17 @@ is_define(struct list_head *tree)
 }
 
 /* Remove unnecessary defined() calls */
-static int
+static enum walk_action
 remove_defined(node_t *node, void *data)
 {
 	if (! (node->type == nt_expr && node->e.op == CPP_DEFINED) )
-		return 0;
+		return walk_continue;
 	node_t *arg = first_node(&node->child[che_arg1]);
 	list_move(&arg->list, &node->list);
 	arg->parent = node->parent;
 	freenode(node);
 
-	return 0;
+	return walk_continue;
 }
 
 #define CPP_STACK_SIZE	32

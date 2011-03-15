@@ -262,11 +262,11 @@ find_scope(struct list_head *tree, node_t *node)
 	return tree;
 }
 
-static int
+static enum walk_action
 nullify_str_fn(node_t *node, void *data)
 {
 	set_node_str(node, NULL);
-	return 0;
+	return walk_continue;
 }
 
 /* Remove all str references (recursively), so any dynstr can

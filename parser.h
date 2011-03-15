@@ -284,9 +284,14 @@ struct arguments {
 };
 
 /* Tree walking */
-typedef int walkfn(node_t *, void *);
-void walk_tree(struct list_head *tree, walkfn *fn, void *data);
-void walk_tree_single(node_t *tree, walkfn *fn, void *data);
+enum walk_action {
+	walk_continue,		/* Continue the walk */
+	walk_terminate,		/* Terminate the walk */
+};
+
+typedef enum walk_action walkfn(node_t *, void *);
+enum walk_action walk_tree(struct list_head *tree, walkfn *fn, void *data);
+enum walk_action walk_tree_single(node_t *tree, walkfn *fn, void *data);
 
 /* Tree transformation functions */
 int dump_contents(struct list_head *contents, FILE *f);

@@ -282,28 +282,28 @@ struct varsearch {
 	node_t *found;
 };
 
-static int
+static enum walk_action
 checkvar(node_t *node, void *data)
 {
 	struct varsearch *vs = data;
 
 	if (!is_id(node) || strcmp(node->str->text, vs->varname))
-		return 0;
+		return walk_continue;
 	vs->found = node;
-	return 1;
+	return walk_terminate;
 }
 
-static int
+static enum walk_action
 checkselect(node_t *node, void *data)
 {
 	struct varsearch *vs = data;
 
 	if (!is_direct_call(node, "select"))
-		return 0;
+		return walk_continue;
 
 	node_t *arg = nth_element(&node->child[che_arg2], 5);
 	walk_tree_single(arg, checkvar, vs);
-	return !!vs->found;
+	return vs->found ? walk_terminate : walk_continue;
 }
 
 static int
@@ -350,28 +350,28 @@ static int target_off_t(node_t *node, void *data)
  *
  */
 
-static int
+static enum walk_action
 mkstring_typecast(node_t *node, void *data)
 {
 	const char **typecast = data;
 
 	if (!is_id(node))
-		return 0;
+		return walk_continue;
 
 	const char *id = node->str->text;
 	if (!strcmp(id, "LONG_DEC") ||
 	    !strcmp(id, "LONG_HEX")) {
 		*typecast = "(ulong)";
-		return 1;
+		return walk_terminate;
 	} else if (!strcmp(id, "INT_DEC") ||
 		   !strcmp(id, "INT_HEX")) {
 		*typecast = "(uint)";
-		return 1;
+		return walk_terminate;
 	} else if (!strcmp(id, "LONGLONG_HEX")) {
 		*typecast = "(ulonglong)";
-		return 1;
+		return walk_terminate;
 	} else
-		return 0;
+		return walk_continue;
 }
 
 static int
@@ -489,13 +489,13 @@ convert_readmem(node_t *node, void *data)
  *
  */
 
-static int
+static enum walk_action
 printf_spec_one(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
 
 	if (node->type != nt_expr || node->e.op != STRING_CONST)
-		return 0;
+		return walk_continue;
 
 	char *start = node->first_text->text;
 	char *p = start;
@@ -547,10 +547,10 @@ printf_spec_one(node_t *node, void *data)
 		pf->clean = 0;
 	}
 
-	return 0;
+	return walk_continue;
 }
 
-static int
+static enum walk_action
 printf_spec(node_t *node, void *data)
 {
 	int pos;
@@ -564,12 +564,12 @@ printf_spec(node_t *node, void *data)
 		 is_direct_call(node, "vsnprintf"))
 		pos = 3;
 	else
-		return 0;
+		return walk_continue;
 
 	node_t *spec = nth_element(&node->child[che_arg2], pos);
 	walk_tree_single(spec, printf_spec_one, data);
 
-	return 0;
+	return walk_continue;
 }
 
 /************************************************************
@@ -606,24 +606,24 @@ replace_struct(node_t *node, const char *oldname, const char *newname)
 	return 1;
 }
 
-static int
+static enum walk_action
 use_pt_regs_x86_64(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
 	int cond = check_cpp_cond(node->first_text->cpp_cond,
 			      "X86_64", NULL, NULL);
 	if (!cond && strcmp(pf->name, "unwind_x86_64.h"))
-		return 0;
+		return walk_continue;
 	else if (cond < 0)
-		return 0;
+		return walk_continue;
 
 	if (replace_struct(node, "pt_regs", "struct pt_regs_x86_64"))
 		pf->clean = 0;
 
-	return 0;
+	return walk_continue;
 }
 
-static int
+static enum walk_action
 use_pt_regs_ppc64(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
@@ -631,21 +631,21 @@ use_pt_regs_ppc64(node_t *node, void *data)
 	if (replace_struct(node, "ppc64_pt_regs", "struct pt_regs_ppc64"))
 		pf->clean = 0;
 
-	return 0;
+	return walk_continue;
 }
 
-static int
+static enum walk_action
 use_ia64_fpreg_t(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
 
 	if (!is_struct(node, "ia64_fpreg"))
-		return 0;
+		return walk_continue;
 
 	replace_text(node, "ia64_fpreg_t");
 	reparse_node(node, START_TYPE_NAME);
 	pf->clean = 0;
-	return 0;
+	return walk_continue;
 }
 
 /************************************************************
