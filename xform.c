@@ -836,6 +836,10 @@ static struct xform_desc xforms[] = {
 // available in all files
 { "move-include-defs.patch", import },
 
+// Fix up some constructs which are no longer valid after moving
+// the #include directive
+{ "include-defs-fixups.patch", import },
+
 // Use target types
 { "target-types-use.patch", simple, target_types },
 
