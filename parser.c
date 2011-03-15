@@ -117,6 +117,22 @@ void init_predef_types(void)
 		addtypedef(*p);
 }
 
+static node_t *
+check_current_node(node_t *node,
+		   struct list_head *prev, struct list_head *next)
+{
+	/* No change */
+	if (next->prev == &node->list)
+		return node;
+
+	/* Deleted node */
+	if (next->prev == prev)
+		return NULL;
+
+	/* Replaced node */
+	return list_entry(prev->next, node_t, list);
+}
+
 static inline enum walk_action
 walk_children(node_t *node, walkfn *fn, void *data)
 {
@@ -131,11 +147,18 @@ enum walk_action
 walk_tree(struct list_head *tree, walkfn *fn, void *data)
 {
 	node_t *item, *next;
+	struct list_head *prev = tree;
 	list_for_each_entry_safe(item, next, tree, list) {
-		if (walk_children(item, fn, data) == walk_terminate)
-			return walk_terminate;
 		if (fn(item, data) == walk_terminate)
 			return walk_terminate;
+
+		if (! (item = check_current_node(item, prev, &next->list)) )
+			continue;
+
+		if (walk_children(item, fn, data) == walk_terminate)
+			return walk_terminate;
+
+		prev = &item->list;
 	}
 	return walk_continue;
 }
@@ -143,9 +166,16 @@ walk_tree(struct list_head *tree, walkfn *fn, void *data)
 enum walk_action
 walk_tree_single(node_t *tree, walkfn *fn, void *data)
 {
-	if (walk_children(tree, fn, data) == walk_terminate)
+	struct list_head *prev = tree->list.prev,
+		*next = tree->list.next;
+
+	if (fn(tree, data) == walk_terminate)
 		return walk_terminate;
-	return fn(tree, data);
+
+	if (! (tree = check_current_node(tree, prev, next)) )
+		return walk_continue;
+
+	return walk_children(tree, fn, data);
 }
 
 #if DEBUG
