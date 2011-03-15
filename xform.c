@@ -194,6 +194,7 @@ typedef_to_target(node_t *item)
 		{ "ulong", "tulong" },
 		{ "longlong", "tlonglong" },
 		{ "ulonglong", "tulonglong" },
+		{ "u_long", "tulong" },
 	};
 	int i;
 
