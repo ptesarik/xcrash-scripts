@@ -42,7 +42,6 @@ static int store_token(int);
 static int store_btype(int);
 
 static size_t dynstr_read(void *, size_t);
-static int lex_input_type(void);
 
 #define YY_INPUT(buf,result,max_size) \
 	if (lex_input) { \
@@ -267,10 +266,7 @@ CPP			("#"|"%:")[ \t\v\f]*
 3COM({L}|{D})*		|	/* HACK */
 3DFX({L}|{D})*		|	/* HACK */
 3DLABS({L}|{D})*	{	/* HACK */
-				int oldtype = lex_input_type();
-				if(oldtype>= 0)
-					return store_token(oldtype);
-				else if (istypedef(yytext))
+				if (istypedef(yytext))
 					return store_token(TYPEID);
 				return store_token(ID);
 			}
@@ -464,18 +460,4 @@ dynstr_read(void *buf, size_t max_size)
 	memcpy(buf, lex_input_ptr, n);
 	lex_input_ptr += n;
 	return n;
-}
-
-/* Return the original identifier type if available */
-static int
-lex_input_type(void)
-{
-	if (lex_input_first) {
-		if (curds->token == ID || curds->token == TYPEID)
-			return curds->token;
-		else if (curds->token == BASIC_TYPE)
-			return TYPEID;
-	}
-
-	return -1;
 }
