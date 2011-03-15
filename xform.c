@@ -295,6 +295,35 @@ mark_node_gdb_common(node_t *item, void *data)
 	return walk_continue;
 }
 
+static enum walk_action
+find_gdb_print_options(node_t *node, void *data)
+{
+	if (is_direct_call(node, "gdb_user_print_option_address")) {
+		node_t *expr = node;
+		while (expr->type == nt_expr && expr->e.op != '=')
+			expr = expr->parent;
+		if (expr->e.op != '=')
+			return walk_continue;
+
+		node_t *left = nth_element(&expr->child[che_arg1], 1);
+		if (left->type == nt_expr && left->e.op == ID)
+			add_gdb_common_decl(left->str->text);
+		else
+			fputs("Unknown left hand side type\n", stderr);
+	} else if (node->type == nt_decl) {
+		/* mark func declaration too */
+		node_t *var;
+		list_for_each_entry(var, &node->child[chd_var], list)
+			if (var->str &&
+			    !strcmp(var->str->text,
+				    "gdb_user_print_option_address"))
+				walk_tree_single(var, mark_node_gdb_common,
+						 NULL);
+	}
+
+	return walk_continue;
+}
+
 /* Replace types with target types */
 static enum walk_action
 target_types_fn(node_t *item, void *data)
@@ -347,8 +376,10 @@ target_types(const char *patchname, struct list_head *filelist, void *data)
 	list_for_each_entry(pf, filelist, list) {
 		if (!strcmp(pf->name, "defs.h"))
 			mark_raw_gdb_common(&pf->raw);
-		walk_tree(&pf->parsed, target_types_fn, pf);
+		walk_tree(&pf->parsed, find_gdb_print_options, pf);
 	}
+	list_for_each_entry(pf, filelist, list)
+		walk_tree(&pf->parsed, target_types_fn, pf);
 	return quilt_new(patchname, filelist);
 }
 
