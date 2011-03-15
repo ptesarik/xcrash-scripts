@@ -257,20 +257,29 @@ reset_user_data(struct list_head *tree)
 	walk_tree(tree, reset_user_data_fn, NULL);
 }
 
+static int
+is_child(node_t *child, node_t *parent, int idx)
+{
+	node_t *iter;
+	list_for_each_entry(iter, &parent->child[idx], list)
+		if (iter == child)
+			return 1;
+	return 0;
+}
+
 struct list_head *
 find_scope(struct list_head *tree, node_t *node)
 {
-	for (; node; node = node->parent) {
-		if (node->type != nt_decl)
-			continue;
-		if (list_empty(&node->child[chd_var]))
-			continue;
-		node_t *var = first_node(&node->child[chd_var]);
-		if (list_empty(&var->child[chv_type]))
-			continue;
-		node_t *type = first_node(&var->child[chv_type]);
-		if (type->t.category == type_func)
-			return &node->child[chd_body];
+	node_t *parent;
+	while ( (parent = node->parent) ) {
+		if (parent->type == nt_type &&
+		    is_child(node, parent, cht_body))
+			return &parent->child[cht_body];
+		else if (parent->type == nt_decl &&
+			   is_child(node, parent, chd_body))
+			  return &parent->child[chd_body];
+
+		node = parent;
 	}
 	return tree;
 }
