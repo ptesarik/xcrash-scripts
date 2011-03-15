@@ -8,6 +8,8 @@
 static int uptodate;
 static const char *basedir;
 
+static int update_parsed_files(struct list_head *filelist);
+
 /************************************************************
  * Useful helper functions
  *
@@ -232,8 +234,70 @@ ttype_to_gdb(const char *text)
 	return 0;
 }
 
+/* Array of function names seen inside a GDB_COMMON block */
+static const char **gdb_common_decls;
+static unsigned num_gdb_common_decls;
+
+static int
+find_gdb_common_decl(const char *name)
+{
+	unsigned i;
+	for (i = 0; i < num_gdb_common_decls; ++i)
+		if (!strcmp(gdb_common_decls[i], name))
+			return 1;
+	return 0;
+}
+
+static void
+add_gdb_common_decl(const char *name)
+{
+	if (find_gdb_common_decl(name))
+		return;
+
+	++num_gdb_common_decls;
+	gdb_common_decls =
+		realloc(gdb_common_decls,
+			num_gdb_common_decls * sizeof(const char*));
+	gdb_common_decls[num_gdb_common_decls-1] = name;
+}
+
+/* Walk the raw list and mark all referencing nodes as GDB_COMMON */
+static void
+mark_raw_gdb_common(struct list_head *raw)
+{
+	struct dynstr *ds;
+	node_t *cond = NULL;
+	int is_gdb = 1;
+
+	list_for_each_entry(ds, raw, list) {
+		if (ds->cpp_cond != cond) {
+			cond = ds->cpp_cond;
+			is_gdb = check_cpp_cond(cond,
+						"GDB_COMMON", NULL, NULL) >= 0
+				? 1 : 0;
+		}
+
+		if (!is_gdb)
+			continue;
+
+		node_t *node;
+		list_for_each_entry(node, &ds->node_first, first_list)
+			node->user_data = (void*)1;
+		list_for_each_entry(node, &ds->node_last, last_list)
+			node->user_data = (void*)1;
+	}
+}
+
+static enum walk_action
+mark_node_gdb_common(node_t *item, void *data)
+{
+	item->user_data = (void*)1;
+	return walk_continue;
+}
+
 /* Replace types with target types */
-static int target_types(node_t *item, void *data)
+static enum walk_action
+target_types_fn(node_t *item, void *data)
 {
 	struct parsed_file *pf = data;
 
@@ -245,16 +309,47 @@ static int target_types(node_t *item, void *data)
 		else if (item->t.category == type_typedef)
 			modified = typedef_to_target(item);
 		if (modified) {
-			if (!strcmp(pf->name, "defs.h") &&
-			    check_cpp_cond(item->first_text->cpp_cond,
-					   "GDB_COMMON", NULL, NULL) >= 0)
+			if (item->user_data)
 				modified = ttype_to_gdb(modified);
 			replace_type(item, modified);
 			pf->clean = 0;
 		}
+	} else if (item->type == nt_decl) {
+		node_t *var;
+		list_for_each_entry(var, &item->child[chd_var], list)  {
+			if (!var->str)
+				continue;
+
+			node_t *type = nth_element(&var->child[chv_type], 1);
+
+			if (item->user_data && type &&
+			    type->t.category == type_func)
+				add_gdb_common_decl(var->str->text);
+			else if (find_gdb_common_decl(var->str->text))
+				walk_tree(&var->child[chv_type],
+					  mark_node_gdb_common, NULL);
+		}
 	}
 
-	return 0;
+	return walk_continue;
+}
+
+/* Specialized handler to replace target types */
+static int
+target_types(const char *patchname, struct list_head *filelist, void *data)
+{
+	struct parsed_file *pf;
+	int res;
+
+	if ( (res = update_parsed_files(filelist)) )
+		return res;
+
+	list_for_each_entry(pf, filelist, list) {
+		if (!strcmp(pf->name, "defs.h"))
+			mark_raw_gdb_common(&pf->raw);
+		walk_tree(&pf->parsed, target_types_fn, pf);
+	}
+	return quilt_new(patchname, filelist);
 }
 
 /* Replace sizeof pointers with target pointers */
@@ -841,7 +936,7 @@ static struct xform_desc xforms[] = {
 { "include-defs-fixups.patch", import },
 
 // Use target types
-{ "target-types-use.patch", simple, target_types },
+{ "target-types-use.patch", target_types },
 
 // Target pointer types are trickier, but let's change the size
 // where they are read and find out later where the size of the
