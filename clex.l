@@ -89,7 +89,7 @@ CPP			("#"|"%:")[ \t\v\f]*
 
   /* CPP directive (start) */
 <cpp_dir>{
-{CPP}			/* skip whitespace except newline */
+^{CPP}			/* skip whitespace except newline */
 "define"		{
 			token_at_eof = ';';
 			BEGIN(cpp_def);
@@ -137,6 +137,7 @@ CPP			("#"|"%:")[ \t\v\f]*
 				}
 
   /* CPP directive (during define) */
+<cpp>"#"		return store_token('#');
 <cpp>"##"		return store_token(CPP_CONCAT);
 <cpp><<EOF>>		{
 			/* Simulate a terminating semicolon at the end

@@ -116,6 +116,7 @@ static void hidedecls(struct list_head *);
 %token <token> CPP_DEFINED
 %token <token> CPP_CONCAT	"##"
 %token <str> CPP_IDARG
+%type <token> '#'
 
 /* start symbol pseudo-tokens */
 %token START_TYPE_NAME
@@ -1065,6 +1066,8 @@ string_const		: STRING_CONST
 				$$ = newexpr2(&@$, CONCAT, $1,
 					      newexprstr(&@2, $2));
 			}
+			| '#' ID
+			{ $$ = newexpr1(&@$, $1, newexprid(&@2, $2)); }
 			/* HACK for concatenation with macros */
 			| string_const ID
 			{
