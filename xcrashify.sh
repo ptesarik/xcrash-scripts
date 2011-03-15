@@ -51,4 +51,5 @@ quilt refresh -p ab --no-timestamp
 
 ################################################################
 # Run the C parser
+files="$files cross.c"
 "$scriptdir"/xcrashify $files
