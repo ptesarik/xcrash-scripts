@@ -722,6 +722,8 @@ replace_struct(node_t *node, const char *oldname, const char *newname)
 	return 1;
 }
 
+#define DEF_PT_REGS_X86_64	"#define pt_regs pt_regs_x86_64"
+
 static enum walk_action
 use_pt_regs_x86_64(node_t *node, void *data)
 {
@@ -732,6 +734,16 @@ use_pt_regs_x86_64(node_t *node, void *data)
 		return walk_continue;
 	else if (cond < 0)
 		return walk_continue;
+
+	if (node->type == nt_decl) {
+		node_t *type = nth_element(&node->child[chd_type], 1);
+		if (is_struct(type, "pt_regs")) {
+			struct dynstr *ds =
+				newdynstr(DEF_PT_REGS_X86_64,
+					  strlen(DEF_PT_REGS_X86_64));
+			insert_text_list(node->first_text, ds, ds);
+		}
+	}
 
 	if (replace_struct(node, "pt_regs", "struct pt_regs_x86_64"))
 		pf->clean = 0;
