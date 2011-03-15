@@ -595,10 +595,6 @@ replace_struct(node_t *node, const char *oldname, const char *newname)
 		return 1;
 	}
 
-	/* No change if part of struct pt_regs declaration */
-	if (node->parent->type == nt_decl)
-		return 0;
-
 	if (!is_struct(node, oldname))
 		return 0;
 
