@@ -493,7 +493,7 @@ struct_decl		: spec_qualifier_list struct_declarator_list ';'
 struct_declarator_list	: struct_declarator
 			| struct_declarator_list ',' struct_declarator
 			{
-				list_add_tail(&$3->var->list, &$1->var->list);
+				list_add_tail(&$3->list, &$1->list);
 				$$ = $1;
 			}
 			;
