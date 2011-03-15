@@ -757,8 +757,14 @@ int parse_file(struct parsed_file *pf)
 
 	if (!strcmp(pf->name, "-"))
 		yyin = stdin;
-	else
+	else {
 		yyin = fopen(pf->name, "r");
+		if (!yyin) {
+			fprintf(stderr, "Cannot open %s: %s\n",
+				pf->name, strerror(errno));
+			return errno == ENOENT ? 0 : -1;
+		}
+	}
 
 	fprintf(stderr, "Parsing file %s\n", pf->name);
 
@@ -769,8 +775,11 @@ int parse_file(struct parsed_file *pf)
 	lex_cpp_mode = 0;
 	start_symbol = 0;
 	ret = yyparse();
-	if (yyin != stdin)
-		fclose(yyin);
+	if (yyin != stdin && fclose(yyin)) {
+		fprintf(stderr, "Cannot close %s: %s\n",
+			pf->name, strerror(errno));
+		ret = -1;
+	}
 	yylex_destroy();
 
 	if (ret) {
