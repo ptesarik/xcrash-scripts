@@ -218,6 +218,11 @@ static void dump_basic_type(type_t *type)
 	}
 }
 
+static const char *name_string(node_t *node)
+{
+	return node->str ? node->str->text : "<anonymous>";
+}
+
 static void dump_type(node_t *node, int showflags)
 {
 	type_t *type = &node->t;
@@ -259,15 +264,15 @@ static void dump_type(node_t *node, int showflags)
 		break;
 
 	case type_struct:
-		printf("struct %s", node->str->text);
+		printf("struct %s", name_string(node));
 		break;
 
 	case type_union:
-		printf("union %s", node->str->text);
+		printf("union %s", name_string(node));
 		break;
 
 	case type_enum:
-		printf("enum %s", node->str->text);
+		printf("enum %s", name_string(node));
 		break;
 
 	case type_pointer:
@@ -380,7 +385,7 @@ static void dump_expr(node_t *node)
 
 static void dump_var(node_t *node)
 {
-	printf("name: %s", node->str->text);
+	printf("name: %s", name_string(node));
 }
 
 static void dump_child_pos(node_t *parent, int pos)
