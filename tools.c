@@ -93,6 +93,7 @@ vcheck_cpp_cond(node_t *node, const char **set, const char **unset)
 		return left + right;
 
 	case EQ_OP:
+	case NE_OP:
 		/* No idea about the value of preprocessor defines */
 		return 0;
 
