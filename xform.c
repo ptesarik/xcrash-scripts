@@ -832,6 +832,10 @@ static struct xform_desc xforms[] = {
 // Introduce target types
 { "target-types.patch", import },
 
+// Move or add #include "defs.h", so that target types are
+// available in all files
+{ "move-include-defs.patch", import },
+
 // Use target types
 { "target-types-use.patch", simple, target_types },
 
