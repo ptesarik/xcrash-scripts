@@ -401,6 +401,7 @@ writeout_files(struct list_head *filelist)
 			continue;
 		if ( (res = writeout(pf->name, &pf->raw)) )
 			return res;
+		pf->clean = 1;
 	}
 	return 0;
 }
