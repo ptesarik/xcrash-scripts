@@ -649,12 +649,16 @@ use_ia64_fpreg_t(node_t *node, void *data)
  *
  */
 
-static int update_parsed_files(struct list_head *filelist)
+static int
+update_parsed_files(struct list_head *filelist)
 {
 	struct parsed_file *pf;
 
-	if (uptodate)
+	if (uptodate) {
+		list_for_each_entry(pf, filelist, list)
+			reset_user_data(&pf->parsed);
 		return 0;
+	}
 
 	init_predef_types();
 	list_for_each_entry(pf, filelist, list) {
