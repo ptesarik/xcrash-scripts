@@ -244,6 +244,19 @@ dynstr_dup_indent(struct list_head *list,
  *
  */
 
+static enum walk_action
+reset_user_data_fn(node_t *node, void *data)
+{
+	node->user_data = NULL;
+	return walk_continue;
+}
+
+void
+reset_user_data(struct list_head *tree)
+{
+	walk_tree(tree, reset_user_data_fn, NULL);
+}
+
 struct list_head *
 find_scope(struct list_head *tree, node_t *node)
 {

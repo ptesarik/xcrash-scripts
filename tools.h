@@ -31,6 +31,7 @@ dynstr_del_rev(struct dynstr *ds)
 }
 
 /* Related to the parsed tree */
+void reset_user_data(struct list_head *tree);
 struct list_head *find_scope(struct list_head *tree, node_t *node);
 void nullify_str(node_t *node);
 
