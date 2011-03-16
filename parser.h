@@ -1,5 +1,8 @@
 /* Common definitions for the C lexer and parser */
 
+#ifndef PARSER_H
+#define PARSER_H
+
 #include <stdio.h>		/* for FILE */
 #include "lists.h"
 
@@ -314,3 +317,5 @@ struct parsed_file {
 int parse_file(struct parsed_file *);
 node_t *reparse_node(node_t *, int);
 int xform_files(struct arguments *, struct list_head *);
+
+#endif	/* PARSER_H */

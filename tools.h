@@ -1,3 +1,6 @@
+#ifndef TOOLS_H
+#define TOOLS_H
+
 #include "parser.h"
 
 /* CPP conditions */
@@ -68,3 +71,5 @@ split_addnode(struct split_node *split, node_t *node)
 /* Quilt interface */
 int quilt_new(const char *name, struct list_head *filelist);
 int quilt_import(const char *name, const char *basedir);
+
+#endif	/* TOOLS_H */
