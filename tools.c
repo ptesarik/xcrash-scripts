@@ -280,7 +280,8 @@ find_scope(struct list_head *tree, node_t *node)
 			parent = typed_parent(parent, nt_decl);
 			return &parent->child[chd_body];
 		} else if (parent->type == nt_decl &&
-			   is_child(node, parent, chd_body))
+			   (is_child(node, parent, chd_body) ||
+			    is_child(node, parent, chd_decl)) )
 			  return &parent->child[chd_body];
 
 		node = parent;
