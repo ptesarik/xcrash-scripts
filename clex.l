@@ -261,6 +261,7 @@ CPP			("#"|"%:")[ \t\v\f]*
 "for_cpu_indexes"	return store_token(FOR_CPU_INDEXES);
 "offsetof"		return store_token(OFFSETOF);
 "struct_offset"		return store_token(OFFSETOF);
+"ATTRIBUTE_UNUSED"	return store_token(ATTRIBUTE_UNUSED);
 
 {L}({L}|{D})*		|
 3COM({L}|{D})*		|	/* HACK */

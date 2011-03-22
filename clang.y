@@ -102,7 +102,7 @@ static void hidedecls(struct list_head *);
 %token <btype> BASIC_TYPE
 
 /* HACK kludges */
-%token <token> OFFSETOF FOR_CPU_INDEXES FRAME_REG
+%token <token> OFFSETOF FOR_CPU_INDEXES FRAME_REG ATTRIBUTE_UNUSED
 
 /* constants */
 %token <str> INT_CONST FLOAT_CONST CHAR_CONST STRING_CONST
@@ -377,6 +377,9 @@ opt_attr		: /* empty */
 
 attr_spec		: ATTRIBUTE '(' '(' attr_list ')' ')'
 			{ $$ = $4; }
+			/* HACK */
+			| ATTRIBUTE_UNUSED
+			{ $$ = newexpr(&@$, ATTRIBUTE_UNUSED); }
 			;
 
 attr_list		: attribute
