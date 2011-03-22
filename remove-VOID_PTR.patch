@@ -19,12 +19,12 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
 
 ---
  defs.h   |    1 -
- memory.c |   47 +++++++++++++++++++++++++----------------------
- 2 files changed, 25 insertions(+), 23 deletions(-)
+ memory.c |   27 +++++++++++++++------------
+ 2 files changed, 15 insertions(+), 13 deletions(-)
 
 --- a/defs.h
 +++ b/defs.h
-@@ -1760,7 +1760,6 @@ struct builtin_debug_table {
+@@ -1787,7 +1787,6 @@ struct builtin_debug_table {
  #define ULONG_PTR(ADDR) *((ulong **)((char *)(ADDR)))
  #define USHORT(ADDR)    *((ushort *)((char *)(ADDR)))
  #define SHORT(ADDR)     *((short *)((char *)(ADDR)))
@@ -34,7 +34,7 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
  	int node_id;
 --- a/memory.c
 +++ b/memory.c
-@@ -26,8 +26,8 @@ struct meminfo {           /* general pu
+@@ -27,8 +27,8 @@ struct meminfo {           /* general pu
          ulong c_offset;
  	ulong c_num;
  	ulong s_mem; 
@@ -45,64 +45,7 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
  	ulong s_inuse;
  	ulong cpucached_cache;
  	ulong cpucached_slab;
-@@ -139,7 +139,7 @@ static int next_kpage(ulong, ulong *);
- static ulong last_vmalloc_address(void);
- static ulong next_vmlist_vaddr(ulong);
- static int next_identity_mapping(ulong, ulong *);
--static int vm_area_page_dump(ulong, ulong, ulong, ulong, void *, 
-+static int vm_area_page_dump(ulong, ulong, ulong, ulong, ulong,
- 	struct reference *);
- static int dump_swap_info(ulong, ulong *, ulong *);
- static void swap_info_init(void);
-@@ -3138,7 +3138,7 @@ vm_area_dump(ulong task, ulong flag, ulo
- 	ulong vma;
- 	ulong vm_start;
- 	ulong vm_end;
--	void *vm_next, *vm_mm;
-+	ulong vm_next, vm_mm;
- 	char *dentry_buf, *vma_buf, *file_buf;
- 	ulong vm_flags;
- 	ulong vm_file, inode;
-@@ -3202,7 +3202,7 @@ vm_area_dump(ulong task, ulong flag, ulo
- 	    !DO_REF_SEARCH(ref)) 
- 		fprintf(fp, vma_header);
- 
--	for (found = FALSE; vma; vma = (ulong)vm_next) {
-+	for (found = FALSE; vma; vma = vm_next) {
- 
- 		if ((flag & PHYSADDR) && !DO_REF_SEARCH(ref))
- 			fprintf(fp, "%s", vma_header);
-@@ -3211,9 +3211,9 @@ vm_area_dump(ulong task, ulong flag, ulo
- 		BZERO(buf1, BUFSIZE);
- 		vma_buf = fill_vma_cache(vma);
- 
--		vm_mm = VOID_PTR(vma_buf + OFFSET(vm_area_struct_vm_mm));
-+		vm_mm = ULONG(vma_buf + OFFSET(vm_area_struct_vm_mm));
- 		vm_end = ULONG(vma_buf + OFFSET(vm_area_struct_vm_end));
--		vm_next = VOID_PTR(vma_buf + OFFSET(vm_area_struct_vm_next));
-+		vm_next = ULONG(vma_buf + OFFSET(vm_area_struct_vm_next));
- 		vm_start = ULONG(vma_buf + OFFSET(vm_area_struct_vm_start));
- 		vm_flags = SIZE(vm_area_struct_vm_flags) == sizeof(short) ?
- 			USHORT(vma_buf+ OFFSET(vm_area_struct_vm_flags)) :
-@@ -3335,7 +3335,7 @@ vm_area_page_dump(ulong vma,
- 		  ulong task, 
- 		  ulong start, 
- 		  ulong end, 
--		  void *mm,
-+		  ulong mm,
- 		  struct reference *ref)
- {
- 	physaddr_t paddr;
-@@ -3347,7 +3347,7 @@ vm_area_page_dump(ulong vma,
- 	char buf3[BUFSIZE];
- 	char buf4[BUFSIZE];
- 
--	if ((ulong)mm == symbol_value("init_mm")) 
-+	if (mm == symbol_value("init_mm"))
- 		return FALSE;
- 
- 	if (!ref || DO_REF_DISPLAY(ref))
-@@ -9720,9 +9720,9 @@ dump_slab(struct meminfo *si)
+@@ -9769,9 +9769,9 @@ dump_slab(struct meminfo *si)
  			return;
          }
  
@@ -111,10 +54,10 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
  	si->s_inuse = ULONG(si->slab_buf + OFFSET(kmem_slab_s_s_inuse));
 -	si->s_index = ULONG_PTR(si->slab_buf + OFFSET(kmem_slab_s_s_index));
 +	si->s_index = ULONG(si->slab_buf + OFFSET(kmem_slab_s_s_index));
- 	s_offset = USHORT(si->slab_buf + OFFSET(kmem_slab_s_s_offset));
  
  	if (!(si->flags & ADDRESS_SPECIFIED)) {
-@@ -9850,7 +9850,7 @@ dump_slab_percpu_v2(struct meminfo *si)
+ 		fprintf(fp, slab_hdr);
+@@ -9898,7 +9898,7 @@ dump_slab_percpu_v2(struct meminfo *si)
  static void
  gather_slab_free_list(struct meminfo *si)
  {
@@ -123,7 +66,7 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
  	ulong expected, cnt;
  
  	BNEG(si->addrlist, sizeof(ulong) * (si->c_num+1));
-@@ -9885,16 +9885,18 @@ gather_slab_free_list(struct meminfo *si
+@@ -9933,16 +9933,18 @@ gather_slab_free_list(struct meminfo *si
  		 */
  
  	        if (si->c_flags & SLAB_CFLGS_BUFCTL) 
@@ -146,7 +89,7 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
  				si->found = KMEM_BUFCTL_ADDR;
  				return;
  			}
-@@ -9909,7 +9911,7 @@ gather_slab_free_list(struct meminfo *si
+@@ -9957,7 +9959,7 @@ gather_slab_free_list(struct meminfo *si
  			si->errors++;
  		}
  
@@ -155,7 +98,7 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
                  	"s_freep chain entry", FAULT_ON_ERROR);
  	} while (next); 
  
-@@ -10057,7 +10059,7 @@ static void
+@@ -10105,7 +10107,7 @@ static void
  dump_slab_objects(struct meminfo *si)
  {
  	int i, j;
@@ -164,7 +107,7 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
  	int on_free_list; 
  	ulong cnt, expected;
  	ulong bufctl, obj;
-@@ -10088,7 +10090,8 @@ dump_slab_objects(struct meminfo *si)
+@@ -10136,7 +10138,8 @@ dump_slab_objects(struct meminfo *si)
          if (si->c_flags & SLAB_CFLGS_BUFCTL) {
  		for (i = 0, next = si->s_index; i < si->c_num; i++, next++) {
                  	obj = si->s_mem + 
@@ -174,27 +117,3 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
  			DUMP_SLAB_OBJECT();
  		}
  	} else {
-@@ -11561,7 +11564,7 @@ next_upage(struct task_context *tc, ulon
- 	int found;
- 	char *vma_buf;
-         ulong vm_start, vm_end;
--	void *vm_next;
-+	ulong vm_next;
- 
-         if (!tc->mm_struct)
-                 return FALSE;
-@@ -11575,12 +11578,12 @@ next_upage(struct task_context *tc, ulon
- 
- 	vaddr = VIRTPAGEBASE(vaddr) + PAGESIZE();  /* first possible page */
- 
--        for (found = FALSE; vma; vma = (ulong)vm_next) {
-+        for (found = FALSE; vma; vma = vm_next) {
-                 vma_buf = fill_vma_cache(vma);
- 
-                 vm_start = ULONG(vma_buf + OFFSET(vm_area_struct_vm_start));
-                 vm_end = ULONG(vma_buf + OFFSET(vm_area_struct_vm_end));
--                vm_next = VOID_PTR(vma_buf + OFFSET(vm_area_struct_vm_next));
-+                vm_next = ULONG(vma_buf + OFFSET(vm_area_struct_vm_next));
- 
- 		if (vaddr <= vm_start) {
- 			*nextvaddr = vm_start;

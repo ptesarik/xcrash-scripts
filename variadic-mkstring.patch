@@ -5,14 +5,13 @@
 
 --- a/tools.c
 +++ b/tools.c
-@@ -1546,43 +1546,50 @@ shift_string_right(char *s, int cnt)
+@@ -1546,42 +1546,49 @@ shift_string_right(char *s, int cnt)
   *  actual value.
   */
  char *
 -mkstring(char *s, int size, ulong flags, const char *opt)
 +mkstring(char *s, int size, ulong flags, ...)
  {
- 	int i;
  	int len;
  	int extra;
  	int left;

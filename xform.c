@@ -920,15 +920,9 @@ static struct xform_desc xforms[] = {
  * Upstreamed patches first...
  */
 
-// Configure GDB_CONF_FLAGS from configure
-{ "configure-gdb-conf-flags.patch", import },
-
 { "remove-VOID_PTR.patch", import },
 
 { "gdb-does-not-need-syment.patch", import },
-
-// mkstring() fixes
-{ "mkstring-optimize.patch", import },
 
 /************************************************************
  * Things that could theoretically go upstream, but are not

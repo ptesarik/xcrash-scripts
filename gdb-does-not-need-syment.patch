@@ -31,23 +31,3 @@ Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
  #define NAMESPACE_INIT     (1)
  #define NAMESPACE_REUSE    (2)
  #define NAMESPACE_FREE     (3)
---- a/gdb-7.0.patch
-+++ b/gdb-7.0.patch
-@@ -468,7 +468,7 @@
-    return returnval;
-  }
-  
--@@ -4783,3 +4790,619 @@ Valid values are \"ask\", \"all\", \"can
-+@@ -4783,3 +4790,617 @@ Valid values are \"ask\", \"all\", \"can
-  
-    observer_attach_executable_changed (symtab_observer_executable_changed);
-  }
-@@ -880,8 +880,6 @@
- +	register struct objfile *objfile;
- +	register struct minimal_symbol *m;
- +	struct load_module *lm;
--+	struct syment *sp;
--+	struct syment *spx;
- +	int external, subsequent, found;
- +	off_t offset;
- +	ulong value, adjusted;
