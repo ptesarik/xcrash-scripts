@@ -437,24 +437,6 @@ target_types(const char *patchname, struct list_head *filelist, void *data)
 	return quilt_new(patchname, filelist);
 }
 
-/* Replace sizeof pointers with target pointers */
-static int target_ptr(node_t *node, void *data)
-{
-	struct parsed_file *pf = data;
-
-	if (! (node->type == nt_expr && node->e.op == SIZEOF_TYPE) )
-		return 0;
-
-	node_t *arg = nth_element(&node->child[che_arg1], 1);
-	if (arg->type == nt_type && arg->t.category == type_pointer) {
-		replace_text(arg, "tptr");
-		reparse_node(arg, START_TYPE_NAME);
-		pf->clean = 0;
-	}
-
-	return 0;
-}
-
 /* Replace struct timeval with ttimeval */
 
 struct varsearch {
@@ -523,6 +505,49 @@ static int target_off_t(node_t *node, void *data)
 	}
 
 	return 0;
+}
+
+/************************************************************
+ * Replace target pointer types
+ *
+ */
+
+static enum walk_action
+find_sizeof(node_t *node, void *data)
+{
+	if (node->type == nt_expr && node->e.op == SIZEOF_TYPE) {
+		*(node_t**)data = node;
+		return walk_terminate;
+	}
+
+	return walk_continue;
+}
+
+static enum walk_action
+target_ptr_symbol_data(node_t *node, void *data)
+{
+	struct parsed_file *pf = data;
+	node_t *arg;
+
+	if (!is_direct_call(node, "get_symbol_data") &&
+	    !is_direct_call(node, "try_get_symbol_data"))
+		return walk_continue;
+
+	/* Process the 2nd argument */
+	arg = nth_element(&node->child[che_arg2], 2);
+	node_t *typesize = NULL;
+	walk_tree_single(arg, find_sizeof, &typesize);
+	if (!typesize)
+		return walk_continue;
+
+	node_t *type = nth_element(&typesize->child[che_arg1], 1);
+	if (type->type == nt_type && type->t.category == type_pointer) {
+		replace_text(type, "tptr");
+		reparse_node(type, START_TYPE_NAME);
+		pf->clean = 0;
+	}
+
+	return walk_continue;
 }
 
 /************************************************************
@@ -971,10 +996,8 @@ static struct xform_desc xforms[] = {
 // Use target types
 { "target-types-use.patch", target_types },
 
-// Target pointer types are trickier, but let's change the size
-// where they are read and find out later where the size of the
-// variable needs adjustment
-{ "sizeof-target-ptr.patch", simple, target_ptr },
+// Target ptr types in calls to (try_)get_symbol_data
+{ "target-ptr-get_symbol_data.patch", simple, target_ptr_symbol_data },
 
 // Introduce target timeval
 { "target-timeval.patch", import },
