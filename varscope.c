@@ -172,6 +172,8 @@ varscope_expr(struct list_head *tree, node_t *expr)
 
 		/* Take the base type of a pointer for "->" */
 		if (expr->e.op == PTR_OP) {
+			if (! (type = resolve_typedef(tree, type)) )
+				return NULL;
 			assert(type->t.category == type_pointer);
 			type = first_node(&type->child[che_arg1]);
 		}
