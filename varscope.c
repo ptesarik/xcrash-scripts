@@ -26,10 +26,25 @@ mkhash(const char *name)
 	return ret % HASH_SIZE;
 }
 
+struct list_head *
+find_var_scope(struct list_head *tree, node_t *node)
+{
+	struct list_head *scope = find_scope(tree, node);
+	if (scope == tree) {
+		if (node->type == nt_var) {
+			node_t *type = first_node(&node->child[chv_type]);
+			if (type && (type->t.flags & TF_STATIC))
+				return scope; /* static has file scope */
+		}
+		return NULL; /* global scope */
+	}
+	return scope;
+}
+
 void
 varscope_add(struct list_head *tree, node_t *node)
 {
-	struct list_head *scope = find_scope(tree, node);
+	struct list_head *scope = find_var_scope(tree, node);
 	struct varscope *vs = malloc(sizeof(struct varscope));
 	unsigned idx = mkhash(node->str->text);
 
@@ -60,11 +75,14 @@ do_find(struct list_head *tree, node_t *scopenode,
 	node_t *ret;
 	struct list_head *scope;
 	do {
-		scope = find_scope(tree, scopenode);
-		scopenode = first_node(scope)->parent;
+		if (scope != tree) {
+			scope = find_scope(tree, scopenode);
+			scopenode = first_node(scope)->parent;
+		} else
+			scope = NULL;
 		if ( (ret = do_find_one(scope, type, idname)) )
 			return ret;
-	} while (scope != tree);
+	} while (scope);
 	return NULL;
 	
 }
