@@ -287,6 +287,27 @@ ttype_to_gdb(const char *text)
 	return text;
 }
 
+/* Substitute a host @type with its corresponding target type.
+ * Use GDB-specific types if @gdb is nonzero.
+ */
+static const char *
+subst_target_type(node_t *type, int gdb)
+{
+	const char *modified = NULL;
+
+	if (type->t.category == type_basic)
+		modified = btype_to_target(type);
+	else if (type->t.category == type_typedef)
+		modified = typedef_to_target(type);
+	else if (type->t.category == type_pointer)
+		modified = "tptr";
+
+	if (modified && gdb)
+		modified = ttype_to_gdb(modified);
+
+	return modified;
+}
+
 /* Array of function names seen inside a GDB_COMMON block */
 static const char **gdb_common_decls;
 static unsigned num_gdb_common_decls;
@@ -525,7 +546,7 @@ find_sizeof(node_t *node, void *data)
 }
 
 static enum walk_action
-target_ptr_symbol_data(node_t *node, void *data)
+target_types_symbol_data(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
 	node_t *arg;
@@ -542,8 +563,9 @@ target_ptr_symbol_data(node_t *node, void *data)
 		return walk_continue;
 
 	node_t *type = nth_element(&typesize->child[che_arg1], 1);
-	if (type->type == nt_type && type->t.category == type_pointer) {
-		replace_text(type, "tptr");
+	const char *newtype = subst_target_type(type, 0);
+	if (newtype) {
+		replace_text(type, newtype);
 		reparse_node(type, START_TYPE_NAME);
 		pf->clean = 0;
 	}
@@ -994,11 +1016,11 @@ static struct xform_desc xforms[] = {
 // the #include directive
 { "include-defs-fixups.patch", import },
 
+// Target types in calls to (try_)get_symbol_data
+{ "target-types-symbol_data.patch", simple, target_types_symbol_data },
+
 // Use target types
 { "target-types-use.patch", target_types },
-
-// Target ptr types in calls to (try_)get_symbol_data
-{ "target-ptr-get_symbol_data.patch", simple, target_ptr_symbol_data },
 
 // Introduce target timeval
 { "target-timeval.patch", import },
