@@ -149,13 +149,15 @@ walk_tree(struct list_head *tree, walkfn *fn, void *data)
 	node_t *item, *next;
 	struct list_head *prev = tree;
 	list_for_each_entry_safe(item, next, tree, list) {
-		if (fn(item, data) == walk_terminate)
+		enum walk_action act = fn(item, data);
+		if (act == walk_terminate)
 			return walk_terminate;
 
 		if (! (item = check_current_node(item, prev, &next->list)) )
 			continue;
 
-		if (walk_children(item, fn, data) == walk_terminate)
+		if (act != walk_skip_children &&
+		    walk_children(item, fn, data) == walk_terminate)
 			return walk_terminate;
 
 		prev = &item->list;
@@ -169,8 +171,11 @@ walk_tree_single(node_t *tree, walkfn *fn, void *data)
 	struct list_head *prev = tree->list.prev,
 		*next = tree->list.next;
 
-	if (fn(tree, data) == walk_terminate)
-		return walk_terminate;
+	switch (fn(tree, data)) {
+	case walk_terminate:     return walk_terminate;
+	case walk_skip_children: return walk_continue;
+	case walk_continue:      break;
+	}
 
 	if (! (tree = check_current_node(tree, prev, next)) )
 		return walk_continue;

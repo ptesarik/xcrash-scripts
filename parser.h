@@ -291,6 +291,7 @@ struct arguments {
 enum walk_action {
 	walk_continue,		/* Continue the walk */
 	walk_terminate,		/* Terminate the walk */
+	walk_skip_children,	/* Skip children */
 };
 
 typedef enum walk_action walkfn(node_t *, void *);
