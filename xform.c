@@ -210,12 +210,12 @@ type_split(struct list_head *raw, struct split_node *split)
  */
 
 /* Convert a basic type into its target equivallent */
-static char *
+static const char *
 btype_to_target(node_t *item)
 {
 	static const struct {
 		unsigned long old;
-		char *new;
+		const char *new;
 	} subst[] = {
 		{ TYPE_UNSIGNED|TYPE_LONG|TYPE_LONGLONG, "tulonglong" },
 		{ TYPE_LONG|TYPE_LONGLONG, "tlonglong" },
@@ -236,12 +236,12 @@ btype_to_target(node_t *item)
 }
 
 /* Convert a typedef into its target equivallent */
-static char *
+static const char *
 typedef_to_target(node_t *item)
 {
 	static const struct {
 		const char *old;
-		char *new;
+		const char *new;
 	} subst[] = {
 		{ "ushort", "tushort" },
 		{ "uint", "tuint" },
@@ -260,17 +260,18 @@ typedef_to_target(node_t *item)
 }
 
 /* Convert a target typedef into a GDB variant */
-static char *
+static const char *
 ttype_to_gdb(const char *text)
 {
 	static const struct {
 		const char *old;
-		char *new;
+		const char *new;
 	} subst[] = {
 		{ "tulonglong", "bfd_vma" },
 		{ "tlonglong", "bfd_signed_vma" },
 		{ "tulong", "bfd_vma" },
 		{ "tlong", "bfd_signed_vma" },
+		{ "tptr", "bfd_vma" },
 		/* The following types may need changing: */
 		{ "tuint", "unsigned int" },
 		{ "tint", "int" },
@@ -283,7 +284,7 @@ ttype_to_gdb(const char *text)
 		if (!strcmp(text, subst[i].old))
 			return subst[i].new;
 	}
-	return 0;
+	return text;
 }
 
 /* Array of function names seen inside a GDB_COMMON block */
@@ -386,7 +387,7 @@ target_types_fn(node_t *item, void *data)
 
 	/* Convert types to their target equivallents */
 	if (item->type == nt_type) {
-		char *modified = NULL;
+		const char *modified = NULL;
 		if (item->t.category == type_basic)
 			modified = btype_to_target(item);
 		else if (item->t.category == type_typedef)
