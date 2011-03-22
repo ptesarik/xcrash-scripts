@@ -103,6 +103,11 @@ nth_element(struct list_head *list, int pos)
 	return NULL;
 }
 
+/************************************************************
+ * Type replacements with split declarations
+ *
+ */
+
 static LIST_HEAD(splitlist);
 
 /* Replace all nodes in @nodelist with a copy of @newnode */
@@ -142,6 +147,61 @@ replace_type(node_t *node, const char *newtext)
 	else
 		split_addnode(split, node);
 	return node;
+}
+
+static struct dynstr *
+remove_comma(struct list_head *list, struct dynstr *ds)
+{
+	ds = dynstr_delspace(list, ds);
+	if (&ds->list != list && ds->token == ',')
+		ds = dynstr_delspace(list, dynstr_del(ds));
+	else {
+		ds = dynstr_delspace_rev(list, prev_dynstr(ds));
+		if (&ds->list != list && ds->token == ',')
+			ds = dynstr_delspace_rev(list, dynstr_del_rev(ds));
+	}
+	return ds;
+}
+
+static void
+type_split(struct list_head *raw, struct split_node *split)
+{
+	struct dynstr *ds, *point;
+	node_t *newdecl;
+	YYLTYPE loc;
+
+	loc.first_text = loc.last_text = split->newds;
+	newdecl = newnode(&loc, nt_decl, chd_max);
+
+	node_t *firstvar = list_entry(split->nodes.next, node_t, split_list);
+	node_t *olddecl = typed_parent(firstvar, nt_decl);
+	point = olddecl->first_text;
+	struct dynstr *indent = dynstr_dup_indent(raw, point, 0);
+
+	insert_text_list(point, split->newds, split->newds);
+	ds = newdynstr(" ", 1);
+	node_t *type, *ntype;
+	list_for_each_entry_safe(type, ntype, &split->nodes, split_list) {
+		if (!ds)
+			ds = newdynstr(", ", 2);
+		insert_text_list(point, ds, ds);
+		ds = NULL;
+
+		node_t *var = typed_parent(type, nt_var);
+		struct dynstr *nextds = next_dynstr(var->last_text);
+		detach_text(var->first_text, var->last_text);
+		insert_text_list(point, var->first_text, var->last_text);
+		remove_comma(raw, nextds);
+
+		freenode(var);
+	}
+
+	ds = newdynstr(";", 1);
+	insert_text_list(point, ds, ds);
+	set_node_last(newdecl, ds);
+
+	insert_text_list(point, indent, indent);
+	reparse_node(newdecl, START_DECL);
 }
 
 /************************************************************
@@ -822,61 +882,6 @@ static int simple(const char *patchname, struct list_head *filelist,
 		walk_tree(&pf->parsed, xform_fn, pf);
 	}
 	return quilt_new(patchname, filelist);
-}
-
-static struct dynstr *
-remove_comma(struct list_head *list, struct dynstr *ds)
-{
-	ds = dynstr_delspace(list, ds);
-	if (&ds->list != list && ds->token == ',')
-		ds = dynstr_delspace(list, dynstr_del(ds));
-	else {
-		ds = dynstr_delspace_rev(list, prev_dynstr(ds));
-		if (&ds->list != list && ds->token == ',')
-			ds = dynstr_delspace_rev(list, dynstr_del_rev(ds));
-	}
-	return ds;
-}
-
-static void
-type_split(struct list_head *raw, struct split_node *split)
-{
-	struct dynstr *ds, *point;
-	node_t *newdecl;
-	YYLTYPE loc;
-
-	loc.first_text = loc.last_text = split->newds;
-	newdecl = newnode(&loc, nt_decl, chd_max);
-
-	node_t *firstvar = list_entry(split->nodes.next, node_t, split_list);
-	node_t *olddecl = typed_parent(firstvar, nt_decl);
-	point = olddecl->first_text;
-	struct dynstr *indent = dynstr_dup_indent(raw, point, 0);
-
-	insert_text_list(point, split->newds, split->newds);
-	ds = newdynstr(" ", 1);
-	node_t *type, *ntype;
-	list_for_each_entry_safe(type, ntype, &split->nodes, split_list) {
-		if (!ds)
-			ds = newdynstr(", ", 2);
-		insert_text_list(point, ds, ds);
-		ds = NULL;
-
-		node_t *var = typed_parent(type, nt_var);
-		struct dynstr *nextds = next_dynstr(var->last_text);
-		detach_text(var->first_text, var->last_text);
-		insert_text_list(point, var->first_text, var->last_text);
-		remove_comma(raw, nextds);
-
-		freenode(var);
-	}
-
-	ds = newdynstr(";", 1);
-	insert_text_list(point, ds, ds);
-	set_node_last(newdecl, ds);
-
-	insert_text_list(point, indent, indent);
-	reparse_node(newdecl, START_DECL);
 }
 
 /* Helper for substituting types */
