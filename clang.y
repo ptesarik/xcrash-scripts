@@ -702,13 +702,15 @@ param_type_or_idlist	: param_type_list
 
 pointer			: '*'
 			{
-				node_t *ptr = newtype(&@$);
+				node_t *ptr =
+					newtype_name(&@$, @1.first_text);
 				ptr->t.category = type_pointer;
 				$$.tree = $$.stub = ptr;
 			}
 			| pointer '*'
 			{
-				node_t *ptr = newtype(&@$);
+				node_t *ptr =
+					newtype_name(&@$, @2.first_text);
 				ptr->t.category = type_pointer;
 				set_node_child(ptr, cht_type, $1.tree);
 				$$.tree = ptr;
