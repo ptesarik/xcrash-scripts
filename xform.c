@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "tools.h"
+#include "varscope.h"
 #include "clang.tab.h"
 
 static int uptodate;
@@ -535,6 +536,55 @@ static int target_off_t(node_t *node, void *data)
  */
 
 static enum walk_action
+target_ptr_var(node_t *node, void *data)
+{
+	struct parsed_file *pf = data;
+
+	if (node->type != nt_expr)
+		return walk_skip_children;
+
+	node_t *var = (node->e.op == '&')
+		? varscope_expr(&pf->parsed,
+				first_node(&node->child[che_arg1]))
+		: varscope_expr(&pf->parsed, node);
+	if (!var || list_empty(&var->child[chv_type]))
+		return walk_continue;
+
+	node_t *type = first_node(&var->child[chv_type]);
+	if (type->split_list.next)
+		return walk_terminate;
+
+	if (node->e.op == '&') {
+		const char *newtype = subst_target_type(type, 0);
+		if (newtype) {
+			replace_type(type, newtype);
+			pf->clean = 0;
+			return walk_terminate;
+		}
+	} else if (type->t.category == type_pointer) {
+		struct dynstr *dsfirst = type->str;
+		node_t *prevtype = type;
+		type = first_node(&type->child[cht_type]);
+		list_move(&type->list, &prevtype->list);
+		type->parent = prevtype->parent;
+		freenode(prevtype);
+
+		remove_text_list(dsfirst, var->str);
+		if (var->first_text == &dummydynstr)
+			set_node_first(var, var->str);
+
+		while (type->t.category == type_pointer)
+			type = first_node(&type->child[cht_type]);
+
+		replace_type(type, "tptr");
+		pf->clean = 0;
+		return walk_terminate;
+	}
+
+	return walk_skip_children;
+}
+
+static enum walk_action
 find_sizeof(node_t *node, void *data)
 {
 	if (node->type == nt_expr && node->e.op == SIZEOF_TYPE) {
@@ -546,7 +596,7 @@ find_sizeof(node_t *node, void *data)
 }
 
 static enum walk_action
-target_types_symbol_data(node_t *node, void *data)
+target_types_symbol_data_fn(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
 	node_t *arg;
@@ -568,9 +618,39 @@ target_types_symbol_data(node_t *node, void *data)
 		replace_text(type, newtype);
 		reparse_node(type, START_TYPE_NAME);
 		pf->clean = 0;
-	}
+	} else
+		return walk_continue;
+
+	/* Process the 3rd argument */
+	arg = nth_element(&node->child[che_arg2], 3);
+	walk_tree_single(arg, target_ptr_var, pf);
 
 	return walk_continue;
+}
+
+static int
+target_types_symbol_data(const char *patchname, struct list_head *filelist,
+			 void *data)
+{
+	struct parsed_file *pf;
+	int res;
+
+	if ( (res = update_parsed_files(filelist)) )
+		return res;
+
+	fill_varscope(filelist);
+	list_for_each_entry(pf, filelist, list)
+		walk_tree(&pf->parsed, target_types_symbol_data_fn, pf);
+
+	list_for_each_entry(pf, filelist, list) {
+		struct split_node *split, *nsplit;
+		list_for_each_entry_safe(split, nsplit, &splitlist, list) {
+			type_split(&pf->raw, split);
+			split_remove(split);
+		}
+	}
+
+	return quilt_new(patchname, filelist);
 }
 
 /************************************************************
@@ -1017,7 +1097,7 @@ static struct xform_desc xforms[] = {
 { "include-defs-fixups.patch", import },
 
 // Target types in calls to (try_)get_symbol_data
-{ "target-types-symbol_data.patch", simple, target_types_symbol_data },
+{ "target-types-symbol_data.patch", target_types_symbol_data },
 
 // Use target types
 { "target-types-use.patch", target_types },
