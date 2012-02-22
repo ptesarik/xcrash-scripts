@@ -131,8 +131,8 @@ replace_type(node_t *node, const char *newtext)
 	struct dynstr *newds = split
 		? split->newds
 		: newdynstr(newtext, strlen(newtext));
-	set_node_str(node, NULL);
-	if (!oldds->refcount) {
+	if (!--node->str->refcount) {
+		node->str = NULL;
 		replace_text_list(node->first_text, node->last_text,
 				  newds, newds);
 
@@ -140,6 +140,9 @@ replace_type(node_t *node, const char *newtext)
 		newds = node->str;
 
 		if (split) {
+			node_t *cur;
+			list_for_each_entry(cur, &split->nodes, split_list)
+				cur->str = NULL;
 			replace_nodes(&split->nodes, node);
 			split_remove(split);
 		}
@@ -194,6 +197,7 @@ type_split(struct list_head *raw, struct split_node *split)
 		insert_text_list(point, var->first_text, var->last_text);
 		remove_comma(raw, nextds);
 
+		type->str = NULL;
 		freenode(var);
 	}
 
