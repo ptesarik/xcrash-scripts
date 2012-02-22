@@ -568,6 +568,7 @@ node_t *reparse_node(node_t *node, int type)
 	node_t *newnode;
 	int res;
 
+	parsed_file = node->pf;
 	INIT_LIST_HEAD(&parsed_tree);
 	INIT_LIST_HEAD(&raw_contents);
 	lex_input_first = node->first_text;
@@ -583,6 +584,7 @@ node_t *reparse_node(node_t *node, int type)
 		exit(1);
 	}
 
+	parsed_file->clean = 0;
 	newnode = first_node(&parsed_tree);
 	newnode->parent = node->parent;
 	list_add(&newnode->list, &node->list);
@@ -817,6 +819,7 @@ int parse_file(struct parsed_file *pf)
 
 	fprintf(stderr, "Parsing file %s\n", pf->name);
 
+	parsed_file = pf;
 	INIT_LIST_HEAD(&parsed_tree);
 	INIT_LIST_HEAD(&raw_contents);
 	INIT_LIST_HEAD(&raw_cpp);

@@ -405,8 +405,6 @@ find_gdb_print_options(node_t *node, void *data)
 static enum walk_action
 target_types_fn(node_t *item, void *data)
 {
-	struct parsed_file *pf = data;
-
 	/* Convert types to their target equivallents */
 	if (item->type == nt_type) {
 		const char *modified = NULL;
@@ -418,7 +416,6 @@ target_types_fn(node_t *item, void *data)
 			if (item->user_data)
 				modified = ttype_to_gdb(modified);
 			replace_type(item, modified);
-			pf->clean = 0;
 		}
 	} else if (item->type == nt_decl) {
 		node_t *var;
@@ -511,21 +508,16 @@ target_timeval(node_t *node, void *data)
 	}
 
 	replace_type(node, "struct ttimeval");
-	pf->clean = 0;
 	return 0;
 }
 
 /* Replace types with target types */
 static int target_off_t(node_t *node, void *data)
 {
-	struct parsed_file *pf = data;
-
 	/* Convert types to their target equivallents */
 	if (node->type == nt_type && node->t.category == type_typedef &&
-	    !strcmp(node->str->text, "off_t")) {
+	    !strcmp(node->str->text, "off_t"))
 		replace_type(node, "toff_t");
-		pf->clean = 0;
-	}
 
 	return 0;
 }
@@ -558,7 +550,6 @@ target_ptr_var(node_t *node, void *data)
 		const char *newtype = subst_target_type(type, 0);
 		if (newtype) {
 			replace_type(type, newtype);
-			pf->clean = 0;
 			return walk_terminate;
 		}
 	} else if (type->t.category == type_pointer) {
@@ -577,7 +568,6 @@ target_ptr_var(node_t *node, void *data)
 			type = first_node(&type->child[cht_type]);
 
 		replace_type(type, "tptr");
-		pf->clean = 0;
 		return walk_terminate;
 	}
 
@@ -617,7 +607,6 @@ target_types_symbol_data_fn(node_t *node, void *data)
 	if (newtype) {
 		replace_text(type, newtype);
 		reparse_node(type, START_TYPE_NAME);
-		pf->clean = 0;
 	} else
 		return walk_continue;
 
@@ -632,7 +621,7 @@ static int
 target_types_symbol_data(const char *patchname, struct list_head *filelist,
 			 void *data)
 {
-	struct parsed_file *pf;
+	struct parsed_file *pf = data;
 	int res;
 
 	if ( (res = update_parsed_files(filelist)) )
@@ -685,8 +674,6 @@ mkstring_typecast(node_t *node, void *data)
 static int
 mkstring_variadic(node_t *node, void *data)
 {
-	struct parsed_file *pf = data;
-
 	if (!is_direct_call(node, "mkstring"))
 		return 0;
 
@@ -709,7 +696,6 @@ mkstring_variadic(node_t *node, void *data)
 	}
 
 	reparse_node(node, START_EXPR);
-	pf->clean = 0;
 	return 0;
 }
 
@@ -743,8 +729,6 @@ get_read_fn(node_t *type)
 static int
 convert_readmem(node_t *node, void *data)
 {
-	struct parsed_file *pf = data;
-
 	if (!is_direct_call(node, "readmem"))
 		return 0;
 
@@ -788,7 +772,6 @@ convert_readmem(node_t *node, void *data)
 	}
 
 	reparse_node(node, START_EXPR);
-	pf->clean = 0;
 	return 0;
 }
 
@@ -800,8 +783,6 @@ convert_readmem(node_t *node, void *data)
 static enum walk_action
 printf_spec_one(node_t *node, void *data)
 {
-	struct parsed_file *pf = data;
-
 	if (node->type != nt_expr || node->e.op != STRING_CONST)
 		return walk_continue;
 
@@ -852,7 +833,6 @@ printf_spec_one(node_t *node, void *data)
 				  list_entry(ds.next, struct dynstr, list),
 				  list_entry(ds.prev, struct dynstr, list));
 		reparse_node(node, START_EXPR);
-		pf->clean = 0;
 	}
 
 	return walk_continue;
@@ -896,6 +876,7 @@ replace_struct(node_t *node, const char *oldname, const char *newname)
 		node_t *type = nth_element(&node->child[chd_type], 1);
 		if (!is_struct(type, oldname))
 			return 0;
+		node->pf->clean = 0;
 		nullify_str(node);
 		remove_text_list(node->first_text,
 				 next_dynstr(node->last_text));
@@ -933,31 +914,21 @@ use_pt_regs_x86_64(node_t *node, void *data)
 		}
 	}
 
-	if (replace_struct(node, "pt_regs", "struct pt_regs_x86_64"))
-		pf->clean = 0;
-
+	replace_struct(node, "pt_regs", "struct pt_regs_x86_64");
 	return walk_continue;
 }
 
 static enum walk_action
 use_pt_regs_ppc64(node_t *node, void *data)
 {
-	struct parsed_file *pf = data;
-
-	if (replace_struct(node, "ppc64_pt_regs", "struct pt_regs_ppc64"))
-		pf->clean = 0;
-
+	replace_struct(node, "ppc64_pt_regs", "struct pt_regs_ppc64");
 	return walk_continue;
 }
 
 static enum walk_action
 use_ia64_fpreg_t(node_t *node, void *data)
 {
-	struct parsed_file *pf = data;
-
-	if (replace_struct(node, "ia64_fpreg", "ia64_fpreg_t"))
-		pf->clean = 0;
-
+	replace_struct(node, "ia64_fpreg", "ia64_fpreg_t");
 	return walk_continue;
 }
 

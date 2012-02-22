@@ -157,6 +157,8 @@ enum node_type {
 	nt_decl,
 };
 
+struct parsed_file;
+
 typedef struct node {
 	struct list_head list;
 	enum node_type type;
@@ -168,6 +170,7 @@ typedef struct node {
 	struct dynstr *first_text, *last_text;
 	struct list_head first_list, last_list;
 	struct node *parent;
+	struct parsed_file *pf;
 	struct list_head split_list;
 	void *user_data;	/* user-specific data */
 	int nchild;
@@ -194,6 +197,9 @@ typedef struct declarator {
 	node_t *var;
 	abstract_t abstract;
 } declarator_t;
+
+/* File that is being parsed right now */
+extern struct parsed_file *parsed_file;
 
 /* When yyparse() succeeds, the resulting tree is here: */
 extern struct list_head parsed_tree;

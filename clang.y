@@ -1122,6 +1122,7 @@ yyerror(const char *s)
 		first_column + 1, s, yylloc.last_line);
 }
 
+struct parsed_file *parsed_file;
 struct list_head parsed_tree;
 
 /* Initialize a new node of type @type, room for @nchild children
@@ -1140,6 +1141,7 @@ newnode(const YYLTYPE *loc, enum node_type type, int nchild)
 	for (i = 0; i < nchild; ++i)
 		INIT_LIST_HEAD(&ret->child[i]);
 
+	ret->pf = parsed_file;
 	ret->first_text = loc->first_text;
 	list_add(&ret->first_list, &loc->first_text->node_first);
 	ret->last_text = loc->last_text;
