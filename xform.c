@@ -122,13 +122,34 @@ replace_nodes(struct list_head *nodelist, node_t *newnode)
 	}
 }
 
+static int
+check_split(node_t *node, struct split_node *split, const char *newtext)
+{
+	if (!node->split_list.next)
+		return 0;
+	if (split)
+		return 1;
+
+	node_t *var = typed_parent(node, nt_var);
+	list_for_each_entry(split, &splitlist, list)
+		if (split->oldds == node->str)
+			break;
+	fprintf(stderr, "Conflicting type change for '%s %s':"
+		" first '%s', now '%s'\n",
+		node->str->text, var ? var->str->text : "<unknown>",
+		split ? split->newds->text : "<unknown>", newtext);
+	abort();
+}
+
 /* Change the type definition of @node */
 static node_t *
 replace_type(node_t *node, const char *newtext)
 {
-	struct dynstr *oldds = node->str;
+	struct dynstr *newds, *oldds = node->str;
 	struct split_node *split = split_search(&splitlist, oldds, newtext);
-	struct dynstr *newds = split
+	if (check_split(node, split, newtext))
+		return node;
+	newds = split
 		? split->newds
 		: newdynstr(newtext, strlen(newtext));
 	if (!--node->str->refcount) {
@@ -547,9 +568,6 @@ target_ptr_var(node_t *node, void *data)
 		return walk_continue;
 
 	node_t *type = first_node(&var->child[chv_type]);
-	if (type->split_list.next)
-		return walk_terminate;
-
 	if (node->e.op == '&') {
 		const char *newtype = subst_target_type(type, 0);
 		if (newtype) {
