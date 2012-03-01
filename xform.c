@@ -568,29 +568,18 @@ target_ptr_var(node_t *node, void *data)
 		return walk_continue;
 
 	node_t *type = first_node(&var->child[chv_type]);
-	if (node->e.op == '&') {
-		const char *newtype = subst_target_type(type, 0);
+	if (node->e.op == '&' || type->t.category == type_pointer) {
+		const char *newtype;
+
+		/* If we're passing the value of a pointer, change the
+		 * pointer's base type */
+		if (node->e.op != '&')
+			type = first_node(&type->child[cht_type]);
+		newtype = subst_target_type(type, 0);
 		if (newtype) {
 			replace_type(type, newtype);
 			return walk_terminate;
 		}
-	} else if (type->t.category == type_pointer) {
-		struct dynstr *dsfirst = type->str;
-		node_t *prevtype = type;
-		type = first_node(&type->child[cht_type]);
-		list_move(&type->list, &prevtype->list);
-		type->parent = prevtype->parent;
-		freenode(prevtype);
-
-		remove_text_list(dsfirst, var->str);
-		if (var->first_text == &dummydynstr)
-			set_node_first(var, var->str);
-
-		while (type->t.category == type_pointer)
-			type = first_node(&type->child[cht_type]);
-
-		replace_type(type, "tptr");
-		return walk_terminate;
 	}
 
 	return walk_skip_children;
