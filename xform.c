@@ -1014,16 +1014,16 @@ use_ia64_fpreg_t(node_t *node, void *data)
  */
 
 static enum walk_action
+build_scopes(node_t *node, void *data)
+{
+	node->user_data = varscope_expr(&node->pf->parsed, node);
+	return walk_continue;
+}
+
+static enum walk_action
 track_var(node_t *node, void *data)
 {
-	node_t *tracked = data;
-	struct parsed_file *pf = node->pf;
-
-	if (node->type != nt_expr)
-		return walk_continue;
-
-	node_t *var = varscope_expr(&pf->parsed, node);
-	if (var != tracked)
+	if (data != node->user_data)
 		return walk_continue;
 
 	node_t *parent = node->parent;
@@ -1032,7 +1032,7 @@ track_var(node_t *node, void *data)
 	    !is_child(node, parent, che_arg2))
 		return walk_continue;
 
-	node_t *target = varscope_expr(&pf->parsed,
+	node_t *target = varscope_expr(&node->pf->parsed,
 				       first_node(&parent->child[che_arg1]));
 	if (!target)
 		return walk_continue;
@@ -1124,8 +1124,12 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 static int
 track_vars(const char *patchname, struct list_head *filelist, void *data)
 {
-	fill_varscope(filelist);
+	struct parsed_file *pf;
 
+	fill_varscope(filelist);
+	list_for_each_entry(pf, filelist, list)
+		walk_tree(&pf->parsed, build_scopes, NULL);
+	
 	node_t *type;
 	list_for_each_entry(type, &replacedlist, split_list) {
 		node_t *var = type->parent;
@@ -1133,7 +1137,6 @@ track_vars(const char *patchname, struct list_head *filelist, void *data)
 			/* TODO: handle derived types, too */
 			continue;
 
-		struct parsed_file *pf;
 		list_for_each_entry(pf, filelist, list)
 			walk_tree(&pf->parsed, track_var, var);
 	}
