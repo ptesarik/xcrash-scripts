@@ -117,7 +117,9 @@ replace_nodes(struct list_head *nodelist, node_t *newnode)
 {
 	node_t *node, *nnode;
 	list_for_each_entry_safe(node, nnode, nodelist, split_list) {
-		list_add(&dupnode(newnode)->list, &node->list);
+		node_t *dup = dupnode(newnode);
+		dup->parent = node->parent;
+		list_add(&dup->list, &node->list);
 		freenode(node);
 	}
 }
