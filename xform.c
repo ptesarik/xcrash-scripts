@@ -597,7 +597,7 @@ find_sizeof(node_t *node, void *data)
 }
 
 static enum walk_action
-target_types_symbol_data_fn(node_t *node, void *data)
+target_types_symbol_data(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
 	node_t *arg;
@@ -626,31 +626,6 @@ target_types_symbol_data_fn(node_t *node, void *data)
 	walk_tree_single(arg, target_ptr_var, pf);
 
 	return walk_continue;
-}
-
-static int
-target_types_symbol_data(const char *patchname, struct list_head *filelist,
-			 void *data)
-{
-	struct parsed_file *pf = data;
-	int res;
-
-	if ( (res = update_parsed_files(filelist)) )
-		return res;
-
-	fill_varscope(filelist);
-	list_for_each_entry(pf, filelist, list)
-		walk_tree(&pf->parsed, target_types_symbol_data_fn, pf);
-
-	list_for_each_entry(pf, filelist, list) {
-		struct split_node *split, *nsplit;
-		list_for_each_entry_safe(split, nsplit, &splitlist, list) {
-			type_split(&pf->raw, split);
-			split_remove(split);
-		}
-	}
-
-	return quilt_new(patchname, filelist);
 }
 
 /************************************************************
@@ -1004,9 +979,11 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 	if ( (res = update_parsed_files(filelist)) )
 		return res;
 
-	list_for_each_entry(pf, filelist, list) {
+	fill_varscope(filelist);
+	list_for_each_entry(pf, filelist, list)
 		walk_tree(&pf->parsed, xform_fn, pf);
 
+	list_for_each_entry(pf, filelist, list) {
 		struct split_node *split, *nsplit;
 		list_for_each_entry_safe(split, nsplit, &splitlist, list) {
 			type_split(&pf->raw, split);
@@ -1079,7 +1056,7 @@ static struct xform_desc xforms[] = {
 { "include-defs-fixups.patch", import },
 
 // Target types in calls to (try_)get_symbol_data
-{ "target-types-symbol_data.patch", target_types_symbol_data },
+{ "target-types-symbol_data.patch", type_subst, target_types_symbol_data },
 
 // Use target types
 { "target-types-use.patch", target_types },
