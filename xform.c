@@ -634,6 +634,36 @@ target_types_symbol_data(node_t *node, void *data)
 	return walk_continue;
 }
 
+static enum walk_action
+target_types_readmem(node_t *node, void *data)
+{
+	struct parsed_file *pf = data;
+	int has_size;
+	node_t *arg;
+
+	if (is_direct_call(node, "readmem"))
+		has_size = 1;
+	else if (is_direct_call(node, "readshort") ||
+		 is_direct_call(node, "readint") ||
+		 is_direct_call(node, "readlong") ||
+		 is_direct_call(node, "readulonglong"))
+		has_size = 0;
+	else
+		return walk_continue;
+
+	/* Process the 3rd argument (@buffer) */
+	arg = nth_element(&node->child[che_arg2], 3);
+	walk_tree_single(arg, target_var, pf);
+
+	if (has_size) {
+		/* Process the 4th argument (@size) */
+		arg = nth_element(&node->child[che_arg2], 4);
+		target_sizeof(arg);
+	}
+
+	return walk_continue;
+}
+
 /************************************************************
  * Translate calls to mkstring()
  *
@@ -1063,6 +1093,9 @@ static struct xform_desc xforms[] = {
 
 // Target types in calls to (try_)get_symbol_data
 { "target-types-symbol_data.patch", type_subst, target_types_symbol_data },
+
+// Target types in calls to readmem
+{ "target-types-readmem.patch", type_subst, target_types_readmem },
 
 // Use target types
 { "target-types-use.patch", target_types },
