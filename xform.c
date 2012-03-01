@@ -664,6 +664,49 @@ target_types_readmem(node_t *node, void *data)
 	return walk_continue;
 }
 
+static node_t *
+find_assign(node_t *node)
+{
+	while (node && node->type == nt_expr) {
+		node = node->parent;
+		if (node->e.op == '=')
+			return node;
+	}
+	return NULL;
+}
+
+static enum walk_action
+target_facilitators(node_t *node, void *data)
+{
+	struct parsed_file *pf = data;
+
+	if (!is_direct_call(node, "INT")
+	    && !is_direct_call(node, "UINT")
+	    && !is_direct_call(node, "LONG")
+	    && !is_direct_call(node, "ULONG")
+	    && !is_direct_call(node, "ULONGLONG")
+	    && !is_direct_call(node, "ULONG_PTR")
+	    && !is_direct_call(node, "USHORT")
+	    && !is_direct_call(node, "SHORT"))
+		return walk_continue;
+
+	node_t *assign;
+	if (! (assign = find_assign(node)))
+		return walk_continue;
+
+	node_t *var = varscope_expr(&pf->parsed,
+				    first_node(&assign->child[che_arg1]));
+	if (!var || list_empty(&var->child[chv_type]))
+		return walk_continue;
+
+	node_t *type = first_node(&var->child[chv_type]);
+	const char *newtype = subst_target_type(type, 0);
+	if (newtype)
+		replace_type(type, newtype);
+
+	return walk_continue;
+}
+
 /************************************************************
  * Translate calls to mkstring()
  *
@@ -1096,6 +1139,9 @@ static struct xform_desc xforms[] = {
 
 // Target types in calls to readmem
 { "target-types-readmem.patch", type_subst, target_types_readmem },
+
+// Target facilitator macros
+{ "target-facilitators.patch", type_subst, target_facilitators },
 
 // Use target types
 { "target-types-use.patch", target_types },
