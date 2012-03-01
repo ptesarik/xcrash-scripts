@@ -47,6 +47,9 @@ typed_parent(node_t *node, enum node_type type)
 	return node;
 }
 
+/* Return non-zero if @child is an @idx-type child of @parent */
+int is_child(node_t *child, node_t *parent, int idx);
+
 /* Split nodes */
 struct split_node {
 	struct list_head list;

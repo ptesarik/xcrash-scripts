@@ -257,7 +257,7 @@ reset_user_data(struct list_head *tree)
 	walk_tree(tree, reset_user_data_fn, NULL);
 }
 
-static int
+int
 is_child(node_t *child, node_t *parent, int idx)
 {
 	node_t *iter;
