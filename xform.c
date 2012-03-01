@@ -548,12 +548,12 @@ static int target_off_t(node_t *node, void *data)
 }
 
 /************************************************************
- * Replace target pointer types
+ * Modify variables to target types
  *
  */
 
 static enum walk_action
-target_ptr_var(node_t *node, void *data)
+target_var(node_t *node, void *data)
 {
 	struct parsed_file *pf = data;
 
@@ -596,6 +596,22 @@ find_sizeof(node_t *node, void *data)
 	return walk_continue;
 }
 
+static void
+target_sizeof(node_t *node)
+{
+	node_t *typesize = NULL;
+	walk_tree_single(node, find_sizeof, &typesize);
+	if (!typesize)
+		return;
+
+	node_t *type = nth_element(&typesize->child[che_arg1], 1);
+	const char *newtype = subst_target_type(type, 0);
+	if (newtype) {
+		replace_text(type, newtype);
+		reparse_node(type, START_TYPE_NAME);
+	}
+}
+
 static enum walk_action
 target_types_symbol_data(node_t *node, void *data)
 {
@@ -608,22 +624,11 @@ target_types_symbol_data(node_t *node, void *data)
 
 	/* Process the 2nd argument */
 	arg = nth_element(&node->child[che_arg2], 2);
-	node_t *typesize = NULL;
-	walk_tree_single(arg, find_sizeof, &typesize);
-	if (!typesize)
-		return walk_continue;
-
-	node_t *type = nth_element(&typesize->child[che_arg1], 1);
-	const char *newtype = subst_target_type(type, 0);
-	if (newtype) {
-		replace_text(type, newtype);
-		reparse_node(type, START_TYPE_NAME);
-	} else
-		return walk_continue;
+	target_sizeof(arg);
 
 	/* Process the 3rd argument */
 	arg = nth_element(&node->child[che_arg2], 3);
-	walk_tree_single(arg, target_ptr_var, pf);
+	walk_tree_single(arg, target_var, pf);
 
 	return walk_continue;
 }
