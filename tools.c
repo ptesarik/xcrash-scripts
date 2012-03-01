@@ -247,6 +247,8 @@ dynstr_dup_indent(struct list_head *list,
 static enum walk_action
 reset_user_data_fn(node_t *node, void *data)
 {
+	node->user_list.next = NULL;
+	node->user_list.prev = NULL;
 	node->user_data = NULL;
 	return walk_continue;
 }
