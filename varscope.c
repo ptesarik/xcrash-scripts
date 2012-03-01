@@ -142,6 +142,8 @@ resolve_typedef(struct list_head *tree, node_t *type)
 		if (!var)
 			return NULL;
 		type = first_node(&var->child[chv_type]);
+		if (! (type->t.flags & TF_TYPEDEF))
+			return NULL;
 	}
 	return type;
 }
@@ -167,6 +169,8 @@ varscope_expr(struct list_head *tree, node_t *expr)
 		assert(left->type == nt_var);
 
 		/* Convert it to a type */
+		if (list_empty(&left->child[chv_type]))
+			return NULL; /* unspecified type */
 		node_t *type = first_node(&left->child[chv_type]);
 		assert(type->type == nt_type);
 

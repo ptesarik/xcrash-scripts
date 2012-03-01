@@ -276,6 +276,7 @@ find_scope(struct list_head *tree, node_t *node)
 		    is_child(node, parent, cht_body))
 			return &parent->child[cht_body];
 		else if (parent->type == nt_type &&
+			 parent->t.category == type_func &&
 			 is_child(node, parent, cht_param)) {
 			parent = typed_parent(parent, nt_decl);
 			return &parent->child[chd_body];
