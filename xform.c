@@ -1013,35 +1013,35 @@ use_ia64_fpreg_t(node_t *node, void *data)
  *
  */
 
+static LIST_HEAD(vartracklist);
+
 static enum walk_action
 build_scopes(node_t *node, void *data)
 {
-	node->user_data = varscope_expr(&node->pf->parsed, node);
+	if ( (node->user_data = varscope_expr(&node->pf->parsed, node)) )
+		list_add_tail(&node->split_list, &vartracklist);
 	return walk_continue;
 }
 
-static enum walk_action
-track_var(node_t *node, void *data)
+static void
+track_var(node_t *node)
 {
-	if (data != node->user_data)
-		return walk_continue;
-
 	node_t *parent = node->parent;
 	if (parent->type != nt_expr ||
 	    parent->e.op != '=' ||
 	    !is_child(node, parent, che_arg2))
-		return walk_continue;
+		return;
 
 	node_t *target = varscope_expr(&node->pf->parsed,
 				       first_node(&parent->child[che_arg1]));
 	if (!target)
-		return walk_continue;
+		return;
 	node_t *type = first_node(&target->child[chv_type]);
 	const char *newtype = subst_target_type(type, 0);
 	if (newtype)
 		replace_type(type, newtype);
 
-	return walk_continue;
+	return;
 }
 
 /************************************************************
@@ -1127,6 +1127,8 @@ track_vars(const char *patchname, struct list_head *filelist, void *data)
 	struct parsed_file *pf;
 
 	fill_varscope(filelist);
+
+	INIT_LIST_HEAD(&vartracklist);
 	list_for_each_entry(pf, filelist, list)
 		walk_tree(&pf->parsed, build_scopes, NULL);
 	
@@ -1137,8 +1139,10 @@ track_vars(const char *patchname, struct list_head *filelist, void *data)
 			/* TODO: handle derived types, too */
 			continue;
 
-		list_for_each_entry(pf, filelist, list)
-			walk_tree(&pf->parsed, track_var, var);
+		node_t *node;
+		list_for_each_entry(node, &vartracklist, split_list)
+			if (node->user_data == var)
+				track_var(node);
 	}
 
 	return quilt_new(patchname, filelist);
