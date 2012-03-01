@@ -117,11 +117,11 @@ static void
 replace_nodes(struct list_head *nodelist, node_t *newnode)
 {
 	node_t *node, *nnode;
-	list_for_each_entry_safe(node, nnode, nodelist, split_list) {
+	list_for_each_entry_safe(node, nnode, nodelist, user_list) {
 		node_t *dup = dupnode(newnode);
 		dup->parent = node->parent;
 		list_add(&dup->list, &node->list);
-		list_add_tail(&dup->split_list, &replacedlist);
+		list_add_tail(&dup->user_list, &replacedlist);
 		freenode(node);
 	}
 }
@@ -129,7 +129,7 @@ replace_nodes(struct list_head *nodelist, node_t *newnode)
 static int
 check_split(node_t *node, struct split_node *split, const char *newtext)
 {
-	if (!node->split_list.next)
+	if (!node->user_list.next)
 		return 0;
 	if (split)
 		return 1;
@@ -166,12 +166,12 @@ replace_type(node_t *node, const char *newtext)
 
 		if (split) {
 			node_t *cur;
-			list_for_each_entry(cur, &split->nodes, split_list)
+			list_for_each_entry(cur, &split->nodes, user_list)
 				cur->str = NULL;
 			replace_nodes(&split->nodes, node);
 			split_remove(split);
 		}
-		list_add_tail(&node->split_list, &replacedlist);
+		list_add_tail(&node->user_list, &replacedlist);
 	} else if (!split)
 		split_add(&splitlist, node, oldds, newds);
 	else
@@ -197,7 +197,7 @@ static void
 type_split(struct list_head *raw, struct split_node *split)
 {
 	struct dynstr *ds, *point;
-	node_t *firstvar = list_entry(split->nodes.next, node_t, split_list);
+	node_t *firstvar = list_entry(split->nodes.next, node_t, user_list);
 	node_t *olddecl = typed_parent(firstvar, nt_decl);
 	node_t *newdecl;
 	YYLTYPE loc;
@@ -212,7 +212,7 @@ type_split(struct list_head *raw, struct split_node *split)
 	insert_text_list(point, split->newds, split->newds);
 	ds = newdynstr(" ", 1);
 	node_t *type, *ntype;
-	list_for_each_entry_safe(type, ntype, &split->nodes, split_list) {
+	list_for_each_entry_safe(type, ntype, &split->nodes, user_list) {
 		if (!ds)
 			ds = newdynstr(", ", 2);
 		insert_text_list(point, ds, ds);
@@ -238,7 +238,7 @@ type_split(struct list_head *raw, struct split_node *split)
 	node_t *var;
 	list_for_each_entry(var, &newdecl->child[chd_var], list) {
 		node_t *type = first_node(&var->child[chv_type]);
-		list_add_tail(&type->split_list, &replacedlist);
+		list_add_tail(&type->user_list, &replacedlist);
 	}
 }
 
@@ -1019,7 +1019,7 @@ static enum walk_action
 build_scopes(node_t *node, void *data)
 {
 	if ( (node->user_data = varscope_expr(&node->pf->parsed, node)) )
-		list_add_tail(&node->split_list, &vartracklist);
+		list_add_tail(&node->user_list, &vartracklist);
 	return walk_continue;
 }
 
@@ -1133,17 +1133,18 @@ track_vars(const char *patchname, struct list_head *filelist, void *data)
 		walk_tree(&pf->parsed, build_scopes, NULL);
 	
 	node_t *type;
-	list_for_each_entry(type, &replacedlist, split_list) {
+	list_for_each_entry(type, &replacedlist, user_list) {
 		node_t *var = type->parent;
 		if (var->type != nt_var)
 			/* TODO: handle derived types, too */
 			continue;
 
 		node_t *node;
-		list_for_each_entry(node, &vartracklist, split_list)
+		list_for_each_entry(node, &vartracklist, user_list)
 			if (node->user_data == var)
 				track_var(node);
 	}
+	INIT_LIST_HEAD(&replacedlist);
 
 	return quilt_new(patchname, filelist);
 }
