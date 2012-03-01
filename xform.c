@@ -192,14 +192,15 @@ static void
 type_split(struct list_head *raw, struct split_node *split)
 {
 	struct dynstr *ds, *point;
+	node_t *firstvar = list_entry(split->nodes.next, node_t, split_list);
+	node_t *olddecl = typed_parent(firstvar, nt_decl);
 	node_t *newdecl;
 	YYLTYPE loc;
 
+	parsed_file = olddecl->pf;
 	loc.first_text = loc.last_text = split->newds;
 	newdecl = newnode(&loc, nt_decl, chd_max);
 
-	node_t *firstvar = list_entry(split->nodes.next, node_t, split_list);
-	node_t *olddecl = typed_parent(firstvar, nt_decl);
 	point = olddecl->first_text;
 	struct dynstr *indent = dynstr_dup_indent(raw, point, 0);
 
