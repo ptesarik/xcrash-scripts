@@ -1009,6 +1009,42 @@ use_ia64_fpreg_t(node_t *node, void *data)
 }
 
 /************************************************************
+ * Variable tracking
+ *
+ */
+
+static enum walk_action
+track_var(node_t *node, void *data)
+{
+	node_t *tracked = data;
+	struct parsed_file *pf = node->pf;
+
+	if (node->type != nt_expr)
+		return walk_continue;
+
+	node_t *var = varscope_expr(&pf->parsed, node);
+	if (var != tracked)
+		return walk_continue;
+
+	node_t *parent = node->parent;
+	if (parent->type != nt_expr ||
+	    parent->e.op != '=' ||
+	    !is_child(node, parent, che_arg2))
+		return walk_continue;
+
+	node_t *target = varscope_expr(&pf->parsed,
+				       first_node(&parent->child[che_arg1]));
+	if (!target)
+		return walk_continue;
+	node_t *type = first_node(&target->child[chv_type]);
+	const char *newtype = subst_target_type(type, 0);
+	if (newtype)
+		replace_type(type, newtype);
+
+	return walk_continue;
+}
+
+/************************************************************
  * Transformation functions
  *
  */
@@ -1084,6 +1120,27 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 	return quilt_new(patchname, filelist);
 }
 
+/* Helper for tracking dependencies */
+static int
+track_vars(const char *patchname, struct list_head *filelist, void *data)
+{
+	fill_varscope(filelist);
+
+	node_t *type;
+	list_for_each_entry(type, &replacedlist, split_list) {
+		node_t *var = type->parent;
+		if (var->type != nt_var)
+			/* TODO: handle derived types, too */
+			continue;
+
+		struct parsed_file *pf;
+		list_for_each_entry(pf, filelist, list)
+			walk_tree(&pf->parsed, track_var, var);
+	}
+
+	return quilt_new(patchname, filelist);
+}
+
 /************************************************************
  * Main entry point for the transformations
  *
@@ -1147,6 +1204,8 @@ static struct xform_desc xforms[] = {
 
 // Target types in calls to (try_)get_symbol_data
 { "target-types-symbol_data.patch", type_subst, target_types_symbol_data },
+// ...plus dependencies
+{ "target-types-symbol_data-deps.patch", track_vars },
 
 // Target types in calls to readmem
 { "target-types-readmem.patch", type_subst, target_types_readmem },
