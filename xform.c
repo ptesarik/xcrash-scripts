@@ -121,7 +121,7 @@ replace_nodes(struct list_head *nodelist, node_t *newnode)
 		node_t *dup = dupnode(newnode);
 		dup->parent = node->parent;
 		list_add(&dup->list, &node->list);
-		list_add(&dup->split_list, &replacedlist);
+		list_add_tail(&dup->split_list, &replacedlist);
 		freenode(node);
 	}
 }
@@ -171,7 +171,7 @@ replace_type(node_t *node, const char *newtext)
 			replace_nodes(&split->nodes, node);
 			split_remove(split);
 		}
-		list_add(&node->split_list, &replacedlist);
+		list_add_tail(&node->split_list, &replacedlist);
 	} else if (!split)
 		split_add(&splitlist, node, oldds, newds);
 	else
@@ -238,7 +238,7 @@ type_split(struct list_head *raw, struct split_node *split)
 	node_t *var;
 	list_for_each_entry(var, &newdecl->child[chd_var], list) {
 		node_t *type = first_node(&var->child[chv_type]);
-		list_add(&type->split_list, &replacedlist);
+		list_add_tail(&type->split_list, &replacedlist);
 	}
 }
 
