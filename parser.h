@@ -306,6 +306,7 @@ enum walk_action walk_tree_single(node_t *tree, walkfn *fn, void *data);
 
 /* Tree transformation functions */
 int dump_contents(struct list_head *contents, FILE *f);
+void dump_tree(struct list_head *tree);
 
 void detach_text(struct dynstr *first, struct dynstr *last);
 void insert_text_list(struct dynstr *where,

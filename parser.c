@@ -96,18 +96,13 @@ YYLTYPE dummyloc = {
 	.last_text = &dummydynstr,
 };
 
-#if DEBUG
-
 static void dump_basic_type(type_t *type);
 static void dump_type(node_t *node, int showflags);
 static void dump_expr(node_t *node);
 static void dump_var(node_t *node);
-static void dump_tree(struct list_head *tree);
 
 static int indent = 2;
 static int depth = -1;
-
-#endif	/* DEBUG */
 
 void init_predef_types(void)
 {
@@ -182,8 +177,6 @@ walk_tree_single(node_t *tree, walkfn *fn, void *data)
 
 	return walk_children(tree, fn, data);
 }
-
-#if DEBUG
 
 static void dump_chunk(struct dynstr *first, struct dynstr *last)
 {
@@ -480,14 +473,12 @@ static void dump_node(node_t *node)
 	--depth;
 }
 
-static void dump_tree(struct list_head *tree)
+void dump_tree(struct list_head *tree)
 {
 	node_t *item;
 	list_for_each_entry(item, tree, list)
 		dump_node(item);
 }
-
-#endif	/* DEBUG */
 
 /* Completely detach a dynstr list from its surrounding */
 void
