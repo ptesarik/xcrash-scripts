@@ -171,6 +171,7 @@ typedef struct node {
 	struct list_head first_list, last_list;
 	struct node *parent;
 	struct parsed_file *pf;
+	struct list_head dup_list;
 	struct list_head user_list;
 	void *user_data;	/* user-specific data */
 	int nchild;

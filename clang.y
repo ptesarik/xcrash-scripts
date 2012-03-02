@@ -1146,6 +1146,7 @@ newnode(const YYLTYPE *loc, enum node_type type, int nchild)
 	list_add(&ret->first_list, &loc->first_text->node_first);
 	ret->last_text = loc->last_text;
 	list_add(&ret->last_list, &loc->last_text->node_last);
+	INIT_LIST_HEAD(&ret->dup_list);
 
 	return ret;
 }
@@ -1174,6 +1175,7 @@ dupnode(node_t *node)
 	list_add(&ret->first_list, &ret->first_text->node_first);
 	ret->last_text = node->last_text;
 	list_add(&ret->last_list, &ret->last_text->node_last);
+	list_add(&ret->dup_list, &node->dup_list);
 
 	return ret;
 }
@@ -1192,6 +1194,7 @@ freenode(node_t *node)
 	list_del(&node->list);
 	list_del(&node->first_list);
 	list_del(&node->last_list);
+	list_del(&node->dup_list);
 	free(node);
 }
 
