@@ -93,6 +93,27 @@ varscope_find(struct list_head *tree, node_t *node)
 	return do_find(tree, node, node->type, node->str->text);
 }
 
+node_t *
+varscope_find_next(node_t *node)
+{
+	struct varscope *vs;
+	const char *idname = node->str->text;
+	unsigned idx = mkhash(idname);
+	for (vs = vshash[idx]; vs; vs = vs->next)
+		if (vs->node == node)
+			break;
+	if (!vs)
+		return NULL;
+
+	struct list_head *scope = vs->scope;
+	while ( (vs = vs->next) )
+		if (vs->scope == scope &&
+		    vs->node->type == node->type &&
+		    !strcmp(vs->node->str->text, idname))
+			return vs->node;
+	return NULL;
+}
+
 void
 free_varscope(void)
 {

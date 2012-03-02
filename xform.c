@@ -1055,6 +1055,10 @@ track_return(node_t *node)
 	if (fn) {
 		node_t *var = first_node(&fn->child[chd_var]);
 		subst_target_var(var);
+
+		/* Find all forward declarations (if any) */
+		while ( (var = varscope_find_next(var)) )
+			subst_target_var(var);
 	}
 }
 
