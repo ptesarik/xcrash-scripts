@@ -351,7 +351,11 @@ static int
 subst_target_var(node_t *var)
 {
 	node_t *type = first_node(&var->child[chv_type]);
+	while (type->t.category == type_pointer)
+		type = first_node(&type->child[cht_type]);
 	if (type->t.category == type_func)
+		type = first_node(&type->child[cht_type]);
+	while (type->t.category == type_pointer)
 		type = first_node(&type->child[cht_type]);
 	const char *newtype = subst_target_type(type, 0);
 	if (newtype) {
@@ -1038,8 +1042,10 @@ build_scopes(node_t *node, void *data)
 static void
 track_assign(node_t *expr)
 {
-	node_t *target = varscope_expr(&expr->pf->parsed,
-				       first_node(&expr->child[che_arg1]));
+	node_t *target = first_node(&expr->child[che_arg1]);
+	while (target->type == nt_expr && target->e.op == '*')
+		target = first_node(&target->child[che_arg1]);
+	target = varscope_expr(&target->pf->parsed, target);
 	if (target)
 		subst_target_var(target);
 }
@@ -1201,10 +1207,19 @@ track_vars(const char *patchname, struct list_head *filelist, void *data)
 	node_t *type;
 	list_for_each_entry(type, &replacedlist, user_list) {
 		node_t *var = type->parent;
-		if (var->type == nt_type && var->t.category == type_func) {
-			var = var->parent;
-		} else if (var->type != nt_var)
-			/* TODO: handle derived types, too */
+		if (var->type == nt_type) {
+			while (var && var->type == nt_type &&
+			       var->t.category == type_pointer)
+				var = var->parent;
+			if (var && var->type == nt_type &&
+			    var->t.category == type_func) {
+				do {
+					var = var->parent;
+				} while (var && var->type == nt_type &&
+					 var->t.category == type_pointer);
+			}
+		}
+		if (!var || var->type != nt_var)
 			continue;
 
 		node_t *node;
