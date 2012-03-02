@@ -348,21 +348,26 @@ subst_target_type(node_t *type, int gdb)
 }
 
 static int
-subst_target_var(node_t *var)
+subst_target_var(node_t *firstvar)
 {
-	node_t *type = first_node(&var->child[chv_type]);
-	while (type->t.category == type_pointer)
-		type = first_node(&type->child[cht_type]);
-	if (type->t.category == type_func)
-		type = first_node(&type->child[cht_type]);
-	while (type->t.category == type_pointer)
-		type = first_node(&type->child[cht_type]);
-	const char *newtype = subst_target_type(type, 0);
-	if (newtype) {
-		replace_type(type, newtype);
-		return 1;
-	}
-	return 0;
+	node_t *var = firstvar;
+	int ret = 0;
+	do {
+		node_t *type = first_node(&var->child[chv_type]);
+		while (type->t.category == type_pointer)
+			type = first_node(&type->child[cht_type]);
+		if (type->t.category == type_func)
+			type = first_node(&type->child[cht_type]);
+		while (type->t.category == type_pointer)
+			type = first_node(&type->child[cht_type]);
+		const char *newtype = subst_target_type(type, 0);
+		if (newtype) {
+			replace_type(type, newtype);
+			++ret;
+		}
+		var = list_entry(var->dup_list.next, node_t, dup_list);
+	} while (var != firstvar);
+	return ret;
 }
 
 /* Array of function names seen inside a GDB_COMMON block */
