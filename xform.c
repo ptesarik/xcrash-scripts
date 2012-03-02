@@ -346,6 +346,18 @@ subst_target_type(node_t *type, int gdb)
 	return modified;
 }
 
+static int
+subst_target_var(node_t *var)
+{
+	node_t *type = first_node(&var->child[chv_type]);
+	const char *newtype = subst_target_type(type, 0);
+	if (newtype) {
+		replace_type(type, newtype);
+		return 1;
+	}
+	return 0;
+}
+
 /* Array of function names seen inside a GDB_COMMON block */
 static const char **gdb_common_decls;
 static unsigned num_gdb_common_decls;
@@ -710,10 +722,7 @@ target_facilitators(node_t *node, void *data)
 	if (!var || list_empty(&var->child[chv_type]))
 		return walk_continue;
 
-	node_t *type = first_node(&var->child[chv_type]);
-	const char *newtype = subst_target_type(type, 0);
-	if (newtype)
-		replace_type(type, newtype);
+	subst_target_var(var);
 
 	return walk_continue;
 }
@@ -1034,14 +1043,8 @@ track_var(node_t *node)
 
 	node_t *target = varscope_expr(&node->pf->parsed,
 				       first_node(&parent->child[che_arg1]));
-	if (!target)
-		return;
-	node_t *type = first_node(&target->child[chv_type]);
-	const char *newtype = subst_target_type(type, 0);
-	if (newtype)
-		replace_type(type, newtype);
-
-	return;
+	if (target)
+		subst_target_var(target);
 }
 
 /************************************************************
