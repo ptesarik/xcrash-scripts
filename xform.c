@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 
 #include "tools.h"
 #include "varscope.h"
@@ -1033,18 +1034,56 @@ build_scopes(node_t *node, void *data)
 }
 
 static void
-track_var(node_t *node)
+track_assign(node_t *expr)
 {
-	node_t *parent = node->parent;
-	if (parent->type != nt_expr ||
-	    parent->e.op != '=' ||
-	    !is_child(node, parent, che_arg2))
-		return;
-
-	node_t *target = varscope_expr(&node->pf->parsed,
-				       first_node(&parent->child[che_arg1]));
+	node_t *target = varscope_expr(&expr->pf->parsed,
+				       first_node(&expr->child[che_arg1]));
 	if (target)
 		subst_target_var(target);
+}
+
+static void
+track_expr(node_t *expr)
+{
+	node_t *parent = expr->parent;
+
+	assert(expr->type == nt_expr);
+
+	switch(parent->type) {
+	case nt_var:
+		if (is_child(expr, parent, chv_init))
+			subst_target_var(parent);
+		break;
+
+	case nt_expr:
+		switch (parent->e.op) {
+
+		case '+':
+		case '-':
+		case INC_OP:
+		case DEC_OP:
+			track_expr(parent);
+			break;
+
+		case ADD_ASSIGN:
+		case SUB_ASSIGN:
+			if (is_child(expr, parent, che_arg1))
+				track_expr(parent);
+			break;
+
+		case '=':
+			if (is_child(expr, parent, che_arg2)) {
+				track_assign(parent);
+				track_expr(parent);
+			}
+			break;
+
+		}
+		break;
+
+	default:		/* Avoid compiler warnings */
+		break;
+	}
 }
 
 /************************************************************
@@ -1145,7 +1184,7 @@ track_vars(const char *patchname, struct list_head *filelist, void *data)
 		node_t *node;
 		list_for_each_entry(node, &vartracklist, user_list)
 			if (node->user_data == var)
-				track_var(node);
+				track_expr(node);
 	}
 	INIT_LIST_HEAD(&replacedlist);
 
