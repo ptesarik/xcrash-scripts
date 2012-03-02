@@ -351,6 +351,8 @@ static int
 subst_target_var(node_t *var)
 {
 	node_t *type = first_node(&var->child[chv_type]);
+	if (type->t.category == type_func)
+		type = first_node(&type->child[cht_type]);
 	const char *newtype = subst_target_type(type, 0);
 	if (newtype) {
 		replace_type(type, newtype);
@@ -1043,6 +1045,20 @@ track_assign(node_t *expr)
 }
 
 static void
+track_return(node_t *node)
+{
+	node_t *fn;
+	while ((fn = node->parent) &&
+	       ! (fn->type == nt_decl &&
+		  is_child(node, fn, chd_body)))
+		node = fn;
+	if (fn) {
+		node_t *var = first_node(&fn->child[chd_var]);
+		subst_target_var(var);
+	}
+}
+
+static void
 track_expr(node_t *expr)
 {
 	node_t *parent = expr->parent;
@@ -1067,6 +1083,7 @@ track_expr(node_t *expr)
 
 		case ADD_ASSIGN:
 		case SUB_ASSIGN:
+		case FUNC:
 			if (is_child(expr, parent, che_arg1))
 				track_expr(parent);
 			break;
@@ -1078,6 +1095,9 @@ track_expr(node_t *expr)
 			}
 			break;
 
+		case RETURN:
+			track_return(parent);
+			break;
 		}
 		break;
 
@@ -1177,7 +1197,9 @@ track_vars(const char *patchname, struct list_head *filelist, void *data)
 	node_t *type;
 	list_for_each_entry(type, &replacedlist, user_list) {
 		node_t *var = type->parent;
-		if (var->type != nt_var)
+		if (var->type == nt_type && var->t.category == type_func) {
+			var = var->parent;
+		} else if (var->type != nt_var)
 			/* TODO: handle derived types, too */
 			continue;
 
