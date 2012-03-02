@@ -1116,6 +1116,42 @@ track_expr(node_t *expr)
 	}
 }
 
+/* Helper for tracking dependencies */
+static void
+track_vars(struct list_head *filelist)
+{
+	struct parsed_file *pf;
+
+	INIT_LIST_HEAD(&vartracklist);
+	list_for_each_entry(pf, filelist, list)
+		walk_tree(&pf->parsed, build_scopes, NULL);
+	
+	node_t *type;
+	list_for_each_entry(type, &replacedlist, user_list) {
+		node_t *var = type->parent;
+		if (var->type == nt_type) {
+			while (var && var->type == nt_type &&
+			       var->t.category == type_pointer)
+				var = var->parent;
+			if (var && var->type == nt_type &&
+			    var->t.category == type_func) {
+				do {
+					var = var->parent;
+				} while (var && var->type == nt_type &&
+					 var->t.category == type_pointer);
+			}
+		}
+		if (!var || var->type != nt_var)
+			continue;
+
+		node_t *node;
+		list_for_each_entry(node, &vartracklist, user_list)
+			if (node->user_data == var)
+				track_expr(node);
+	}
+	INIT_LIST_HEAD(&replacedlist);
+}
+
 /************************************************************
  * Transformation functions
  *
@@ -1181,6 +1217,8 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 	list_for_each_entry(pf, filelist, list)
 		walk_tree(&pf->parsed, xform_fn, pf);
 
+	track_vars(filelist);
+
 	list_for_each_entry(pf, filelist, list) {
 		struct split_node *split, *nsplit;
 		list_for_each_entry_safe(split, nsplit, &splitlist, list) {
@@ -1188,46 +1226,6 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 			split_remove(split);
 		}
 	}
-
-	return quilt_new(patchname, filelist);
-}
-
-/* Helper for tracking dependencies */
-static int
-track_vars(const char *patchname, struct list_head *filelist, void *data)
-{
-	struct parsed_file *pf;
-
-	fill_varscope(filelist);
-
-	INIT_LIST_HEAD(&vartracklist);
-	list_for_each_entry(pf, filelist, list)
-		walk_tree(&pf->parsed, build_scopes, NULL);
-	
-	node_t *type;
-	list_for_each_entry(type, &replacedlist, user_list) {
-		node_t *var = type->parent;
-		if (var->type == nt_type) {
-			while (var && var->type == nt_type &&
-			       var->t.category == type_pointer)
-				var = var->parent;
-			if (var && var->type == nt_type &&
-			    var->t.category == type_func) {
-				do {
-					var = var->parent;
-				} while (var && var->type == nt_type &&
-					 var->t.category == type_pointer);
-			}
-		}
-		if (!var || var->type != nt_var)
-			continue;
-
-		node_t *node;
-		list_for_each_entry(node, &vartracklist, user_list)
-			if (node->user_data == var)
-				track_expr(node);
-	}
-	INIT_LIST_HEAD(&replacedlist);
 
 	return quilt_new(patchname, filelist);
 }
@@ -1295,8 +1293,6 @@ static struct xform_desc xforms[] = {
 
 // Target types in calls to (try_)get_symbol_data
 { "target-types-symbol_data.patch", type_subst, target_types_symbol_data },
-// ...plus dependencies
-{ "target-types-symbol_data-deps.patch", track_vars },
 
 // Target types in calls to readmem
 { "target-types-readmem.patch", type_subst, target_types_readmem },
