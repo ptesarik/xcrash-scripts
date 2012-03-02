@@ -75,7 +75,7 @@ do_find(struct list_head *tree, node_t *scopenode,
 	node_t *ret;
 	struct list_head *scope;
 	do {
-		if (scope != tree) {
+		if (scopenode) {
 			scope = find_scope(tree, scopenode);
 			scopenode = first_node(scope)->parent;
 		} else
