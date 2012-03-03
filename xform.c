@@ -369,19 +369,30 @@ next_dup(node_t *node)
 	return list_entry(node->dup_list.next, node_t, dup_list);
 }
 
+/* Substitute the type for @firstvar and all its duplicates.
+ * The target type is at @ind indirection level.
+ */
 static int
-subst_target_var(node_t *firstvar)
+subst_target_var(node_t *firstvar, int ind)
 {
 	node_t *var = firstvar;
 	int ret = 0;
 	do {
 		node_t *type = first_node(&var->child[chv_type]);
-		while (type->t.category == type_pointer)
+		int i;
+		for (i = 0; i < ind; ++i) {
+			if (type->t.category != type_pointer)
+				break;
 			type = first_node(&type->child[cht_type]);
-		if (type->t.category == type_func)
-			type = first_node(&type->child[cht_type]);
-		while (type->t.category == type_pointer)
-			type = first_node(&type->child[cht_type]);
+		}
+		if (i < ind)
+			continue;
+
+		if (type->t.category == type_func) {
+			do {
+				type = first_node(&type->child[cht_type]);
+			} while (type->t.category == type_pointer);
+		}
 		const char *newtype = subst_target_type(type, 0);
 		if (newtype) {
 			replace_type(type, newtype);
@@ -755,7 +766,7 @@ target_facilitators(node_t *node, void *data)
 	if (!var || list_empty(&var->child[chv_type]))
 		return walk_continue;
 
-	subst_target_var(var);
+	subst_target_var(var, 0);
 
 	return walk_continue;
 }
@@ -1066,18 +1077,20 @@ build_scopes(node_t *node, void *data)
 }
 
 static void
-track_assign(node_t *expr)
+track_assign(node_t *expr, int ind)
 {
 	node_t *target = first_node(&expr->child[che_arg1]);
-	while (target->type == nt_expr && target->e.op == '*')
+	while (target->type == nt_expr && target->e.op == '*') {
 		target = first_node(&target->child[che_arg1]);
+		++ind;
+	}
 	target = varscope_expr(&target->pf->parsed, target);
 	if (target)
-		subst_target_var(target);
+		subst_target_var(target, ind);
 }
 
 static void
-track_return(node_t *node)
+track_return(node_t *node, int ind)
 {
 	node_t *fn;
 	while ((fn = node->parent) &&
@@ -1086,16 +1099,17 @@ track_return(node_t *node)
 		node = fn;
 	if (fn) {
 		node_t *var = first_node(&fn->child[chd_var]);
-		subst_target_var(var);
+		subst_target_var(var, ind);
 
 		/* Find all forward declarations (if any) */
 		while ( (var = varscope_find_next(var)) )
-			subst_target_var(var);
+			subst_target_var(var, ind);
 	}
 }
 
+/* Track uses of @expr with indirection level @ind. */
 static void
-track_expr(node_t *expr)
+track_expr(node_t *expr, int ind)
 {
 	node_t *parent = expr->parent;
 
@@ -1104,7 +1118,7 @@ track_expr(node_t *expr)
 	switch(parent->type) {
 	case nt_var:
 		if (is_child(expr, parent, chv_init))
-			subst_target_var(parent);
+			subst_target_var(parent, ind);
 		break;
 
 	case nt_expr:
@@ -1114,25 +1128,29 @@ track_expr(node_t *expr)
 		case '-':
 		case INC_OP:
 		case DEC_OP:
-			track_expr(parent);
+			track_expr(parent, ind);
 			break;
 
 		case ADD_ASSIGN:
 		case SUB_ASSIGN:
 		case FUNC:
 			if (is_child(expr, parent, che_arg1))
-				track_expr(parent);
+				track_expr(parent, ind);
+			break;
+
+		case '*':
+			track_expr(parent, ind - 1);
 			break;
 
 		case '=':
 			if (is_child(expr, parent, che_arg2)) {
-				track_assign(parent);
-				track_expr(parent);
+				track_assign(parent, ind);
+				track_expr(parent, ind);
 			}
 			break;
 
 		case RETURN:
-			track_return(parent);
+			track_return(parent, ind);
 			break;
 		}
 		break;
@@ -1146,9 +1164,12 @@ static void
 track_one_var(node_t *type)
 {
 	node_t *var = type->parent;
+	int ind = 0;
 	if (var->type == nt_type) {
-		while (is_pointer(var))
+		while (is_pointer(var)) {
 			var = var->parent;
+			++ind;
+		}
 		if (is_function(var)) {
 			do {
 				var = var->parent;
@@ -1161,7 +1182,7 @@ track_one_var(node_t *type)
 	node_t *node;
 	list_for_each_entry(node, &vartracklist, user_list)
 		if (node->user_data == var)
-			track_expr(node);
+			track_expr(node, ind);
 }
 
 static void
