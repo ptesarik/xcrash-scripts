@@ -363,6 +363,12 @@ subst_target_type(node_t *type, int gdb)
 	return modified;
 }
 
+static inline node_t *
+next_dup(node_t *node)
+{
+	return list_entry(node->dup_list.next, node_t, dup_list);
+}
+
 static int
 subst_target_var(node_t *firstvar)
 {
@@ -381,8 +387,7 @@ subst_target_var(node_t *firstvar)
 			replace_type(type, newtype);
 			++ret;
 		}
-		var = list_entry(var->dup_list.next, node_t, dup_list);
-	} while (var != firstvar);
+	} while ((var = next_dup(var)) != firstvar);
 	return ret;
 }
 
