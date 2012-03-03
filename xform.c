@@ -1137,7 +1137,28 @@ track_expr(node_t *expr)
 	}
 }
 
-/* Helper for tracking dependencies */
+static void
+track_one_var(node_t *type)
+{
+	node_t *var = type->parent;
+	if (var->type == nt_type) {
+		while (is_pointer(var))
+			var = var->parent;
+		if (is_function(var)) {
+			do {
+				var = var->parent;
+			} while (is_pointer(var));
+		}
+	}
+	if (!var || var->type != nt_var)
+		return;
+
+	node_t *node;
+	list_for_each_entry(node, &vartracklist, user_list)
+		if (node->user_data == var)
+			track_expr(node);
+}
+
 static void
 track_vars(struct list_head *filelist)
 {
@@ -1146,28 +1167,19 @@ track_vars(struct list_head *filelist)
 	INIT_LIST_HEAD(&vartracklist);
 	list_for_each_entry(pf, filelist, list)
 		walk_tree(&pf->parsed, build_scopes, NULL);
-	
-	node_t *type;
-	list_for_each_entry(type, &replacedlist, user_list) {
-		node_t *var = type->parent;
-		if (var->type == nt_type) {
-			while (is_pointer(var))
-				var = var->parent;
-			if (is_function(var)) {
-				do {
-					var = var->parent;
-				} while (is_pointer(var));
-			}
-		}
-		if (!var || var->type != nt_var)
-			continue;
 
-		node_t *node;
-		list_for_each_entry(node, &vartracklist, user_list)
-			if (node->user_data == var)
-				track_expr(node);
-	}
-	INIT_LIST_HEAD(&replacedlist);
+	do {
+		node_t *type;
+		list_for_each_entry(type, &replacedlist, user_list)
+			track_one_var(type);
+		INIT_LIST_HEAD(&replacedlist);
+
+		struct split_node *split;
+		list_for_each_entry(split, &splitlist, list) {
+			list_for_each_entry(type, &split->nodes, user_list)
+				track_one_var(type);
+		}
+	} while (!list_empty(&replacedlist));
 }
 
 /************************************************************
