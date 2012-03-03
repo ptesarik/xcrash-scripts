@@ -92,6 +92,22 @@ is_struct(node_t *node, const char *name)
 		node->str && !strcmp(node->str->text, name));
 }
 
+/* Returns non-zero if @node is a pointer type. */
+static int
+is_pointer(node_t *node)
+{
+	return node && node->type == nt_type &&
+		node->t.category == type_pointer;
+}
+
+/* Returns non-zero if @node is a function type. */
+static int
+is_function(node_t *node)
+{
+	return node && node->type == nt_type &&
+		node->t.category == type_func;
+}
+
 /* Get the @pos-th element from @list */
 static node_t *
 nth_element(struct list_head *list, int pos)
@@ -1135,15 +1151,12 @@ track_vars(struct list_head *filelist)
 	list_for_each_entry(type, &replacedlist, user_list) {
 		node_t *var = type->parent;
 		if (var->type == nt_type) {
-			while (var && var->type == nt_type &&
-			       var->t.category == type_pointer)
+			while (is_pointer(var))
 				var = var->parent;
-			if (var && var->type == nt_type &&
-			    var->t.category == type_func) {
+			if (is_function(var)) {
 				do {
 					var = var->parent;
-				} while (var && var->type == nt_type &&
-					 var->t.category == type_pointer);
+				} while (is_pointer(var));
 			}
 		}
 		if (!var || var->type != nt_var)
