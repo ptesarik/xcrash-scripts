@@ -412,6 +412,10 @@ subst_target_var(node_t *firstvar, int ind)
 	int ret = 0;
 	do {
 		node_t *type = first_node(&var->child[chv_type]);
+		node_t *base = base_type(type);
+		if (base->t.category == type_func)
+			type = first_node(&base->child[cht_type]);
+
 		int i;
 		for (i = 0; i < ind; ++i) {
 			if (type->t.category != type_pointer)
@@ -421,11 +425,6 @@ subst_target_var(node_t *firstvar, int ind)
 		if (i < ind)
 			continue;
 
-		if (type->t.category == type_func) {
-			do {
-				type = first_node(&type->child[cht_type]);
-			} while (type->t.category == type_pointer);
-		}
 		const char *newtype = subst_target_type(type, 0);
 		if (newtype) {
 			replace_type(type, newtype);
