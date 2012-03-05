@@ -121,6 +121,31 @@ nth_element(struct list_head *list, int pos)
 	return NULL;
 }
 
+/* Get the base type of @type */
+static node_t *
+base_type(node_t *type)
+{
+	while (type->t.category == type_pointer)
+		type = first_node(&type->child[cht_type]);
+	return type;
+}
+
+/* "Flatten" @type, i.e. remove all nodes in the hierarchy above
+ * @base up to and including @type.
+*/
+static void
+flatten_type(node_t *type, node_t *base)
+{
+	while (type != base) {
+		node_t *child = first_node(&type->child[cht_type]);
+		assert(!list_empty(&type->child[cht_type]));
+		list_splice_init(&type->child[cht_type], &type->list);
+		child->parent = type->parent;
+		freenode(type);
+		type = child;
+	}
+}
+
 /************************************************************
  * Type replacements with split declarations
  *
@@ -155,12 +180,13 @@ check_split(node_t *node, struct split_node *split, const char *newtext)
 	 * split was found, there is a split for a different @newtext.
 	 */
 	node_t *var = typed_parent(node, nt_var);
+	node_t *base = base_type(node);
 	list_for_each_entry(split, &splitlist, list)
-		if (split->oldds == node->str)
+		if (split->oldds == base->str)
 			break;
 	fprintf(stderr, "Conflicting type change for '%s %s':"
 		" first '%s', now '%s'\n",
-		node->str->text, var ? var->str->text : "<unknown>",
+		base->str->text, var ? var->str->text : "<unknown>",
 		&split->list != &splitlist ? split->newds->text : "<unknown>",
 		newtext);
 	abort();
@@ -170,25 +196,28 @@ check_split(node_t *node, struct split_node *split, const char *newtext)
 static node_t *
 replace_type(node_t *node, const char *newtext)
 {
-	struct dynstr *newds, *oldds = node->str;
+	node_t *base = base_type(node);
+	struct dynstr *newds, *oldds = base->str;
 	struct split_node *split = split_search(&splitlist, oldds, newtext);
 	if (check_split(node, split, newtext))
 		return node;
 	newds = split
 		? split->newds
 		: newdynstr(newtext, strlen(newtext));
-	if (!--node->str->refcount) {
+	if (!--base->str->refcount) {
+		flatten_type(node, base);
+		node = base;
+
 		node->str = NULL;
 		replace_text_list(node->first_text, node->last_text,
 				  newds, newds);
 
 		node = reparse_node(node, START_TYPE_NAME);
-		newds = node->str;
 
 		if (split) {
 			node_t *cur;
 			list_for_each_entry(cur, &split->nodes, user_list)
-				cur->str = NULL;
+				base_type(cur)->str = NULL;
 			replace_nodes(&split->nodes, node);
 			split_remove(split);
 		}
@@ -245,7 +274,7 @@ type_split(struct list_head *raw, struct split_node *split)
 		insert_text_list(point, var->first_text, var->last_text);
 		remove_comma(raw, nextds);
 
-		type->str = NULL;
+		base_type(type)->str = NULL;
 		freenode(var);
 	}
 
