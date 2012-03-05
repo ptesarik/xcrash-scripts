@@ -147,10 +147,13 @@ static int
 check_split(node_t *node, struct split_node *split, const char *newtext)
 {
 	if (!node->user_list.next)
-		return 0;
+		return 0;	/* First request for this var */
 	if (split)
-		return 1;
+		return 1;	/* Matching split already exists */
 
+	/* If the variable is already on the split list, but no matching
+	 * split was found, there is a split for a different @newtext.
+	 */
 	node_t *var = typed_parent(node, nt_var);
 	list_for_each_entry(split, &splitlist, list)
 		if (split->oldds == node->str)
@@ -158,7 +161,8 @@ check_split(node_t *node, struct split_node *split, const char *newtext)
 	fprintf(stderr, "Conflicting type change for '%s %s':"
 		" first '%s', now '%s'\n",
 		node->str->text, var ? var->str->text : "<unknown>",
-		split ? split->newds->text : "<unknown>", newtext);
+		&split->list != &splitlist ? split->newds->text : "<unknown>",
+		newtext);
 	abort();
 }
 
