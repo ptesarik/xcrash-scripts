@@ -30,36 +30,50 @@ replace_text(node_t *node, const char *text)
 static void
 remove_text_list(struct dynstr *ds, struct dynstr *keep)
 {
+	struct dynstr *prev = prev_dynstr(ds);
+	node_t *node, *nnode;
+
 	while (ds != keep) {
-		node_t *node, *nnode;
-		
 		list_for_each_entry_safe(node, nnode,
 					 &ds->node_first, first_list)
-			set_node_first(node, &dummydynstr);
+			set_node_first(node, keep);
 		list_for_each_entry_safe(node, nnode,
 					 &ds->node_last, last_list)
-			set_node_last(node, &dummydynstr);
+			set_node_last(node, prev);
 
 		ds = dynstr_del(ds);
 	}
+
+	list_for_each_entry_safe(node, nnode, &ds->node_first, first_list)
+		if (node->last_text == prev) {
+			set_node_first(node, &dummydynstr);
+			set_node_last(node, &dummydynstr);
+		}
 }
 
 /* Remove text nodes from @ds backwards up to, but not including @keep. */
 static void
 remove_text_list_rev(struct dynstr *ds, struct dynstr *keep)
 {
-	while (ds != keep) {
-		node_t *node, *nnode;
+	struct dynstr *next = next_dynstr(ds);
+	node_t *node, *nnode;
 
+	while (ds != keep) {
 		list_for_each_entry_safe(node, nnode,
 					 &ds->node_first, first_list)
-			set_node_first(node, &dummydynstr);
+			set_node_first(node, next);
 		list_for_each_entry_safe(node, nnode,
 					 &ds->node_last, last_list)
-			set_node_last(node, &dummydynstr);
+			set_node_last(node, keep);
 
 		ds = dynstr_del_rev(ds);
 	}
+
+	list_for_each_entry_safe(node, nnode, &ds->node_first, first_list)
+		if (node->first_text == next) {
+			set_node_first(node, &dummydynstr);
+			set_node_last(node, &dummydynstr);
+		}
 }
 
 /* Delete the node (and all its children). Also removes the acoompanying
