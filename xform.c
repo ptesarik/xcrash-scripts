@@ -219,6 +219,23 @@ check_split(node_t *node, struct split_node *split, const char *newtext)
 	abort();
 }
 
+/* This does the real job if there is only a single reference
+ * to @type.
+ * Returns: the new type node.
+ */
+static node_t *
+replace_single_type(node_t *type, node_t *base, struct dynstr *newds)
+{
+	type = flatten_type(type, base);
+	set_node_str(type, NULL);
+	replace_text_list(type->first_text, type->last_text,
+			  newds, newds);
+
+	type = reparse_node(type, START_TYPE_NAME);
+	list_add_tail(&type->user_list, &replacedlist);
+	return type;
+}
+
 /* Change the type definition of @node */
 static node_t *
 replace_type(node_t *node, const char *newtext)
@@ -231,28 +248,12 @@ replace_type(node_t *node, const char *newtext)
 	newds = split
 		? split->newds
 		: newdynstr(newtext, strlen(newtext));
-	if (!--base->str->refcount) {
-		flatten_type(node, base);
-		node = base;
-
-		node->str = NULL;
-		replace_text_list(node->first_text, node->last_text,
-				  newds, newds);
-
-		node = reparse_node(node, START_TYPE_NAME);
-
-		if (split) {
-			node_t *cur;
-			list_for_each_entry(cur, &split->nodes, user_list)
-				base_type(cur)->str = NULL;
-			replace_nodes(&split->nodes, node);
-			split_remove(split);
-		}
-		list_add_tail(&node->user_list, &replacedlist);
-	} else if (!split)
+	if (split)
+		split_addnode(split, node);
+	else if (base->str->refcount > 1)
 		split_add(&splitlist, node, oldds, newds);
 	else
-		split_addnode(split, node);
+		replace_single_type(node, base, newds);
 	return node;
 }
 
@@ -274,21 +275,37 @@ static void
 type_split(struct list_head *raw, struct split_node *split)
 {
 	struct dynstr *ds, *point;
-	node_t *firstvar = list_entry(split->nodes.next, node_t, user_list);
-	node_t *olddecl = typed_parent(firstvar, nt_decl);
-	node_t *newdecl;
+	node_t *type, *ntype, *first;
 	YYLTYPE loc;
 
+	/* First, flatten the types and remove references via ->str */
+	list_for_each_entry_safe(type, ntype, &split->nodes, user_list) {
+		list_del(&type->user_list);
+		type = flatten_type(type, base_type(type));
+		set_node_str(type, NULL);
+		list_add_tail(&type->user_list, &ntype->user_list);
+	}
+
+	/* Check if the split is unnecessary (all vars are converted) */
+	first = list_entry(split->nodes.next, node_t, user_list);
+	if (!split->oldds->refcount) {
+		node_t *base = base_type(first);
+		list_del(&first->user_list);
+		first = replace_single_type(first, base, split->newds);
+		replace_nodes(&split->nodes, first);
+		return;
+	}
+
+	node_t *olddecl = typed_parent(first, nt_decl);
 	parsed_file = olddecl->pf;
 	loc.first_text = loc.last_text = split->newds;
-	newdecl = newnode(&loc, nt_decl, chd_max);
+	node_t *newdecl = newnode(&loc, nt_decl, chd_max);
 
 	point = olddecl->first_text;
 	struct dynstr *indent = dynstr_dup_indent(raw, point, 0);
 
 	insert_text_list(point, split->newds, split->newds);
 	ds = newdynstr(" ", 1);
-	node_t *type, *ntype;
 	list_for_each_entry_safe(type, ntype, &split->nodes, user_list) {
 		if (!ds)
 			ds = newdynstr(", ", 2);
@@ -301,7 +318,6 @@ type_split(struct list_head *raw, struct split_node *split)
 		insert_text_list(point, var->first_text, var->last_text);
 		remove_comma(raw, nextds);
 
-		base_type(type)->str = NULL;
 		freenode(var);
 	}
 
