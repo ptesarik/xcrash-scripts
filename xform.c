@@ -62,6 +62,17 @@ remove_text_list_rev(struct dynstr *ds, struct dynstr *keep)
 	}
 }
 
+/* Delete the node (and all its children). Also removes the acoompanying
+ * dynstr objects.
+ */
+static void
+delete_node(node_t *node)
+{
+	nullify_str(node);
+	remove_text_list(node->first_text, next_dynstr(node->last_text));
+	freenode(node);
+}
+
 /* Returns non-zero if @node is an ID */
 static int
 is_id(node_t *node)
@@ -133,17 +144,19 @@ base_type(node_t *type)
 /* "Flatten" @type, i.e. remove all nodes in the hierarchy above
  * @base up to and including @type.
 */
-static void
+static node_t *
 flatten_type(node_t *type, node_t *base)
 {
 	while (type != base) {
 		node_t *child = first_node(&type->child[cht_type]);
 		assert(!list_empty(&type->child[cht_type]));
 		list_splice_init(&type->child[cht_type], &type->list);
+
 		child->parent = type->parent;
-		freenode(type);
+		delete_node(type);
 		type = child;
 	}
+	return base;
 }
 
 /************************************************************
