@@ -1357,6 +1357,7 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 			split_remove(split);
 		}
 	}
+	INIT_LIST_HEAD(&replacedlist);
 
 	return quilt_new(patchname, filelist);
 }
