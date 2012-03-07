@@ -323,7 +323,7 @@ split_add(struct list_head *splitlist, node_t *node,
 	split->newds = newds;
 	INIT_LIST_HEAD(&split->nodes);
 	split_addnode(split, node);
-	list_add(&split->list, splitlist);
+	list_add_tail(&split->list, splitlist);
 	return split;
 }
 
