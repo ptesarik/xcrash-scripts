@@ -1138,13 +1138,16 @@ use_ia64_fpreg_t(node_t *node, void *data)
  *
  */
 
-static LIST_HEAD(vartracklist);
-
 static enum walk_action
 build_scopes(node_t *node, void *data)
 {
-	if ( (node->user_data = varscope_expr(&node->pf->parsed, node)) )
-		list_add_tail(&node->user_list, &vartracklist);
+	node_t *var = varscope_expr(&node->pf->parsed, node);
+	if (var) {
+		node->user_data = var;
+		if (!var->user_list.next)
+			INIT_LIST_HEAD(&var->user_list);
+		list_add_tail(&node->user_list, &var->user_list);
+	}
 	return walk_continue;
 }
 
@@ -1248,13 +1251,12 @@ track_one_var(node_t *type)
 			} while (is_pointer(var));
 		}
 	}
-	if (!var || var->type != nt_var)
+	if (!var || var->type != nt_var || !var->user_list.next)
 		return;
 
 	node_t *node;
-	list_for_each_entry(node, &vartracklist, user_list)
-		if (node->user_data == var)
-			track_expr(node, ind);
+	list_for_each_entry(node, &var->user_list, user_list)
+		track_expr(node, ind);
 }
 
 static void
@@ -1262,7 +1264,6 @@ track_vars(struct list_head *filelist)
 {
 	struct parsed_file *pf;
 
-	INIT_LIST_HEAD(&vartracklist);
 	list_for_each_entry(pf, filelist, list)
 		walk_tree(&pf->parsed, build_scopes, NULL);
 
