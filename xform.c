@@ -1266,17 +1266,23 @@ track_vars(struct list_head *filelist)
 	list_for_each_entry(pf, filelist, list)
 		walk_tree(&pf->parsed, build_scopes, NULL);
 
+	/* This initializes @split to an invalid address, but
+	 * it can be used to "continue" the walk at the beginning
+	 * of @splitlist
+	 */
+	struct split_node *split = list_entry(&splitlist,
+					      struct split_node, list);
 	do {
 		node_t *type;
 		list_for_each_entry(type, &replacedlist, user_list)
 			track_one_var(type);
 		INIT_LIST_HEAD(&replacedlist);
 
-		struct split_node *split;
-		list_for_each_entry(split, &splitlist, list) {
+		list_for_each_entry_continue(split, &splitlist, list) {
 			list_for_each_entry(type, &split->nodes, user_list)
 				track_one_var(type);
 		}
+		split = list_entry(split->list.prev, struct split_node, list);
 	} while (!list_empty(&replacedlist));
 }
 
