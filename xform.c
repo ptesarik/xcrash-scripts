@@ -420,7 +420,7 @@ ttype_to_gdb(const char *text)
  * used when compiling GDB.
  */
 static const char *
-subst_target_type(node_t *type)
+target_type_name(node_t *type)
 {
 	const char *modified = NULL;
 
@@ -468,7 +468,7 @@ subst_target_var(node_t *firstvar, int ind)
 		if (i < ind)
 			continue;
 
-		const char *newtype = subst_target_type(type);
+		const char *newtype = target_type_name(type);
 		if (newtype) {
 			replace_type(type, newtype);
 			++ret;
@@ -718,7 +718,7 @@ target_var(node_t *node, void *data)
 		 * pointer's base type */
 		if (node->e.op != '&')
 			type = first_node(&type->child[cht_type]);
-		newtype = subst_target_type(type);
+		newtype = target_type_name(type);
 		if (newtype) {
 			replace_type(type, newtype);
 			return walk_terminate;
@@ -748,7 +748,7 @@ target_sizeof(node_t *node)
 		return;
 
 	node_t *type = nth_element(&typesize->child[che_arg1], 1);
-	const char *newtype = subst_target_type(type);
+	const char *newtype = target_type_name(type);
 	if (newtype) {
 		replace_text(type, newtype);
 		reparse_node(type, START_TYPE_NAME);
