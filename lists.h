@@ -328,5 +328,22 @@ static inline void list_splice_tail_init(struct list_head *list,
 	     &pos->member != (head);					\
 	     pos = list_entry(pos->member.next, typeof(*pos), member))
 
+/**
+ * list_pos - return the position of an entry inside a list
+ * @list:	the entry's list_head
+ * @head:	the list to be searched
+ */
+static inline int list_pos(struct list_head *list,
+			   struct list_head *head)
+{
+	struct list_head *pos;
+	int n = 0;
+	list_for_each(pos, head) {
+		if (pos == list)
+			return n;
+		++n;
+	}
+	return -1;
+}
 
 #endif /* LISTS_H */

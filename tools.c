@@ -260,13 +260,9 @@ reset_user_data(struct list_head *tree)
 }
 
 int
-is_child(node_t *child, node_t *parent, int idx)
+child_order(node_t *child, node_t *parent, int idx)
 {
-	node_t *iter;
-	list_for_each_entry(iter, &parent->child[idx], list)
-		if (iter == child)
-			return 1;
-	return 0;
+	return list_pos(&child->list, &parent->child[idx]) + 1;
 }
 
 struct list_head *

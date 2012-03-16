@@ -47,8 +47,16 @@ typed_parent(node_t *node, enum node_type type)
 	return node;
 }
 
+/* Return the order of @child among @parent's children of @idx.
+ * Returns zero if @child is not found.
+ */
+int child_order(node_t *child, node_t *parent, int idx);
+
 /* Return non-zero if @child is an @idx-type child of @parent */
-int is_child(node_t *child, node_t *parent, int idx);
+static inline int is_child(node_t *child, node_t *parent, int idx)
+{
+	return child_order(child, parent, idx) > 0;
+}
 
 /* Split nodes */
 struct split_node {
