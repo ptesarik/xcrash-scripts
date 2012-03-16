@@ -445,6 +445,34 @@ next_dup(node_t *node)
 	return list_entry(node->dup_list.next, node_t, dup_list);
 }
 
+/* Substitute @type with a target type (if applicable)
+ * The target type is at @ind indirection level.
+ * Returns 1 if the type was substituted, zero otherwise.
+ */
+static int
+subst_target_type(node_t *type, int ind)
+{
+	node_t *base = base_type(type);
+	if (base->t.category == type_func)
+		type = first_node(&base->child[cht_type]);
+
+	int i;
+	for (i = 0; i < ind; ++i) {
+		if (type->t.category != type_pointer)
+			break;
+		type = first_node(&type->child[cht_type]);
+	}
+	if (i < ind)
+		return 0;
+
+	const char *newtype = target_type_name(type);
+	if (newtype) {
+		replace_type(type, newtype);
+		return 1;
+	}
+	return 0;
+}
+
 /* Substitute the type for @firstvar and all its duplicates.
  * The target type is at @ind indirection level.
  */
@@ -455,24 +483,7 @@ subst_target_var(node_t *firstvar, int ind)
 	int ret = 0;
 	do {
 		node_t *type = first_node(&var->child[chv_type]);
-		node_t *base = base_type(type);
-		if (base->t.category == type_func)
-			type = first_node(&base->child[cht_type]);
-
-		int i;
-		for (i = 0; i < ind; ++i) {
-			if (type->t.category != type_pointer)
-				break;
-			type = first_node(&type->child[cht_type]);
-		}
-		if (i < ind)
-			continue;
-
-		const char *newtype = target_type_name(type);
-		if (newtype) {
-			replace_type(type, newtype);
-			++ret;
-		}
+		ret += subst_target_type(type, ind);
 	} while ((var = next_dup(var)) != firstvar);
 	return ret;
 }
