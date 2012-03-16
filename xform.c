@@ -416,10 +416,11 @@ ttype_to_gdb(const char *text)
 }
 
 /* Substitute a host @type with its corresponding target type.
- * Use GDB-specific types if @gdb is nonzero.
+ * Use GDB-specific types if the definition of @type is also
+ * used when compiling GDB.
  */
 static const char *
-subst_target_type(node_t *type, int gdb)
+subst_target_type(node_t *type)
 {
 	const char *modified = NULL;
 
@@ -430,7 +431,9 @@ subst_target_type(node_t *type, int gdb)
 	else if (type->t.category == type_pointer)
 		modified = "tptr";
 
-	if (modified && gdb)
+	if (modified && !strcmp(type->pf->name, "defs.h") &&
+	    check_cpp_cond(type->str->cpp_cond,
+			   "GDB_COMMON", NULL, NULL) >= 0)
 		modified = ttype_to_gdb(modified);
 
 	return modified;
@@ -465,7 +468,7 @@ subst_target_var(node_t *firstvar, int ind)
 		if (i < ind)
 			continue;
 
-		const char *newtype = subst_target_type(type, 0);
+		const char *newtype = subst_target_type(type);
 		if (newtype) {
 			replace_type(type, newtype);
 			++ret;
@@ -715,7 +718,7 @@ target_var(node_t *node, void *data)
 		 * pointer's base type */
 		if (node->e.op != '&')
 			type = first_node(&type->child[cht_type]);
-		newtype = subst_target_type(type, 0);
+		newtype = subst_target_type(type);
 		if (newtype) {
 			replace_type(type, newtype);
 			return walk_terminate;
@@ -745,7 +748,7 @@ target_sizeof(node_t *node)
 		return;
 
 	node_t *type = nth_element(&typesize->child[che_arg1], 1);
-	const char *newtype = subst_target_type(type, 0);
+	const char *newtype = subst_target_type(type);
 	if (newtype) {
 		replace_text(type, newtype);
 		reparse_node(type, START_TYPE_NAME);
