@@ -1196,6 +1196,36 @@ track_return(node_t *node, int ind)
 	}
 }
 
+static int
+try_track_args(node_t *arg, node_t *fn, int ind)
+{
+	int pos = child_order(arg, fn, che_arg2);
+	if (!pos)
+		return 0;
+
+	node_t *var = varscope_expr(&fn->pf->parsed,
+				    first_node(&fn->child[che_arg1]));
+	for ( ; var; var = varscope_find_next(var)) {
+		node_t *type = nth_element(&var->child[chv_type], 1);
+		if (!type)
+			continue;
+
+		node_t *argdecl = nth_element(&type->child[cht_param], pos);
+		if (!argdecl)
+			continue;
+
+		node_t *node = first_node(&argdecl->child[chd_type]);
+		if (&node->list != &argdecl->child[chd_type])
+			subst_target_type(node, ind);
+
+		node = first_node(&argdecl->child[chd_var]);
+		if (&node->list != &argdecl->child[chd_var])
+			subst_target_var(node, ind);
+	}
+
+	return 1;
+}
+
 /* Track uses of @expr with indirection level @ind. */
 static void
 track_expr(node_t *expr, int ind)
@@ -1220,9 +1250,12 @@ track_expr(node_t *expr, int ind)
 			track_expr(parent, ind);
 			break;
 
+		case FUNC:
+			if (try_track_args(expr, parent, ind))
+				break;
+			/* else fall through */
 		case ADD_ASSIGN:
 		case SUB_ASSIGN:
-		case FUNC:
 			if (is_child(expr, parent, che_arg1))
 				track_expr(parent, ind);
 			break;
