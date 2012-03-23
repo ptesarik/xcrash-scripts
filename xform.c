@@ -423,7 +423,7 @@ target_type_name(node_t *type)
 	else if (type->t.category == type_pointer)
 		modified = "tptr";
 
-	if (modified && !strcmp(type->pf->name, "defs.h") &&
+	if (modified && type->pf->name && !strcmp(type->pf->name, "defs.h") &&
 	    check_cpp_cond(type->str->cpp_cond,
 			   "GDB_COMMON", NULL, NULL) >= 0)
 		modified = ttype_to_gdb(modified);
@@ -650,7 +650,7 @@ target_types(const char *patchname, struct list_head *filelist, void *data)
 		return res;
 
 	list_for_each_entry(pf, filelist, list) {
-		if (!strcmp(pf->name, "defs.h"))
+		if (pf->name && !strcmp(pf->name, "defs.h"))
 			mark_raw_gdb_common(&pf->raw);
 		walk_tree(&pf->parsed, find_gdb_print_options, pf);
 	}
@@ -1138,7 +1138,7 @@ use_pt_regs_x86_64(node_t *node, void *data)
 	struct parsed_file *pf = data;
 	int cond = check_cpp_cond(node->first_text->cpp_cond,
 			      "X86_64", NULL, NULL);
-	if (!cond && strcmp(pf->name, "unwind_x86_64.h"))
+	if (!cond && pf->name && strcmp(pf->name, "unwind_x86_64.h"))
 		return walk_continue;
 	else if (cond < 0)
 		return walk_continue;

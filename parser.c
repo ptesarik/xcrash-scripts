@@ -83,6 +83,8 @@ static const char *predef_types[] = {
 	NULL,
 };
 
+static const char builtin_file[] = "";
+
 static LIST_HEAD(files);
 
 struct dynstr dummydynstr = {
@@ -789,7 +791,16 @@ int parse_file(struct parsed_file *pf)
 {
 	node_t *node, *nextnode;
 	struct dynstr *ds, *nextds;
+	struct list_head oldraw;
 	int ret;
+
+	INIT_LIST_HEAD(&oldraw);
+	if (!pf->name) {
+		/* The built-in file exists only in memory,
+		 * so don't clean it up! */
+		list_splice_tail(&pf->raw, &oldraw);
+		INIT_LIST_HEAD(&pf->raw);
+	}
 
 	/* Clean up any respective old contents first */
 	list_for_each_entry_safe(node, nextnode, &pf->parsed, list)
@@ -797,7 +808,9 @@ int parse_file(struct parsed_file *pf)
 	list_for_each_entry_safe(ds, nextds, &pf->raw, list)
 		freedynstr(ds);
 
-	if (!strcmp(pf->name, "-"))
+	if (!pf->name)
+		yyin = NULL;
+	else if (!strcmp(pf->name, "-"))
 		yyin = stdin;
 	else {
 		yyin = fopen(pf->name, "r");
@@ -808,17 +821,23 @@ int parse_file(struct parsed_file *pf)
 		}
 	}
 
-	fprintf(stderr, "Parsing file %s\n", pf->name);
+	if (pf->name)
+		fprintf(stderr, "Parsing file %s\n", pf->name);
 
 	parsed_file = pf;
 	INIT_LIST_HEAD(&parsed_tree);
 	INIT_LIST_HEAD(&raw_contents);
 	INIT_LIST_HEAD(&raw_cpp);
-	lex_input_first = lex_input_last = NULL;
+	if (yyin)
+		lex_input_first = lex_input_last = NULL;
+	else {
+		lex_input_first = list_entry(oldraw.next, struct dynstr, list);
+		lex_input_last = list_entry(oldraw.prev, struct dynstr, list);
+	}
 	lex_cpp_mode = 0;
 	start_symbol = 0;
 	ret = yyparse();
-	if (yyin != stdin && fclose(yyin)) {
+	if (yyin && yyin != stdin && fclose(yyin)) {
 		fprintf(stderr, "Cannot close %s: %s\n",
 			pf->name, strerror(errno));
 		ret = -1;
@@ -837,7 +856,24 @@ int parse_file(struct parsed_file *pf)
 		pf->clean = 1;
 	}
 
+	/* Clean up old contents if necessary */
+	list_for_each_entry_safe(ds, nextds, &oldraw, list)
+		freedynstr(ds);
+
 	return ret;
+}
+
+static void
+add_builtin_file(void)
+{
+	static struct parsed_file builtin_pf = {
+		.parsed = LIST_HEAD_INIT(builtin_pf.parsed),
+		.raw = LIST_HEAD_INIT(builtin_pf.raw),
+	};
+	struct dynstr *ds = newdynstr(builtin_file, sizeof builtin_file - 1);
+
+	list_add(&ds->list, &builtin_pf.raw);
+	list_add(&builtin_pf.list, &files);
 }
 
 static int add_file(const char *name)
@@ -928,6 +964,7 @@ int main(int argc, char **argv)
 	/* Parse arguments */
 	argp_parse(&argp, argc, argv, 0, &i, &arguments);
 
+	add_builtin_file();
 	init_predef_types();
 	if (i >= argc)
 		ret = add_file("-");

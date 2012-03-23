@@ -410,7 +410,7 @@ writeout_files(struct list_head *filelist)
 	struct parsed_file *pf;
 	int res;
 	list_for_each_entry(pf, filelist, list) {
-		if (pf->clean)
+		if (pf->clean || !pf->name)
 			continue;
 		if ( (res = writeout(pf->name, &pf->raw)) )
 			return res;
@@ -442,7 +442,7 @@ quilt_new(const char *name, struct list_head *filelist)
 	argv[i++] = QUILT;
 	argv[i++] = "add";
 	list_for_each_entry(pf, filelist, list) {
-		if (pf->clean)
+		if (pf->clean || !pf->name)
 			continue;
 		argv[i++] = pf->name;
 	}
