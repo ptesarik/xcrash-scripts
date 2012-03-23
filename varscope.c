@@ -88,9 +88,9 @@ do_find(struct list_head *tree, node_t *scopenode,
 }
 
 node_t *
-varscope_find(struct list_head *tree, node_t *node)
+varscope_find(struct list_head *tree, node_t *node, enum node_type type)
 {
-	return do_find(tree, node, node->type, node->str->text);
+	return do_find(tree, node, type, node->str->text);
 }
 
 node_t *
@@ -212,7 +212,7 @@ varscope_expr(struct list_head *tree, node_t *expr)
 
 		/* If we only got the struct name, get its declaration */
 		if (list_empty(&type->child[cht_body]) &&
-		    ! (type = varscope_find(tree, type)) )
+		    ! (type = varscope_find(tree, type, nt_type)) )
 			return NULL;
 
 		/* Now, find the member in the struct */
