@@ -1283,7 +1283,7 @@ track_expr(node_t *expr, int ind)
 }
 
 static void
-track_one_var(node_t *type)
+track_type(node_t *type)
 {
 	node_t *var = type->parent;
 	int ind = 0;
@@ -1323,12 +1323,12 @@ track_vars(struct list_head *filelist)
 	do {
 		node_t *type;
 		list_for_each_entry(type, &replacedlist, user_list)
-			track_one_var(type);
+			track_type(type);
 		INIT_LIST_HEAD(&replacedlist);
 
 		list_for_each_entry_continue(split, &splitlist, list) {
 			list_for_each_entry(type, &split->nodes, user_list)
-				track_one_var(type);
+				track_type(type);
 		}
 		split = list_entry(split->list.prev, struct split_node, list);
 	} while (!list_empty(&replacedlist));
