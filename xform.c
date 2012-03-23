@@ -1316,7 +1316,14 @@ track_expr(node_t *expr, ind_t *ind)
 		case FUNC:
 			if (try_track_args(expr, parent, ind))
 				break;
-			/* else fall through */
+
+			if (*ind == ind_pointer)
+				--ind;
+			if (*ind == ind_func)
+				--ind;
+			else
+				break;
+			/* fall through */
 		case ADD_ASSIGN:
 		case SUB_ASSIGN:
 			if (is_child(expr, parent, che_arg1))
