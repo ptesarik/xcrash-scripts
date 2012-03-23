@@ -450,20 +450,42 @@ next_dup(node_t *node)
  * Returns 1 if the type was substituted, zero otherwise.
  */
 static int
-subst_target_type(node_t *type, int ind)
+subst_target_type(node_t *type, ind_t *ind)
 {
-	node_t *base = base_type(type);
-	if (base->t.category == type_func)
-		type = first_node(&base->child[cht_type]);
+	while (ind && *ind != ind_stop) {
+		if (*ind == ind_pointer) {
+			if (type->t.category != type_pointer) {
+				ind_warn("pointer not found", ind);
+				return 0;
+			}
+			type = first_node(&type->child[cht_type]);
+		} else if (*ind == ind_func) {
+			if (type->t.category != type_func) {
+				ind_warn("func not found", ind);
+				return 0;
+			}
+			type = first_node(&type->child[cht_type]);
+		} else {
+			assert(ind > 0);
 
-	int i;
-	for (i = 0; i < ind; ++i) {
-		if (type->t.category != type_pointer)
-			break;
-		type = first_node(&type->child[cht_type]);
+			node_t *decl;
+			decl = nth_element(&type->child[cht_param], *ind);
+			if (!decl) {
+				ind_warn("func arg not found", ind);
+				return 0;
+			}
+			assert(decl->type == nt_decl);
+
+			type = first_node(&decl->child[chd_type]);
+			if (&type->list == &decl->child[chd_type]) {
+				type = first_node(&decl->child[chd_var]);
+				assert(&type->list != &decl->child[chd_var]);
+				type = first_node(&type->child[chv_type]);
+				assert(&type->list != &type->child[chv_type]);
+			}
+		}
+		--ind;
 	}
-	if (i < ind)
-		return 0;
 
 	const char *newtype = target_type_name(type);
 	if (newtype) {
@@ -477,7 +499,7 @@ subst_target_type(node_t *type, int ind)
  * The target type is at @ind indirection level.
  */
 static int
-subst_target_var(node_t *firstvar, int ind)
+subst_target_var(node_t *firstvar, ind_t *ind)
 {
 	node_t *var = firstvar;
 	int ret = 0;
@@ -852,7 +874,7 @@ target_facilitators(node_t *node, void *data)
 	if (!var || list_empty(&var->child[chv_type]))
 		return walk_continue;
 
-	subst_target_var(var, 0);
+	subst_target_var(var, NULL);
 
 	return walk_continue;
 }
@@ -1166,12 +1188,12 @@ build_scopes(node_t *node, void *data)
 }
 
 static void
-track_assign(node_t *expr, int ind)
+track_assign(node_t *expr, ind_t *ind)
 {
 	node_t *target = first_node(&expr->child[che_arg1]);
 	while (target->type == nt_expr && target->e.op == '*') {
 		target = first_node(&target->child[che_arg1]);
-		++ind;
+		*(++ind) = ind_pointer;
 	}
 	target = varscope_expr(&target->pf->parsed, target);
 	if (target)
@@ -1179,7 +1201,7 @@ track_assign(node_t *expr, int ind)
 }
 
 static void
-track_return(node_t *node, int ind)
+track_return(node_t *node, ind_t *ind)
 {
 	node_t *fn;
 	while ((fn = node->parent) &&
@@ -1188,6 +1210,7 @@ track_return(node_t *node, int ind)
 		node = fn;
 	if (fn) {
 		node_t *var = first_node(&fn->child[chd_var]);
+		*(++ind) = ind_func;
 		subst_target_var(var, ind);
 
 		/* Find all forward declarations (if any) */
@@ -1197,7 +1220,7 @@ track_return(node_t *node, int ind)
 }
 
 static int
-try_track_args(node_t *arg, node_t *fn, int ind)
+try_track_args(node_t *arg, node_t *fn, ind_t *ind)
 {
 	int pos = child_order(arg, fn, che_arg2);
 	if (!pos)
@@ -1228,7 +1251,7 @@ try_track_args(node_t *arg, node_t *fn, int ind)
 
 /* Track uses of @expr with indirection level @ind. */
 static void
-track_expr(node_t *expr, int ind)
+track_expr(node_t *expr, ind_t *ind)
 {
 	node_t *parent = expr->parent;
 
@@ -1261,7 +1284,10 @@ track_expr(node_t *expr, int ind)
 			break;
 
 		case '*':
-			track_expr(parent, ind - 1);
+			if (*ind == ind_pointer)
+				track_expr(parent, ind - 1);
+			else
+				ind_warn("expected pointer", ind);
 			break;
 
 		case '=':
@@ -1282,28 +1308,68 @@ track_expr(node_t *expr, int ind)
 	}
 }
 
+/* Track all uses of variable @var */
 static void
-track_type(node_t *type)
+track_var_usage(node_t *var, ind_t *ind)
 {
-	node_t *var = type->parent;
-	int ind = 0;
-	if (var->type == nt_type) {
-		while (is_pointer(var)) {
-			var = var->parent;
-			++ind;
-		}
-		if (is_function(var)) {
-			do {
-				var = var->parent;
-			} while (is_pointer(var));
-		}
-	}
-	if (!var || var->type != nt_var || !var->user_list.next)
-		return;
+	assert(var->type == nt_var);
 
 	node_t *node;
 	list_for_each_entry(node, &var->user_list, user_list)
 		track_expr(node, ind);
+}
+
+/* Check whether @node is a function argument.
+ * If so, add the argument index to @ind and return the function type.
+ * If not, return NULL.
+ */
+static inline node_t *
+check_func_arg(node_t *node, ind_t *ind)
+{
+	if (!node || node->type != nt_decl)
+		return NULL;
+
+	node_t *parent = node->parent;
+	if (!is_function(parent))
+		return NULL;
+
+	int argidx = child_order(node, parent, cht_param);
+	if (!argidx)
+		return NULL;
+
+	*ind = argidx;
+	return parent;
+}
+
+/* Track one instance of the @type object. All containing variables
+ * are tracked appropriately.
+ */
+static void
+track_type(node_t *type)
+{
+	ind_t ind[32];		/* Arbitrarily chosen constant... */
+	int idx = 0;
+
+	ind[idx] = ind_stop;
+	do {
+		node_t *parent;
+		while ((parent = type->parent)->type == nt_type) {
+			if (parent->t.category == type_pointer)
+				ind[++idx] = ind_pointer;
+			else if (parent->t.category == type_func)
+				ind[++idx] = ind_func;
+			else
+				assert(0);
+
+			type = parent;
+		}
+
+		if (parent->type == nt_var && parent->user_list.next) {
+			track_var_usage(parent, ind + idx);
+			type = parent->parent;
+		} else
+			type = parent;
+	} while ((type = check_func_arg(type, &ind[++idx])) != NULL);
 }
 
 static void

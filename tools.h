@@ -58,6 +58,29 @@ static inline int is_child(node_t *child, node_t *parent, int idx)
 	return child_order(child, parent, idx) > 0;
 }
 
+/* Type indirection
+ *
+ * Positive numbers denote the position of a function argument.
+ * Negative numbers have special meanings.
+ */
+typedef char ind_t;
+enum ind {
+	ind_stop = 0,		/* End-of-array marker */
+	ind_pointer = -1,	/* Pointer to a type */
+	ind_func = -2		/* Function returning type */
+};
+
+#ifdef NDEBUG
+# define ind_warn(msg,ind)	do {} while(0)
+#else
+static inline void
+ind_warn(char *msg, ind_t *ind)
+{
+	fprintf(stderr, "Indirection WARNING: Got %d, %s\n",
+		*ind, msg);
+}
+#endif	/* NDEBUG */
+
 /* Split nodes */
 struct split_node {
 	struct list_head list;
