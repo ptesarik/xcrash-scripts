@@ -450,7 +450,7 @@ next_dup(node_t *node)
  * Returns 1 if the type was substituted, zero otherwise.
  */
 static int
-subst_target_type(node_t *type, ind_t *ind)
+subst_target_type(node_t *type, const ind_t *ind)
 {
 	while (ind && *ind != ind_stop) {
 		if (*ind == ind_pointer) {
@@ -499,7 +499,7 @@ subst_target_type(node_t *type, ind_t *ind)
  * The target type is at @ind indirection level.
  */
 static int
-subst_target_var(node_t *firstvar, ind_t *ind)
+subst_target_var(node_t *firstvar, const ind_t *ind)
 {
 	node_t *var = firstvar;
 	int ret = 0;

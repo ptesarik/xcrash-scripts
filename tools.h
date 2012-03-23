@@ -74,7 +74,7 @@ enum ind {
 # define ind_warn(msg,ind)	do {} while(0)
 #else
 static inline void
-ind_warn(char *msg, ind_t *ind)
+ind_warn(const char *msg, const ind_t *ind)
 {
 	fprintf(stderr, "Indirection WARNING: Got %d, %s\n",
 		*ind, msg);
