@@ -1226,6 +1226,19 @@ track_assign(node_t *expr, ind_t *ind)
 }
 
 static void
+track_assign2(node_t *expr, ind_t *ind)
+{
+	node_t *target = first_node(&expr->child[che_arg2]);
+	while (target->type == nt_expr && target->e.op == '*') {
+		target = first_node(&target->child[che_arg1]);
+		*(++ind) = ind_pointer;
+	}
+	target = varscope_expr(&target->pf->parsed, target);
+	if (target)
+		subst_target_var(target, ind);
+}
+
+static void
 track_return(node_t *node, ind_t *ind)
 {
 	node_t *fn;
@@ -1324,10 +1337,12 @@ track_expr(node_t *expr, ind_t *ind)
 			break;
 
 		case '=':
-			if (is_child(expr, parent, che_arg2)) {
+			if (is_child(expr, parent, che_arg2))
 				track_assign(parent, ind);
-				track_expr(parent, ind);
-			}
+			else if (*ind == ind_pointer &&
+				 (ind[-1] > 0 || ind[-1] == ind_func))
+				track_assign2(parent, ind);
+			track_expr(parent, ind);
 			break;
 
 		case RETURN:
