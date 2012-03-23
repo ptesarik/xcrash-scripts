@@ -505,12 +505,17 @@ subst_target_type(node_t *type, const ind_t *ind)
 static int
 subst_target_var(node_t *firstvar, const ind_t *ind)
 {
-	node_t *var = firstvar;
 	int ret = 0;
 	do {
-		node_t *type = first_node(&var->child[chv_type]);
-		ret += subst_target_type(type, ind);
-	} while ((var = next_dup(var)) != firstvar);
+		node_t *var = firstvar;
+		do {
+			node_t *type = first_node(&var->child[chv_type]);
+			ret += subst_target_type(type, ind);
+		} while ((var = next_dup(var)) != firstvar);
+
+		/* Find other declarations, too */
+		firstvar = varscope_find_next(firstvar);
+	} while (firstvar);
 	return ret;
 }
 
@@ -1251,10 +1256,6 @@ track_return(node_t *node, ind_t *ind)
 		node_t *var = first_node(&fn->child[chd_var]);
 		*(++ind) = ind_func;
 		subst_target_var(var, ind);
-
-		/* Find all forward declarations (if any) */
-		while ( (var = varscope_find_next(var)) )
-			subst_target_var(var, ind);
 	}
 }
 
