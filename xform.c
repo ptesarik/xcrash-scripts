@@ -452,6 +452,10 @@ next_dup(node_t *node)
 static int
 subst_target_type(node_t *type, const ind_t *ind)
 {
+	if (*ind == ind_pointer && (type->t.category == type_func ||
+				    type->t.category == type_array))
+		--ind;
+
 	while (*ind != ind_stop) {
 		if (*ind == ind_pointer) {
 			if (type->t.category != type_pointer) {
@@ -505,10 +509,6 @@ subst_target_var(node_t *firstvar, const ind_t *ind)
 	int ret = 0;
 	do {
 		node_t *type = first_node(&var->child[chv_type]);
-		if (*ind == ind_pointer &&
-		    (type->t.category == type_func ||
-		     type->t.category == type_array))
-			--ind;
 		ret += subst_target_type(type, ind);
 	} while ((var = next_dup(var)) != firstvar);
 	return ret;
