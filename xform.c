@@ -1174,6 +1174,27 @@ use_ia64_fpreg_t(node_t *node, void *data)
  *
  */
 
+/* Return non-zero if @expr is implicitly treated as a pointer
+ * expression, i.e. if it is a function or array identifier.
+ */
+static int
+expr_implicit_ptr(node_t *expr)
+{
+	if (expr->e.op != ID)
+		return 0;
+
+	node_t *var = varscope_find(&expr->pf->parsed, expr, nt_var);
+	if (!var)
+		return 0;
+
+	node_t *type = first_node(&var->child[chv_type]);
+	if (&type->list == &var->child[chv_type])
+		return 0;
+
+	return (type->t.category == type_func ||
+		type->t.category == type_array);
+}
+
 static enum walk_action
 build_scopes(node_t *node, void *data)
 {
@@ -1266,6 +1287,14 @@ track_expr(node_t *expr, ind_t *ind)
 	case nt_expr:
 		switch (parent->e.op) {
 
+		case '&':
+			if (!list_empty(&parent->child[che_arg2]))
+				/* This is the binary '&' operator */
+				break;
+
+			if (!expr_implicit_ptr(expr))
+				*(++ind) = ind_pointer;
+			/* fall through */
 		case '+':
 		case '-':
 		case INC_OP:
