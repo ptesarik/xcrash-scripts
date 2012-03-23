@@ -452,7 +452,7 @@ next_dup(node_t *node)
 static int
 subst_target_type(node_t *type, const ind_t *ind)
 {
-	while (ind && *ind != ind_stop) {
+	while (*ind != ind_stop) {
 		if (*ind == ind_pointer) {
 			if (type->t.category != type_pointer) {
 				ind_warn("pointer not found", ind);
@@ -857,6 +857,7 @@ find_assign(node_t *node)
 static enum walk_action
 target_facilitators(node_t *node, void *data)
 {
+	static const ind_t no_ind = ind_stop;
 	struct parsed_file *pf = data;
 
 	if (!is_direct_call(node, "INT")
@@ -878,7 +879,7 @@ target_facilitators(node_t *node, void *data)
 	if (!var || list_empty(&var->child[chv_type]))
 		return walk_continue;
 
-	subst_target_var(var, NULL);
+	subst_target_var(var, &no_ind);
 
 	return walk_continue;
 }
