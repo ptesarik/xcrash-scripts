@@ -117,14 +117,6 @@ is_struct(node_t *node, const char *name)
 		node->str && !strcmp(node->str->text, name));
 }
 
-/* Returns non-zero if @node is a pointer type. */
-static int
-is_pointer(node_t *node)
-{
-	return node && node->type == nt_type &&
-		node->t.category == type_pointer;
-}
-
 /* Returns non-zero if @node is a function type. */
 static int
 is_function(node_t *node)
