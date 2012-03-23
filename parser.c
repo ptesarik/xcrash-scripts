@@ -60,7 +60,6 @@ static const char *predef_types[] = {
 	"socklen_t",
 	"ssize_t",
 	"stab_type_t",		/* in a !REDHAT #define */
-	"symbol_info",
 	"time_t",
 	"u_long",		/* BSD type used in vas_* */
 	"uLong",		/* from zlib.h */
@@ -83,7 +82,19 @@ static const char *predef_types[] = {
 	NULL,
 };
 
-static const char builtin_file[] = "";
+static const char builtin_file[] =
+	/* symbol_info: */
+"typedef struct _symbol_info\n"
+"{\n"
+"  unsigned long value;\n"
+"  char type;\n"
+"  const char *name;\n"
+"  unsigned char stab_type;\n"
+"  char stab_other;\n"
+"  short stab_desc;\n"
+"  const char *stab_name;\n"
+"} symbol_info;\n"
+;
 
 static LIST_HEAD(files);
 
