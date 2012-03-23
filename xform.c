@@ -1363,6 +1363,8 @@ track_type(node_t *type)
 
 			type = parent;
 		}
+		if (ind[idx] > 0 || ind[idx] == ind_func)
+			ind[++idx] = ind_pointer;
 
 		if (parent->type == nt_var && parent->user_list.next) {
 			track_var_usage(parent, ind + idx);
