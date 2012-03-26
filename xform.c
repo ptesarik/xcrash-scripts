@@ -1216,6 +1216,30 @@ build_scopes(node_t *node, void *data)
 	return walk_continue;
 }
 
+/* Check whether the result of an arithmetic operation on @expr (which
+ * is known to be a target type) is still a target type.
+ */
+static int
+is_target_arith(node_t *expr, node_t *parent)
+{
+	node_t *sibling;
+
+	if (is_child(expr, parent, che_arg1))
+		sibling = first_node(&parent->child[che_arg2]);
+	else
+		sibling = first_node(&parent->child[che_arg1]);
+
+	node_t *var = varscope_expr(&sibling->pf->parsed, sibling);
+	if (!var)
+		return 0;
+
+	node_t *type = first_node(&var->child[chv_type]);
+	if (type->t.category == type_pointer)
+		return 0;
+
+	return 1;
+}
+
 static void
 track_assign(node_t *expr, ind_t *ind)
 {
@@ -1315,11 +1339,20 @@ track_expr(node_t *expr, ind_t *ind)
 			if (!expr_implicit_ptr(expr))
 				*(++ind) = ind_pointer;
 			/* fall through */
-		case '+':
-		case '-':
 		case INC_OP:
 		case DEC_OP:
 			track_expr(parent, ind);
+			break;
+
+		case ADD_ASSIGN:
+		case SUB_ASSIGN:
+			if (!is_child(expr, parent, che_arg1))
+				break;
+			/* else fall through */
+		case '+':
+		case '-':
+			if (is_target_arith(expr, parent))
+				track_expr(parent, ind);
 			break;
 
 		case FUNC:
@@ -1328,15 +1361,11 @@ track_expr(node_t *expr, ind_t *ind)
 
 			if (*ind == ind_pointer)
 				--ind;
-			if (*ind == ind_func)
+			if (*ind == ind_func &&
+			    is_child(expr, parent, che_arg1)) {
 				--ind;
-			else
-				break;
-			/* fall through */
-		case ADD_ASSIGN:
-		case SUB_ASSIGN:
-			if (is_child(expr, parent, che_arg1))
 				track_expr(parent, ind);
+			}
 			break;
 
 		case '*':
