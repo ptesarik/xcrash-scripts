@@ -224,3 +224,50 @@ varscope_expr(struct list_head *tree, node_t *expr)
 		return NULL;
 	}
 }
+
+node_t *
+varscope_type(struct list_head *tree, node_t *scope, const char *name)
+{
+	char localname[strlen(name) + 1];
+	char *spec, *dot;
+	node_t *node;
+
+	spec = localname;
+	strcpy(spec, name);
+
+	if ( (dot = strchr(spec, '.')) )
+		*dot = 0;
+
+	if (! (node = do_find(tree, scope, nt_type, spec)) ) {
+		if (! (node = do_find(tree, scope, nt_var, spec)) )
+			return NULL;
+		if (list_empty(&node->child[chv_type]))
+			return NULL; /* unspecified type */
+		node = first_node(&node->child[chv_type]);
+	}
+
+	if (! (node = resolve_typedef(tree, node)) )
+		return NULL;
+
+	while (dot && dot[1]) {
+		spec = dot + 1;
+		if ( (dot = strchr(spec, '.')) )
+			*dot = 0;
+
+		scope = node;
+		assert(scope->type == nt_type);
+		if (scope->t.category != type_struct &&
+		    scope->t.category != type_union &&
+		    scope->t.category != type_enum)
+			return NULL;
+
+		node = do_find_one(&scope->child[cht_body], nt_var, spec);
+		if (!node)
+			return NULL;
+		if (list_empty(&node->child[chv_type]))
+			return NULL; /* unspecified type */
+		node = first_node(&node->child[chv_type]);
+	}
+
+	return node;
+}

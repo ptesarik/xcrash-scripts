@@ -12,4 +12,6 @@ void free_varscope(void);
 
 node_t *varscope_expr(struct list_head *tree, node_t *expr);
 
+node_t *varscope_type(struct list_head *tree, node_t *scope, const char *name);
+
 #endif	/* VARSCOPE_H */
