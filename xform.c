@@ -1340,6 +1340,10 @@ track_expr(node_t *expr, ind_t *ind)
 			break;
 
 		case '*':
+			if (!list_empty(&parent->child[che_arg2]))
+				/* This is the binary '*' operator */
+				break;
+
 			if (*ind == ind_pointer)
 				track_expr(parent, ind - 1);
 			else
