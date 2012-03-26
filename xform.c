@@ -1265,6 +1265,9 @@ try_track_args(node_t *arg, node_t *fn, ind_t *ind)
 		if (!type)
 			continue;
 
+		if (type->t.category == type_pointer)
+			type = first_node(&type->child[cht_type]);
+
 		node_t *argdecl = nth_element(&type->child[cht_param], pos);
 		if (!argdecl)
 			continue;
