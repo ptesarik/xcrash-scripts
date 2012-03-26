@@ -159,6 +159,12 @@ flatten_type(node_t *type, node_t *base)
 		list_splice_init(&type->child[cht_type], &type->list);
 
 		child->parent = type->parent;
+		if (type->first_text == child->first_text) {
+			struct dynstr *newfirst =
+				next_dynstr(child->last_text);
+			list_move(&type->first_list, &newfirst->node_first);
+			type->first_text = newfirst;
+		}
 		delete_node(type);
 		type = child;
 	}
