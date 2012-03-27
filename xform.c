@@ -445,17 +445,10 @@ next_dup(node_t *node)
 	return list_entry(node->dup_list.next, node_t, dup_list);
 }
 
-/* Substitute @type with a target type (if applicable)
- * The target type is at @ind indirection level.
- * Returns 1 if the type was substituted, zero otherwise.
- */
-static int
-subst_target_type(node_t *type, const ind_t *ind)
+/* Return the base type of @type according to the instructions in @ind */
+static node_t *
+ind_base_type(node_t *type, const ind_t *ind)
 {
-	if (*ind == ind_pointer && (type->t.category == type_func ||
-				    type->t.category == type_array))
-		--ind;
-
 	while (*ind != ind_stop) {
 		if (*ind == ind_pointer) {
 			if (type->t.category != type_pointer) {
@@ -490,6 +483,22 @@ subst_target_type(node_t *type, const ind_t *ind)
 		}
 		--ind;
 	}
+
+	return type;
+}
+
+/* Substitute @type with a target type (if applicable)
+ * The target type is at @ind indirection level.
+ * Returns 1 if the type was substituted, zero otherwise.
+ */
+static int
+subst_target_type(node_t *type, const ind_t *ind)
+{
+	if (*ind == ind_pointer && (type->t.category == type_func ||
+				    type->t.category == type_array))
+		--ind;
+
+	type = ind_base_type(type, ind);
 
 	const char *newtype = target_type_name(type);
 	if (newtype) {
