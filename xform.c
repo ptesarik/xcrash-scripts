@@ -507,8 +507,9 @@ subst_target_var(node_t *firstvar, const ind_t *ind)
 	do {
 		node_t *var = firstvar;
 		do {
-			node_t *type = first_node(&var->child[chv_type]);
-			ret += subst_target_type(type, ind);
+			node_t *type = nth_element(&var->child[chv_type], 1);
+			if (type)
+				ret += subst_target_type(type, ind);
 		} while ((var = next_dup(var)) != firstvar);
 
 		/* Find other declarations, too */
