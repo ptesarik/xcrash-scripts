@@ -847,45 +847,30 @@ target_types_readmem(node_t *node, void *data)
 	return walk_continue;
 }
 
-static node_t *
-find_assign(node_t *node)
-{
-	while (node && node->type == nt_expr) {
-		node = node->parent;
-		if (node->e.op == '=')
-			return node;
-	}
-	return NULL;
-}
-
 static enum walk_action
 target_facilitators(node_t *node, void *data)
 {
-	static const ind_t no_ind = ind_stop;
-	struct parsed_file *pf = data;
+	static const char * const namelist[] = {
+		"INT", "UINT", "LONG", "ULONG",
+		"ULONGLONG", "ULONG_PTR", "USHORT", "SHORT",
+		NULL
+	};
+	const char *const *name;
+	struct parsed_file *pf = node->pf;
 
-	if (!is_direct_call(node, "INT")
-	    && !is_direct_call(node, "UINT")
-	    && !is_direct_call(node, "LONG")
-	    && !is_direct_call(node, "ULONG")
-	    && !is_direct_call(node, "ULONGLONG")
-	    && !is_direct_call(node, "ULONG_PTR")
-	    && !is_direct_call(node, "USHORT")
-	    && !is_direct_call(node, "SHORT"))
-		return walk_continue;
+	/* Ignore everything except the built-in file */
+	if (pf->name)
+		return walk_terminate;
 
-	node_t *assign;
-	if (! (assign = find_assign(node)))
-		return walk_continue;
+	for (name = namelist; *name; ++name) {
+		node_t *type = varscope_type(&pf->parsed, NULL, *name);
+		if (type)
+			list_add_tail(&type->user_list, &replacedlist);
+		else
+			fprintf(stderr, "ERROR: Cannot find %s\n", *name);
+	}
 
-	node_t *var = varscope_expr(&pf->parsed,
-				    first_node(&assign->child[che_arg1]));
-	if (!var || list_empty(&var->child[chv_type]))
-		return walk_continue;
-
-	subst_target_var(var, &no_ind);
-
-	return walk_continue;
+	return walk_terminate;
 }
 
 /************************************************************
