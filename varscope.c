@@ -169,10 +169,48 @@ resolve_typedef(struct list_head *tree, node_t *type)
 	return type;
 }
 
+static node_t *
+expr_type(struct list_head *tree, node_t *expr)
+{
+	node_t *var, *type;
+
+	assert(expr->type == nt_expr);
+	if (expr->e.op == ARRAY) {
+		/* Find the array/pointer variable */
+		var = first_node(&expr->child[che_arg1]);
+		if (! (var = varscope_expr(tree, var)) )
+			return NULL;
+		assert(var->type == nt_var);
+
+		/* Convert it to a type */
+		if (list_empty(&var->child[chv_type]))
+			return NULL; /* unspecified type */
+		type = first_node(&var->child[chv_type]);
+		assert(type->type == nt_type);
+
+		/* Get the base type */
+		assert(type->t.category == type_array ||
+		       type->t.category == type_pointer);
+		return !list_empty(&type->child[cht_type])
+			? first_node(&type->child[cht_type])
+			: NULL;	/* unspecified type */
+	} else {
+		/* Find the variable */
+		if (! (var = varscope_expr(tree, expr)) )
+			return NULL;
+		assert(var->type == nt_var);
+
+		/* Convert it to a type */
+		return !list_empty(&var->child[chv_type])
+			? first_node(&var->child[chv_type])
+			: NULL;	/* unspecified type */
+	}
+}
+
 node_t *
 varscope_expr(struct list_head *tree, node_t *expr)
 {
-	node_t *left, *right;
+	node_t *left, *right, *type;
 
 	if (expr->type != nt_expr)
 		return NULL;
@@ -183,16 +221,12 @@ varscope_expr(struct list_head *tree, node_t *expr)
 
 	case '.':
 	case PTR_OP:
-		/* Find the left-side variable */
+		/* Find the type of the left side */
+		if (list_empty(&expr->child[che_arg1]))
+			return NULL; /* named struct member initializers */
 		left = first_node(&expr->child[che_arg1]);
-		if (! (left = varscope_expr(tree, left)) )
+		if (! (type = expr_type(tree, left)) )
 			return NULL;
-		assert(left->type == nt_var);
-
-		/* Convert it to a type */
-		if (list_empty(&left->child[chv_type]))
-			return NULL; /* unspecified type */
-		node_t *type = first_node(&left->child[chv_type]);
 		assert(type->type == nt_type);
 
 		/* Take the base type of a pointer for "->" */
