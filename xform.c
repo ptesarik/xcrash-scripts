@@ -7,6 +7,8 @@
 #include "varscope.h"
 #include "clang.tab.h"
 
+#define MAXIND	32		/* Arbitrarily chosen constant... */
+
 static int uptodate;
 static const char *basedir;
 
@@ -1428,7 +1430,7 @@ check_func_arg(node_t *node, ind_t *ind)
 static void
 track_type(node_t *type)
 {
-	ind_t ind[32];		/* Arbitrarily chosen constant... */
+	ind_t ind[MAXIND];
 	int idx = 0;
 
 	ind[idx] = ind_stop;
