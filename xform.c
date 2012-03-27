@@ -1319,6 +1319,8 @@ try_track_args(node_t *arg, node_t *fn, ind_t *ind)
 static void
 track_expr(node_t *expr, ind_t *ind)
 {
+	ind_t saveind[2];
+	int saveidx = 0;
 	node_t *parent = expr->parent;
 
 	assert(expr->type == nt_expr);
@@ -1361,12 +1363,14 @@ track_expr(node_t *expr, ind_t *ind)
 				break;
 
 			if (*ind == ind_pointer)
-				--ind;
+				saveind[saveidx++] = *ind--;
 			if (*ind == ind_func &&
 			    is_child(expr, parent, che_arg1)) {
-				--ind;
+				saveind[saveidx++] = *ind--;
 				track_expr(parent, ind);
 			}
+			while (saveidx)
+				*++ind = saveind[--saveidx];
 			break;
 
 		case '*':
