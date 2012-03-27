@@ -1432,6 +1432,9 @@ track_type(node_t *type)
 	int idx = 0;
 
 	ind[idx] = ind_stop;
+	if (type->t.category == type_func)
+		ind[++idx] = ind_func;
+
 	do {
 		node_t *parent;
 		while ((parent = type->parent)->type == nt_type) {
