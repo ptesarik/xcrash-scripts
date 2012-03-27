@@ -461,7 +461,7 @@ subst_target_type(node_t *type, const ind_t *ind)
 				return 0;
 			}
 			type = first_node(&type->child[cht_type]);
-		} else if (*ind == ind_func) {
+		} else if (*ind == ind_return) {
 			if (type->t.category != type_func) {
 				ind_warn("func not found", ind);
 				return 0;
@@ -1262,7 +1262,7 @@ track_return(node_t *node, ind_t *ind)
 		node = fn;
 	if (fn) {
 		node_t *var = first_node(&fn->child[chd_var]);
-		*(++ind) = ind_func;
+		*(++ind) = ind_return;
 		subst_target_var(var, ind);
 	}
 }
@@ -1349,7 +1349,7 @@ track_expr(node_t *expr, ind_t *ind)
 
 			if (*ind == ind_pointer)
 				saveind[saveidx++] = *ind--;
-			if (*ind == ind_func &&
+			if (*ind == ind_return &&
 			    is_child(expr, parent, che_arg1)) {
 				saveind[saveidx++] = *ind--;
 				track_expr(parent, ind);
@@ -1373,7 +1373,7 @@ track_expr(node_t *expr, ind_t *ind)
 			if (is_child(expr, parent, che_arg2))
 				track_assign(parent, ind);
 			else if (*ind == ind_pointer &&
-				 (ind[-1] > 0 || ind[-1] == ind_func))
+				 (ind[-1] > 0 || ind[-1] == ind_return))
 				track_assign2(parent, ind);
 			track_expr(parent, ind);
 			break;
@@ -1433,7 +1433,7 @@ track_type(node_t *type)
 
 	ind[idx] = ind_stop;
 	if (type->t.category == type_func)
-		ind[++idx] = ind_func;
+		ind[++idx] = ind_return;
 
 	do {
 		node_t *parent;
@@ -1441,13 +1441,13 @@ track_type(node_t *type)
 			if (parent->t.category == type_pointer)
 				ind[++idx] = ind_pointer;
 			else if (parent->t.category == type_func)
-				ind[++idx] = ind_func;
+				ind[++idx] = ind_return;
 			else
 				assert(0);
 
 			type = parent;
 		}
-		if (ind[idx] > 0 || ind[idx] == ind_func)
+		if (ind[idx] > 0 || ind[idx] == ind_return)
 			ind[++idx] = ind_pointer;
 
 		if (parent->type == nt_var && parent->user_list.next) {

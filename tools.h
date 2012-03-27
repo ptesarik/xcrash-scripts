@@ -67,7 +67,7 @@ typedef char ind_t;
 enum ind {
 	ind_stop = 0,		/* End-of-array marker */
 	ind_pointer = -1,	/* Pointer to a type */
-	ind_func = -2		/* Function returning type */
+	ind_return = -2		/* Function return type */
 };
 
 #ifdef NDEBUG
