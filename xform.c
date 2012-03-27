@@ -1213,12 +1213,118 @@ build_scopes(node_t *node, void *data)
 	return walk_continue;
 }
 
+/* Check whether @expr refers to host-specific data */
+static int
+is_host_type(node_t *expr, ind_t *ind)
+{
+	node_t *child, *var, *type;
+
+	switch (expr->e.op) {
+	case INT_CONST:
+	case FLOAT_CONST:
+	case CHAR_CONST:
+		return 0;
+
+	case STRING_CONST:
+		return 1;
+
+	case '&':
+	case '*':
+		child = first_node(&expr->child[che_arg1]);
+		if (list_empty(&expr->child[che_arg2])) {
+			if (expr->e.op == '*')
+				*++ind = ind_pointer;
+			else if (*ind != ind_pointer)
+				return 1;
+			else
+				--ind;
+		}
+		return is_host_type(child, ind);
+
+	case '/':
+	case '|':
+	case '^':
+	case SHL_OP:
+	case SHR_OP:
+	case ARRAY:
+		child = first_node(&expr->child[che_arg1]);
+		return is_host_type(child, ind);
+
+	case '+':
+	case '-':
+		child = nth_element(&expr->child[che_arg1], 1);
+		if (child && is_host_type(child, ind))
+			return 1;
+
+		child = nth_element(&expr->child[che_arg2], 1);
+		if (child && is_host_type(child, ind))
+			return 1;
+		return 0;
+
+	case '?':
+		child = nth_element(&expr->child[che_arg3], 1);
+		if (child && is_host_type(child, ind))
+			return 1;
+
+		child = nth_element(&expr->child[che_arg2], 1);
+		if (child && is_host_type(child, ind))
+			return 1;
+		return 0;
+
+	case SIZEOF_TYPE:
+	case SIZEOF:
+		return 0;
+
+	case ID:
+	case '.':
+	case PTR_OP:
+		if (! (var = varscope_expr(&expr->pf->parsed, expr)) )
+			return 1;
+		type = first_node(&var->child[chv_type]);
+		break;
+
+	case TYPECAST:
+		type = first_node(&expr->child[che_arg1]);
+		break;
+
+	case FUNC:
+		child = first_node(&expr->child[che_arg1]);
+		if (! (var = varscope_expr(&child->pf->parsed, child)) )
+			/* Standard function prototypes are not part of
+			 * the parse tree, but they cannot be changed
+			 * anyway, so treat them as host-specific. */
+			return 1;
+
+		type = first_node(&var->child[chv_type]);
+		assert(type->t.category == type_func);
+
+		/* Macros have no return type => be pessimistic */
+		if (! (type = nth_element(&var->child[chv_type], 1)) )
+			return 1;
+
+		break;
+
+	default:
+		fprintf(stderr, "%s: Operator %d not yet handled\n",
+			__FUNCTION__, expr->e.op);
+		return 1;	/* be pessimistic */
+	}
+
+	type = ind_base_type(type, ind);
+
+	if (type->t.category == type_pointer)
+		return 1;
+
+	return 0;
+}
+
 /* Check whether the result of an arithmetic operation on @expr (which
  * is known to be a target type) is still a target type.
  */
 static int
 is_target_arith(node_t *expr, node_t *parent)
 {
+	ind_t ind[MAXIND];
 	node_t *sibling;
 
 	if (is_child(expr, parent, che_arg1))
@@ -1226,15 +1332,8 @@ is_target_arith(node_t *expr, node_t *parent)
 	else
 		sibling = first_node(&parent->child[che_arg1]);
 
-	node_t *var = varscope_expr(&sibling->pf->parsed, sibling);
-	if (!var)
-		return 0;
-
-	node_t *type = first_node(&var->child[chv_type]);
-	if (type->t.category == type_pointer)
-		return 0;
-
-	return 1;
+	ind[0] = ind_stop;
+	return !is_host_type(sibling, ind);
 }
 
 static void
