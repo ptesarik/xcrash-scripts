@@ -500,10 +500,12 @@ subst_target_type(node_t *type, const ind_t *ind)
 
 	type = ind_base_type(type, ind);
 
-	const char *newtype = target_type_name(type);
-	if (newtype) {
-		replace_type(type, newtype);
-		return 1;
+	if (type->pf->name) {
+		const char *newtype = target_type_name(type);
+		if (newtype) {
+			replace_type(type, newtype);
+			return 1;
+		}
 	}
 
 	if (!type->user_list.next)
@@ -677,7 +679,8 @@ target_types(const char *patchname, struct list_head *filelist, void *data)
 		walk_tree(&pf->parsed, find_gdb_print_options, pf);
 	}
 	list_for_each_entry(pf, filelist, list)
-		walk_tree(&pf->parsed, target_types_fn, pf);
+		if (pf->name)
+			walk_tree(&pf->parsed, target_types_fn, pf);
 	return quilt_new(patchname, filelist);
 }
 
