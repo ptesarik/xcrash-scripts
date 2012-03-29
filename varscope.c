@@ -26,10 +26,12 @@ mkhash(const char *name)
 	return ret % HASH_SIZE;
 }
 
-struct list_head *
-find_var_scope(struct list_head *tree, node_t *node)
+static struct list_head *
+find_var_scope(node_t *node)
 {
-	struct list_head *scope = find_scope(tree, node);
+	struct parsed_file *pf = node->pf;
+	struct list_head *tree = &pf->parsed;
+	struct list_head *scope = find_scope(node);
 	if (scope == tree) {
 		if (node->type == nt_var) {
 			node_t *type = first_node(&node->child[chv_type]);
@@ -42,9 +44,9 @@ find_var_scope(struct list_head *tree, node_t *node)
 }
 
 void
-varscope_add(struct list_head *tree, node_t *node)
+varscope_add(node_t *node)
 {
-	struct list_head *scope = find_var_scope(tree, node);
+	struct list_head *scope = find_var_scope(node);
 	struct varscope *vs = malloc(sizeof(struct varscope));
 	unsigned idx = mkhash(node->str->text);
 
@@ -69,14 +71,13 @@ do_find_one(struct list_head *scope,
 }
 
 static node_t *
-do_find(struct list_head *tree, node_t *scopenode,
-	enum node_type type, const char *idname)
+do_find(node_t *scopenode, enum node_type type, const char *idname)
 {
 	node_t *ret;
 	struct list_head *scope;
 	do {
 		if (scopenode) {
-			scope = find_scope(tree, scopenode);
+			scope = find_scope(scopenode);
 			scopenode = first_node(scope)->parent;
 		} else
 			scope = NULL;
@@ -88,9 +89,9 @@ do_find(struct list_head *tree, node_t *scopenode,
 }
 
 node_t *
-varscope_find(struct list_head *tree, node_t *node, enum node_type type)
+varscope_find(node_t *node, enum node_type type)
 {
-	return do_find(tree, node, type, node->str->text);
+	return do_find(node, type, node->str->text);
 }
 
 node_t *
@@ -132,16 +133,14 @@ free_varscope(void)
 static enum walk_action
 fill_varscope_fn(node_t *node, void *data)
 {
-	struct parsed_file *pf = data;
-
 	if (node->type == nt_var && node->str)
-		varscope_add(&pf->parsed, node);
+		varscope_add(node);
 	else if (node->type == nt_type && node->str &&
 		 (node->t.category == type_struct ||
 		  node->t.category == type_union ||
 		  node->t.category == type_enum) &&
 		 !list_empty(&node->child[cht_body]))
-		varscope_add(&pf->parsed, node);
+		varscope_add(node);
 
 	return walk_continue;
 }
@@ -152,14 +151,14 @@ fill_varscope(struct list_head *filelist)
 	struct parsed_file *pf;
 	free_varscope();
 	list_for_each_entry(pf, filelist, list)
-		walk_tree(&pf->parsed, fill_varscope_fn, pf);
+		walk_tree(&pf->parsed, fill_varscope_fn, NULL);
 }
 
 node_t *
-resolve_typedef(struct list_head *tree, node_t *type)
+resolve_typedef(node_t *type)
 {
 	while (type->type == nt_type && type->t.category == type_typedef) {
-		node_t *var = do_find(tree, type, nt_var, type->str->text);
+		node_t *var = do_find(type, nt_var, type->str->text);
 		if (!var)
 			return NULL;
 		type = first_node(&var->child[chv_type]);
@@ -170,7 +169,7 @@ resolve_typedef(struct list_head *tree, node_t *type)
 }
 
 static node_t *
-expr_type(struct list_head *tree, node_t *expr)
+expr_type(node_t *expr)
 {
 	node_t *var, *type;
 
@@ -178,7 +177,7 @@ expr_type(struct list_head *tree, node_t *expr)
 	if (expr->e.op == ARRAY) {
 		/* Find the array/pointer variable */
 		var = first_node(&expr->child[che_arg1]);
-		if (! (var = varscope_expr(tree, var)) )
+		if (! (var = varscope_expr(var)) )
 			return NULL;
 		assert(var->type == nt_var);
 
@@ -196,7 +195,7 @@ expr_type(struct list_head *tree, node_t *expr)
 			: NULL;	/* unspecified type */
 	} else {
 		/* Find the variable */
-		if (! (var = varscope_expr(tree, expr)) )
+		if (! (var = varscope_expr(expr)) )
 			return NULL;
 		assert(var->type == nt_var);
 
@@ -208,7 +207,7 @@ expr_type(struct list_head *tree, node_t *expr)
 }
 
 node_t *
-varscope_expr(struct list_head *tree, node_t *expr)
+varscope_expr(node_t *expr)
 {
 	node_t *left, *right, *type;
 
@@ -217,7 +216,7 @@ varscope_expr(struct list_head *tree, node_t *expr)
 
 	switch (expr->e.op) {
 	case ID:
-		return do_find(tree, expr, nt_var, expr->str->text);
+		return do_find(expr, nt_var, expr->str->text);
 
 	case '.':
 	case PTR_OP:
@@ -225,20 +224,20 @@ varscope_expr(struct list_head *tree, node_t *expr)
 		if (list_empty(&expr->child[che_arg1]))
 			return NULL; /* named struct member initializers */
 		left = first_node(&expr->child[che_arg1]);
-		if (! (type = expr_type(tree, left)) )
+		if (! (type = expr_type(left)) )
 			return NULL;
 		assert(type->type == nt_type);
 
 		/* Take the base type of a pointer for "->" */
 		if (expr->e.op == PTR_OP) {
-			if (! (type = resolve_typedef(tree, type)) )
+			if (! (type = resolve_typedef(type)) )
 				return NULL;
 			assert(type->t.category == type_pointer);
 			type = first_node(&type->child[che_arg1]);
 		}
 
 		/* If type is a typedef, find its struct type */
-		if (! (type = resolve_typedef(tree, type)) )
+		if (! (type = resolve_typedef(type)) )
 			return NULL;
 		assert (type->t.category == type_struct ||
 			type->t.category == type_union ||
@@ -246,7 +245,7 @@ varscope_expr(struct list_head *tree, node_t *expr)
 
 		/* If we only got the struct name, get its declaration */
 		if (list_empty(&type->child[cht_body]) &&
-		    ! (type = varscope_find(tree, type, nt_type)) )
+		    ! (type = varscope_find(type, nt_type)) )
 			return NULL;
 
 		/* Now, find the member in the struct */
@@ -260,7 +259,7 @@ varscope_expr(struct list_head *tree, node_t *expr)
 }
 
 node_t *
-varscope_type(struct list_head *tree, node_t *scope, const char *name)
+varscope_type(node_t *scope, const char *name)
 {
 	char localname[strlen(name) + 1];
 	char *spec, *dot;
@@ -272,15 +271,15 @@ varscope_type(struct list_head *tree, node_t *scope, const char *name)
 	if ( (dot = strchr(spec, '.')) )
 		*dot = 0;
 
-	if (! (node = do_find(tree, scope, nt_type, spec)) ) {
-		if (! (node = do_find(tree, scope, nt_var, spec)) )
+	if (! (node = do_find(scope, nt_type, spec)) ) {
+		if (! (node = do_find(scope, nt_var, spec)) )
 			return NULL;
 		if (list_empty(&node->child[chv_type]))
 			return NULL; /* unspecified type */
 		node = first_node(&node->child[chv_type]);
 	}
 
-	if (! (node = resolve_typedef(tree, node)) )
+	if (! (node = resolve_typedef(node)) )
 		return NULL;
 
 	while (dot && dot[1]) {

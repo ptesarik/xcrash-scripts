@@ -718,7 +718,6 @@ checkselect(node_t *node, void *data)
 static int
 target_timeval(node_t *node, void *data)
 {
-	struct parsed_file *pf = data;
 	struct list_head *scope;
 
 	if (!is_struct(node, "timeval"))
@@ -728,7 +727,7 @@ target_timeval(node_t *node, void *data)
 		struct varsearch vs;
 		vs.varname = node->parent->str->text;
 		vs.found = NULL;
-		scope = find_scope(&pf->parsed, node);
+		scope = find_scope(node);
 		walk_tree(scope, checkselect, &vs);
 		if (vs.found)
 			return 0;
@@ -757,15 +756,12 @@ static int target_off_t(node_t *node, void *data)
 static enum walk_action
 target_var(node_t *node, void *data)
 {
-	struct parsed_file *pf = data;
-
 	if (node->type != nt_expr)
 		return walk_skip_children;
 
 	node_t *var = (node->e.op == '&')
-		? varscope_expr(&pf->parsed,
-				first_node(&node->child[che_arg1]))
-		: varscope_expr(&pf->parsed, node);
+		? varscope_expr(first_node(&node->child[che_arg1]))
+		: varscope_expr(node);
 	if (!var || list_empty(&var->child[chv_type]))
 		return walk_continue;
 
@@ -881,7 +877,7 @@ target_facilitators(node_t *node, void *data)
 		return walk_terminate;
 
 	for (name = namelist; *name; ++name) {
-		node_t *type = varscope_type(&pf->parsed, NULL, *name);
+		node_t *type = varscope_type(NULL, *name);
 		if (type)
 			list_add_tail(&type->user_list, &replacedlist);
 		else
@@ -1195,7 +1191,7 @@ expr_implicit_ptr(node_t *expr)
 	if (expr->e.op != ID)
 		return 0;
 
-	node_t *var = varscope_find(&expr->pf->parsed, expr, nt_var);
+	node_t *var = varscope_find(expr, nt_var);
 	if (!var)
 		return 0;
 
@@ -1210,7 +1206,7 @@ expr_implicit_ptr(node_t *expr)
 static enum walk_action
 build_scopes(node_t *node, void *data)
 {
-	node_t *var = varscope_expr(&node->pf->parsed, node);
+	node_t *var = varscope_expr(node);
 	if (var) {
 		node->user_data = var;
 		if (!var->user_list.next)
@@ -1285,7 +1281,7 @@ is_host_type(node_t *expr, ind_t *ind)
 	case ID:
 	case '.':
 	case PTR_OP:
-		if (! (var = varscope_expr(&expr->pf->parsed, expr)) )
+		if (! (var = varscope_expr(expr)) )
 			return 1;
 		type = first_node(&var->child[chv_type]);
 		break;
@@ -1296,7 +1292,7 @@ is_host_type(node_t *expr, ind_t *ind)
 
 	case FUNC:
 		child = first_node(&expr->child[che_arg1]);
-		if (! (var = varscope_expr(&child->pf->parsed, child)) )
+		if (! (var = varscope_expr(child)) )
 			/* Standard function prototypes are not part of
 			 * the parse tree, but they cannot be changed
 			 * anyway, so treat them as host-specific. */
@@ -1352,7 +1348,7 @@ track_assign(node_t *expr, ind_t *ind)
 		target = first_node(&target->child[che_arg1]);
 		*(++ind) = ind_pointer;
 	}
-	target = varscope_expr(&target->pf->parsed, target);
+	target = varscope_expr(target);
 	if (target)
 		subst_target_var(target, ind);
 }
@@ -1365,7 +1361,7 @@ track_assign2(node_t *expr, ind_t *ind)
 		target = first_node(&target->child[che_arg1]);
 		*(++ind) = ind_pointer;
 	}
-	target = varscope_expr(&target->pf->parsed, target);
+	target = varscope_expr(target);
 	if (target)
 		subst_target_var(target, ind);
 }
@@ -1392,8 +1388,7 @@ try_track_args(node_t *arg, node_t *fn, ind_t *ind)
 	if (!pos)
 		return 0;
 
-	node_t *var = varscope_expr(&fn->pf->parsed,
-				    first_node(&fn->child[che_arg1]));
+	node_t *var = varscope_expr(first_node(&fn->child[che_arg1]));
 	for ( ; var; var = varscope_find_next(var)) {
 		node_t *type = nth_element(&var->child[chv_type], 1);
 		if (!type)

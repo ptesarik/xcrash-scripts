@@ -266,8 +266,10 @@ child_order(node_t *child, node_t *parent, int idx)
 }
 
 struct list_head *
-find_scope(struct list_head *tree, node_t *node)
+find_scope(node_t *node)
 {
+	struct parsed_file *pf = node->pf;
+	struct list_head *tree = &pf->parsed;
 	node_t *parent;
 	while ( (parent = node->parent) ) {
 		if (parent->type == nt_type &&
