@@ -84,9 +84,10 @@ static const char *predef_types[] = {
 
 static const char builtin_file[] =
 	/* symbol_info: */
+"typedef unsigned long symvalue;\n"
 "typedef struct _symbol_info\n"
 "{\n"
-"  unsigned long value;\n"
+"  symvalue value;\n"
 "  char type;\n"
 "  const char *name;\n"
 "  unsigned char stab_type;\n"
