@@ -1340,7 +1340,8 @@ static void
 track_assign(node_t *expr, ind_t *ind)
 {
 	node_t *target = first_node(&expr->child[che_arg1]);
-	while (target->type == nt_expr && target->e.op == '*') {
+	while (target->type == nt_expr &&
+	       (target->e.op == '*' || target->e.op == ARRAY)) {
 		target = first_node(&target->child[che_arg1]);
 		*(++ind) = ind_pointer;
 	}
