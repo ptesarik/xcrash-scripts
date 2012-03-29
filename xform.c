@@ -505,6 +505,10 @@ subst_target_type(node_t *type, const ind_t *ind)
 		replace_type(type, newtype);
 		return 1;
 	}
+
+	if (!type->user_list.next)
+		list_add_tail(&type->user_list, &replacedlist);
+
 	return 0;
 }
 
