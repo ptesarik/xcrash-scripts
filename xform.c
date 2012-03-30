@@ -78,6 +78,24 @@ remove_text_list_rev(struct dynstr *ds, struct dynstr *keep)
 		}
 }
 
+static void
+replace_node_str(node_t *node, const char *newtext)
+{
+	struct dynstr *oldds = node->str;
+	struct dynstr *newds = newdynstr(newtext, strlen(newtext));
+
+	list_add(&newds->list, &oldds->list);
+	list_add(&newds->cpp_list, &oldds->cpp_list);
+	list_add(&newds->node_first, &oldds->node_first);
+	list_add(&newds->node_last, &oldds->node_last);
+	newds->cpp_cond = oldds->cpp_cond;
+	newds->token = oldds->token;
+
+	set_node_str(node, newds);
+	dynstr_del(oldds);
+	node->pf->clean = 0;
+}
+
 /* Delete the node (and all its children). Also removes the acoompanying
  * dynstr objects.
  */
@@ -750,6 +768,38 @@ static int target_off_t(node_t *node, void *data)
 		replace_type(node, "toff_t");
 
 	return 0;
+}
+
+/************************************************************
+ * Split machspec usage by architecture
+ *
+ */
+static enum walk_action
+arch_machspec(node_t *node, void *data)
+{
+	static const struct {
+		const char *const cond;	   /* CPP condition */
+		const char *const newname; /* Resulting type name */
+	} tbl[] = {
+		{ "ARM", "arm_machine_specific" },
+		{ "X86", "x86_machine_specific" },
+		{ "X86_64", "x86_64_machine_specific" },
+		{ "PPC64", "ppc64_machine_specific" },
+		{ "IA64", "ia64_machine_specific" },
+		{ NULL, NULL }
+	}, *tp;
+
+	if (!is_struct(node, "machine_specific"))
+		return walk_continue;
+
+	node_t *cpp_cond = node->str->cpp_cond;
+	for (tp = tbl; tp->cond; ++tp)
+		if (check_cpp_cond(cpp_cond, tp->cond, NULL, NULL) > 0) {
+			replace_node_str(node, tp->newname);
+			break;
+		}
+
+	return walk_continue;
 }
 
 /************************************************************
@@ -1745,6 +1795,9 @@ static struct xform_desc xforms[] = {
 
 // Prepare for arch-specific machspec
 { "arch-machspec-split-decl.patch", import },
+
+// Give each architecture its own name for machspec
+{ "arch-machspec-split-use.patch", simple, arch_machspec },
 
 // Target types in calls to (try_)get_symbol_data
 { "target-types-symbol_data.patch", type_subst, target_types_symbol_data },
