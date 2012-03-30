@@ -276,7 +276,6 @@ type_split(struct list_head *raw, struct split_node *split)
 {
 	struct dynstr *ds, *point;
 	node_t *type, *ntype, *first;
-	YYLTYPE loc;
 
 	/* First, remove references via a split ->str to get the number
 	 * of references for each dynstr.
@@ -293,14 +292,11 @@ type_split(struct list_head *raw, struct split_node *split)
 		return;
 	}
 
+	/* Get the insertion point */
 	node_t *olddecl = typed_parent(first, nt_decl);
-	parsed_file = olddecl->pf;
-	loc.first_text = loc.last_text = split->newds;
-	node_t *newdecl = newnode(&loc, nt_decl, chd_max);
-
 	point = olddecl->first_text;
-	struct dynstr *indent = dynstr_dup_indent(raw, point, 0);
 
+	/* Create a new dynstr chain */
 	insert_text_list(point, split->newds, split->newds);
 	ds = newdynstr(" ", 1);
 	list_for_each_entry_safe(type, ntype, &split->nodes, user_list) {
@@ -317,14 +313,22 @@ type_split(struct list_head *raw, struct split_node *split)
 
 		freenode(var);
 	}
-
 	ds = newdynstr(";", 1);
 	insert_text_list(point, ds, ds);
-	set_node_last(newdecl, ds);
 
-	insert_text_list(point, indent, indent);
+	/* Create a new parse tree node */
+	node_t *newdecl = dupnode_nochild(olddecl);
+	list_add_tail(&newdecl->list, &olddecl->list);
+	list_del_init(&newdecl->dup_list);
+	set_node_first(newdecl, split->newds);
+	set_node_last(newdecl, ds);
 	newdecl = reparse_node(newdecl, START_DECL);
 
+	/* Restore indentation */
+	ds = dynstr_dup_indent(raw, newdecl->first_text, 0);
+	insert_text_list(point, ds, ds);
+
+	/* Add it to the list of tracked variables */
 	node_t *var;
 	list_for_each_entry(var, &newdecl->child[chd_var], list) {
 		node_t *type = first_node(&var->child[chv_type]);
