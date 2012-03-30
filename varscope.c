@@ -78,8 +78,17 @@ do_find_one(struct list_head *scope,
 	return NULL;
 }
 
+/* do_find - perform a node search
+ *
+ * @tree	tree corresopnding to the file where @idname is used
+ * @scopenode	determines the initial scope - use any node inside the
+ *		desired initial scope, e.g. the variable itself
+ * @type	type of node to search for
+ * @idname	name of the identifier
+ */
 static node_t *
-do_find(node_t *scopenode, enum node_type type, const char *idname)
+do_find(struct list_head *tree, node_t *scopenode,
+	enum node_type type, const char *idname)
 {
 	node_t *ret;
 	struct list_head *scope;
@@ -87,8 +96,10 @@ do_find(node_t *scopenode, enum node_type type, const char *idname)
 		if (scopenode) {
 			scope = find_scope(scopenode);
 			scopenode = first_node(scope)->parent;
-		} else
-			scope = NULL;
+		} else {
+			scope = tree;
+			tree = NULL;
+		}
 		if ( (ret = do_find_one(scope, type, idname)) )
 			return ret;
 	} while (scope);
@@ -99,7 +110,7 @@ do_find(node_t *scopenode, enum node_type type, const char *idname)
 node_t *
 varscope_find(node_t *node, enum node_type type)
 {
-	return do_find(node, type, node->str->text);
+	return do_find(&node->pf->parsed, node, type, node->str->text);
 }
 
 node_t *
@@ -162,11 +173,11 @@ fill_varscope(struct list_head *filelist)
 		walk_tree(&pf->parsed, fill_varscope_fn, NULL);
 }
 
-node_t *
-resolve_typedef(node_t *type)
+static node_t *
+resolve_typedef(struct list_head *tree, node_t *type)
 {
 	while (type->type == nt_type && type->t.category == type_typedef) {
-		node_t *var = do_find(type, nt_var, type->str->text);
+		node_t *var = do_find(tree, type, nt_var, type->str->text);
 		if (!var)
 			return NULL;
 		type = first_node(&var->child[chv_type]);
@@ -176,6 +187,10 @@ resolve_typedef(node_t *type)
 	return type;
 }
 
+/* expr_type - get the type declaration for @expr
+ *
+ * Note that the resulting node may be in a different file than @expr.
+ */
 static node_t *
 expr_type(node_t *expr)
 {
@@ -217,6 +232,7 @@ expr_type(node_t *expr)
 node_t *
 varscope_expr(node_t *expr)
 {
+	struct list_head *tree = &expr->pf->parsed;
 	node_t *left, *right, *type;
 
 	if (expr->type != nt_expr)
@@ -224,7 +240,7 @@ varscope_expr(node_t *expr)
 
 	switch (expr->e.op) {
 	case ID:
-		return do_find(expr, nt_var, expr->str->text);
+		return do_find(tree, expr, nt_var, expr->str->text);
 
 	case '.':
 	case PTR_OP:
@@ -238,14 +254,14 @@ varscope_expr(node_t *expr)
 
 		/* Take the base type of a pointer for "->" */
 		if (expr->e.op == PTR_OP) {
-			if (! (type = resolve_typedef(type)) )
+			if (! (type = resolve_typedef(tree, type)) )
 				return NULL;
 			assert(type->t.category == type_pointer);
 			type = first_node(&type->child[che_arg1]);
 		}
 
 		/* If type is a typedef, find its struct type */
-		if (! (type = resolve_typedef(type)) )
+		if (! (type = resolve_typedef(tree, type)) )
 			return NULL;
 		assert (type->t.category == type_struct ||
 			type->t.category == type_union ||
@@ -253,7 +269,7 @@ varscope_expr(node_t *expr)
 
 		/* If we only got the struct name, get its declaration */
 		if (list_empty(&type->child[cht_body]) &&
-		    ! (type = varscope_find(type, nt_type)) )
+		    ! (type = do_find(tree, type, nt_type, type->str->text)) )
 			return NULL;
 
 		/* Now, find the member in the struct */
@@ -269,6 +285,7 @@ varscope_expr(node_t *expr)
 node_t *
 varscope_type(node_t *scope, const char *name)
 {
+	struct list_head *tree = scope ? &scope->pf->parsed : NULL;;
 	char localname[strlen(name) + 1];
 	char *spec, *dot;
 	node_t *node;
@@ -279,15 +296,15 @@ varscope_type(node_t *scope, const char *name)
 	if ( (dot = strchr(spec, '.')) )
 		*dot = 0;
 
-	if (! (node = do_find(scope, nt_type, spec)) ) {
-		if (! (node = do_find(scope, nt_var, spec)) )
+	if (! (node = do_find(tree, scope, nt_type, spec)) ) {
+		if (! (node = do_find(tree, scope, nt_var, spec)) )
 			return NULL;
 		if (list_empty(&node->child[chv_type]))
 			return NULL; /* unspecified type */
 		node = first_node(&node->child[chv_type]);
 	}
 
-	if (! (node = resolve_typedef(node)) )
+	if (! (node = resolve_typedef(tree, node)) )
 		return NULL;
 
 	while (dot && dot[1]) {
