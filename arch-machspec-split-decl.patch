@@ -1,0 +1,38 @@
+---
+ defs.h |   17 +++++++++++++++++
+ 1 file changed, 17 insertions(+)
+
+--- a/defs.h
++++ b/defs.h
+@@ -808,6 +808,11 @@ struct bt_info {
+     (void *)(&bt->stackbuf[(ulong)STACK_OFFSET_TYPE(OFF)]), (size_t)(SZ))
+ 
+ struct machine_specific;  /* uniquely defined below each machine's area */
++struct arm_machine_specific;
++struct x86_machine_specific;
++struct x86_64_machine_specific;
++struct ppc64_machine_specific;
++struct ia64_machine_specific;
+ struct xendump_data;
+ struct xen_kdump_data;
+ 
+@@ -876,7 +881,19 @@ struct machdep_table {
+ 	char *ptbl;
+ 	int ptrs_per_pgd;
+ 	char *cmdline_args[MAX_MACHDEP_ARGS];
++#if defined(ARM)
+ 	struct machine_specific *machspec;
++#elif defined(X86)
++	struct machine_specific *machspec;
++#elif defined(X86_64)
++	struct machine_specific *machspec;
++#elif defined(PPC64)
++	struct machine_specific *machspec;
++#elif defined(IA64)
++	struct machine_specific *machspec;
++#else
++	struct machine_specific *machspec;
++#endif
+ 	ulong section_size_bits;
+ 	ulong max_physmem_bits;
+ 	ulong sections_per_root;

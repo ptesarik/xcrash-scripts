@@ -1743,6 +1743,9 @@ static struct xform_desc xforms[] = {
 // the #include directive
 { "include-defs-fixups.patch", import },
 
+// Prepare for arch-specific machspec
+{ "arch-machspec-split-decl.patch", import },
+
 // Target types in calls to (try_)get_symbol_data
 { "target-types-symbol_data.patch", type_subst, target_types_symbol_data },
 
