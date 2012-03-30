@@ -273,6 +273,8 @@ find_scope(node_t *node)
 	node_t *parent;
 	while ( (parent = node->parent) ) {
 		if (parent->type == nt_type &&
+		    (parent->t.category == type_struct ||
+		     parent->t.category == type_union) &&
 		    is_child(node, parent, cht_body))
 			return &parent->child[cht_body];
 		else if (parent->type == nt_type &&
