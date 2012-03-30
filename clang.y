@@ -1152,7 +1152,7 @@ newnode(const YYLTYPE *loc, enum node_type type, int nchild)
 }
 
 node_t *
-dupnode(node_t *node)
+dupnode_nochild(node_t *node)
 {
 	size_t allocextra = node->nchild * sizeof(struct list_head);
 	node_t *ret = malloc(sizeof(node_t) + allocextra);
@@ -1161,21 +1161,30 @@ dupnode(node_t *node)
 	memcpy(ret, node, sizeof(node_t));
 
 	INIT_LIST_HEAD(&ret->list);
-	for (i = 0; i < ret->nchild; ++i) {
-		node_t *child;
+	for (i = 0; i < ret->nchild; ++i)
 		INIT_LIST_HEAD(&ret->child[i]);
-		list_for_each_entry(child, &node->child[i], list)
-			set_node_child(ret, i, dupnode(child));
-	}
 
 	if (ret->str)
 		++ret->str->refcount;
 
-	ret->first_text = node->first_text;
 	list_add(&ret->first_list, &ret->first_text->node_first);
-	ret->last_text = node->last_text;
 	list_add(&ret->last_list, &ret->last_text->node_last);
 	list_add(&ret->dup_list, &node->dup_list);
+
+	return ret;
+}
+
+node_t *
+dupnode(node_t *node)
+{
+	node_t *ret = dupnode_nochild(node);
+	int i;
+
+	for (i = 0; i < ret->nchild; ++i) {
+		node_t *child;
+		list_for_each_entry(child, &node->child[i], list)
+			set_node_child(ret, i, dupnode(child));
+	}
 
 	return ret;
 }
