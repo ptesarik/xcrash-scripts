@@ -26,20 +26,28 @@ mkhash(const char *name)
 	return ret % HASH_SIZE;
 }
 
+/* Returns non-zero iff:
+ *   a. the file name of @pf ends with a ".h", or
+ *   b. it is the built-in pseudo-file
+ */
+static int
+is_header_file(struct parsed_file *pf)
+{
+	if (pf->name) {
+		char *suffix = strrchr(pf->name, '.');
+		return suffix && !strcmp(suffix, ".h");
+	} else
+		return 1;
+}
+
 static struct list_head *
 find_var_scope(node_t *node)
 {
 	struct parsed_file *pf = node->pf;
 	struct list_head *tree = &pf->parsed;
 	struct list_head *scope = find_scope(node);
-	if (scope == tree) {
-		if (node->type == nt_var) {
-			node_t *type = first_node(&node->child[chv_type]);
-			if (type && (type->t.flags & TF_STATIC))
-				return scope; /* static has file scope */
-		}
+	if (scope == tree && is_header_file(pf))
 		return NULL; /* global scope */
-	}
 	return scope;
 }
 
