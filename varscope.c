@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <stdint.h>
 
 #include "tools.h"
 #include "varscope.h"
@@ -17,10 +18,10 @@ struct varscope {
 static struct varscope *vshash[HASH_SIZE];
 
 static unsigned
-mkhash(const char *name)
+mkhash(const char *name, void *scope)
 {
 	const char *p;
-	unsigned ret = 0;
+	unsigned ret = (uintptr_t)scope;
 	for (p = name; *p; ++p)
 		ret = ret * 13 + *p;
 	return ret % HASH_SIZE;
@@ -56,7 +57,7 @@ varscope_add(node_t *node)
 {
 	struct list_head *scope = find_var_scope(node);
 	struct varscope *vs = malloc(sizeof(struct varscope));
-	unsigned idx = mkhash(node->str->text);
+	unsigned idx = mkhash(node->str->text, scope);
 
 	vs->next = vshash[idx];
 	vs->node = node;
@@ -69,7 +70,7 @@ do_find_one(struct list_head *scope,
 	    enum node_type type, const char *idname)
 {
 	struct varscope *vs;
-	unsigned idx = mkhash(idname);
+	unsigned idx = mkhash(idname, scope);
 	for (vs = vshash[idx]; vs; vs = vs->next)
 		if (vs->scope == scope &&
 		    vs->node->type == type &&
@@ -116,16 +117,16 @@ varscope_find(node_t *node, enum node_type type)
 node_t *
 varscope_find_next(node_t *node)
 {
-	struct varscope *vs;
+	struct list_head *scope = find_var_scope(node);
 	const char *idname = node->str->text;
-	unsigned idx = mkhash(idname);
+	unsigned idx = mkhash(idname, scope);
+	struct varscope *vs;
 	for (vs = vshash[idx]; vs; vs = vs->next)
 		if (vs->node == node)
 			break;
 	if (!vs)
 		return NULL;
 
-	struct list_head *scope = vs->scope;
 	while ( (vs = vs->next) )
 		if (vs->scope == scope &&
 		    vs->node->type == node->type &&
