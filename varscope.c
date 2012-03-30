@@ -7,7 +7,7 @@
 #include "varscope.h"
 #include "clang.tab.h"
 
-#define HASH_SIZE	4096
+#define HASH_SIZE	8192
 
 struct varscope {
 	struct varscope *next;
