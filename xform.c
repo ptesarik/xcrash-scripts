@@ -467,12 +467,24 @@ next_dup(node_t *node)
 	return list_entry(node->dup_list.next, node_t, dup_list);
 }
 
+static inline int
+ind_is_pointer(ind_t ind)
+{
+	return (ind == ind_pointer || ind == ind_implicit);
+}
+
+static inline int
+ind_is_func(ind_t ind)
+{
+	return (ind == ind_return || ind > 0);
+}
+
 /* Return the base type of @type according to the instructions in @ind */
 static node_t *
 ind_base_type(node_t *type, const ind_t *ind)
 {
 	while (*ind != ind_stop) {
-		if (*ind == ind_pointer) {
+		if (ind_is_pointer(*ind)) {
 			if (type->t.category != type_pointer &&
 			    type->t.category != type_array) {
 				ind_warn("pointer/array not found", ind);
@@ -517,10 +529,6 @@ ind_base_type(node_t *type, const ind_t *ind)
 static int
 subst_target_type(node_t *type, const ind_t *ind)
 {
-	if (*ind == ind_pointer && (type->t.category == type_func ||
-				    type->t.category == type_array))
-		--ind;
-
 	type = ind_base_type(type, ind);
 
 	if (type->pf->name) {
@@ -548,8 +556,12 @@ subst_target_var(node_t *firstvar, const ind_t *ind)
 		node_t *var = firstvar;
 		do {
 			node_t *type = nth_element(&var->child[chv_type], 1);
-			if (type)
+			if (type) {
+				if (type->t.category == type_func &&
+				    ind_is_pointer(*ind))
+					--ind;
 				ret += subst_target_type(type, ind);
+			}
 		} while ((var = next_dup(var)) != firstvar);
 
 		/* Find other declarations, too */
@@ -1237,27 +1249,6 @@ use_ia64_fpreg_t(node_t *node, void *data)
  *
  */
 
-/* Return non-zero if @expr is implicitly treated as a pointer
- * expression, i.e. if it is a function or array identifier.
- */
-static int
-expr_implicit_ptr(node_t *expr)
-{
-	if (expr->e.op != ID)
-		return 0;
-
-	node_t *var = varscope_find(expr, nt_var);
-	if (!var)
-		return 0;
-
-	node_t *type = first_node(&var->child[chv_type]);
-	if (&type->list == &var->child[chv_type])
-		return 0;
-
-	return (type->t.category == type_func ||
-		type->t.category == type_array);
-}
-
 static enum walk_action
 build_scopes(node_t *node, void *data)
 {
@@ -1292,7 +1283,7 @@ is_host_type(node_t *expr, ind_t *ind)
 		if (list_empty(&expr->child[che_arg2])) {
 			if (expr->e.op == '*')
 				*++ind = ind_pointer;
-			else if (*ind != ind_pointer)
+			else if (!ind_is_pointer(*ind))
 				return 1;
 			else
 				--ind;
@@ -1485,6 +1476,9 @@ track_expr(node_t *expr, ind_t *ind)
 		break;
 
 	case nt_expr:
+		if (expr->e.op == ID && ind_is_func(*ind))
+			*++ind = ind_implicit;
+
 		switch (parent->e.op) {
 
 		case '&':
@@ -1492,8 +1486,8 @@ track_expr(node_t *expr, ind_t *ind)
 				/* This is the binary '&' operator */
 				break;
 
-			if (!expr_implicit_ptr(expr))
-				*(++ind) = ind_pointer;
+			if (*ind != ind_implicit)
+				*++ind = ind_pointer;
 			/* fall through */
 		case INC_OP:
 		case DEC_OP:
@@ -1515,8 +1509,11 @@ track_expr(node_t *expr, ind_t *ind)
 			if (try_track_args(expr, parent, ind))
 				break;
 
-			if (*ind == ind_pointer)
+			if (ind_is_pointer(*ind))
 				saveind[saveidx++] = *ind--;
+			else
+				ind_warn("non-pointer call", ind);
+
 			if (*ind == ind_return &&
 			    is_child(expr, parent, che_arg1)) {
 				saveind[saveidx++] = *ind--;
@@ -1531,17 +1528,18 @@ track_expr(node_t *expr, ind_t *ind)
 				/* This is the binary '*' operator */
 				break;
 
-			if (*ind == ind_pointer)
-				track_expr(parent, ind - 1);
-			else
+			if (ind_is_pointer(*ind)) {
+				saveind[saveidx++] = *ind--;
+				track_expr(parent, ind);
+				*++ind = saveind[--saveidx];
+			} else
 				ind_warn("expected pointer", ind);
 			break;
 
 		case '=':
 			if (is_child(expr, parent, che_arg2))
 				track_assign(parent, ind);
-			else if (*ind == ind_pointer &&
-				 (ind[-1] > 0 || ind[-1] == ind_return))
+			else if (ind_is_pointer(*ind) && ind_is_func(ind[-1]))
 				track_assign2(parent, ind);
 			track_expr(parent, ind);
 			break;
@@ -1616,8 +1614,6 @@ track_type(node_t *type)
 
 			type = parent;
 		}
-		if (ind[idx] > 0 || ind[idx] == ind_return)
-			ind[++idx] = ind_pointer;
 
 		if (parent->type == nt_var && parent->user_list.next) {
 			track_var_usage(parent, ind + idx);
