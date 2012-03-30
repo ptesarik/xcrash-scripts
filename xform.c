@@ -473,8 +473,9 @@ ind_base_type(node_t *type, const ind_t *ind)
 {
 	while (*ind != ind_stop) {
 		if (*ind == ind_pointer) {
-			if (type->t.category != type_pointer) {
-				ind_warn("pointer not found", ind);
+			if (type->t.category != type_pointer &&
+			    type->t.category != type_array) {
+				ind_warn("pointer/array not found", ind);
 				return 0;
 			}
 			type = first_node(&type->child[cht_type]);
@@ -1605,7 +1606,8 @@ track_type(node_t *type)
 	do {
 		node_t *parent;
 		while ((parent = type->parent)->type == nt_type) {
-			if (parent->t.category == type_pointer)
+			if (parent->t.category == type_pointer ||
+			    parent->t.category == type_array)
 				ind[++idx] = ind_pointer;
 			else if (parent->t.category == type_func)
 				ind[++idx] = ind_return;
