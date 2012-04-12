@@ -245,8 +245,10 @@ binop_truth_table(struct truth_table *left, struct truth_table *right, int op)
 	n = ret->tblsize / left->tblsize;
 	for (i = 0; i < left->tblsize; ++i) {
 		unsigned long val = left->tbl[i];
-		for (j = 1 << left->n; j < 8*sizeof(long); j <<= 1)
+		for (j = 1 << left->n; j < 8*sizeof(long); j <<= 1) {
+			val &= (1 << j) - 1;
 			val |= val << j;
+		}
 		for (j = 0; j < n; ++j)
 			switch (op) {
 			case AND_OP:
