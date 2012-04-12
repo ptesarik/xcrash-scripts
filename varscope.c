@@ -235,13 +235,15 @@ varscope_expr(node_t *expr)
 {
 	struct list_head *tree = &expr->pf->parsed;
 	node_t *left, *right, *type;
+	node_t *ret;
 
 	if (expr->type != nt_expr)
 		return NULL;
 
 	switch (expr->e.op) {
 	case ID:
-		return do_find(tree, expr, nt_var, expr->str->text);
+		ret = do_find(tree, expr, nt_var, expr->str->text);
+		break;
 
 	case '.':
 	case PTR_OP:
@@ -275,12 +277,41 @@ varscope_expr(node_t *expr)
 
 		/* Now, find the member in the struct */
 		right = first_node(&expr->child[che_arg2]);
-		return do_find_one(&type->child[cht_body],
-				   nt_var, right->str->text);
+		ret = do_find_one(&type->child[cht_body],
+				  nt_var, right->str->text);
+		break;
 
 	default:
 		return NULL;
 	}
+
+	node_t *expr_cond = expr->first_text->cpp_cond;
+	while (ret) {
+		node_t *ret_cond = ret->first_text->cpp_cond;
+		if (expr_cond && ret_cond &&
+		    expr_cond != ret_cond) {
+			node_t *op = dupnode_nochild(expr_cond);
+			op->type = nt_expr;
+			op->e.op = AND_OP;
+			set_node_child(op, che_arg1, expr_cond);
+			set_node_child(op, che_arg2, ret_cond);
+
+			struct truth_table *ttbl = cpp_truth_table(op);
+			int cont = is_always_false(ttbl);
+
+			free(ttbl);
+			list_del_init(&expr_cond->list);
+			list_del_init(&ret_cond->list);
+			freenode(op);
+			if (!cont)
+				break;
+
+			ret = varscope_find_next(ret);
+		} else
+			break;
+	}
+
+	return ret;
 }
 
 node_t *
