@@ -910,7 +910,8 @@ target_types_readmem(node_t *node, void *data)
 	else if (is_direct_call(node, "readshort") ||
 		 is_direct_call(node, "readint") ||
 		 is_direct_call(node, "readlong") ||
-		 is_direct_call(node, "readulonglong"))
+		 is_direct_call(node, "readulonglong") ||
+		 is_direct_call(node, "readptr"))
 		has_size = 0;
 	else
 		return walk_continue;
