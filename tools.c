@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <assert.h>
 
 #include "tools.h"
 #include "clang.tab.h"
@@ -133,6 +134,208 @@ check_cpp_cond(node_t *node, ...)
 	va_end(va);
 
 	return vcheck_cpp_cond(node, set, unset);
+}
+
+static struct truth_table *
+alloc_truth_table(int n)
+{
+	int tblsize;
+	struct truth_table *ret;
+
+	tblsize = (1 << n) / (8*sizeof(unsigned long));
+	if (tblsize <= 0)
+		tblsize = 1;
+	ret = calloc(1, sizeof(struct truth_table) +
+		     tblsize * sizeof(unsigned long) + n * sizeof(char*));
+	if (!ret)
+		return NULL;
+	ret->n = n;
+	ret->tblsize = tblsize;
+	ret->names = (const char**)
+		((char*)(ret + 1) + tblsize * sizeof(unsigned long));
+	return ret;
+}
+
+static void
+free_truth_table(struct truth_table *tbl)
+{
+	free(tbl->tbl);
+	free(tbl);
+}
+
+/* Translate a minterm index @n (@nbits wide) according to the
+ * @xlat table which maps source bit numbers to target bit values.
+ */
+static unsigned long
+xlat_minterm(unsigned long *xlat, unsigned long n, int nbits)
+{
+	unsigned long ret = 0;
+	int i;
+	for (i = 0; i < nbits; ++i)
+		if (n & (1 << i))
+			ret |= xlat[i];
+	return ret;
+}
+
+static struct truth_table *
+binop_truth_table(struct truth_table *left, struct truth_table *right, int op)
+{
+	struct truth_table *ret;
+	unsigned long rxlat[right->n]; /* bit translation for @right */
+	unsigned long copy = 0;	       /* target copy positions */
+	unsigned ncopy = 0;	       /* bits set in @copy */
+	unsigned i, j, n;
+
+	/* Count the number of variables in the result */
+	n = left->n + right->n;
+	for (i = 0; i < left->n; ++i) {
+		const char *lname = left->names[i];
+		for (j = 0; j < right->n; ++j)
+			if (right->names[j] &&
+			    !strcmp(lname, right->names[j])) {
+				right->names[j] = NULL;
+				rxlat[j] = 1 << i;
+				--n;
+				break;
+			}
+		if (j >= right->n) {
+			copy |= 1 << i;
+			++ncopy;
+		}
+	}
+
+	/* Allocate the result */
+	if (! (ret = alloc_truth_table(n)) )
+		return NULL;
+
+	/* Copy the names */
+	n = left->n;
+	for (i = 0; i < left->n; ++i)
+		ret->names[i] = left->names[i];
+	for (i = 0; i < right->n; ++i)
+		if (right->names[i]) {
+			ret->names[n] = right->names[i];
+			rxlat[i] = 1 << n;
+			++n;
+		}
+
+	/* Copy the bits from @right to @ret */
+	for (i = 0; i < 1 << right->n; ++i) {
+		if (!test_minterm(right, i))
+			continue;
+
+		unsigned long base = xlat_minterm(rxlat, i, right->n);
+		for (j = 0; j < (1 << ncopy); ++j) {
+			unsigned long off = 0;
+			unsigned long mask = 1;
+			unsigned tmp = j;
+			while (tmp) {
+				while (!(copy & mask))
+					mask <<= 1;
+				if (tmp & 1)
+					off |= mask;
+				tmp >>= 1;
+				mask <<= 1;
+			}
+			set_minterm(ret, base + off);
+		}
+	}
+
+	/* Do the bitop */
+	n = ret->tblsize / left->tblsize;
+	for (i = 0; i < left->tblsize; ++i) {
+		unsigned long val = left->tbl[i];
+		for (j = 1 << left->n; j < 8*sizeof(long); j <<= 1)
+			val |= val << j;
+		for (j = 0; j < n; ++j)
+			switch (op) {
+			case AND_OP:
+				ret->tbl[i+j] &= val;
+				break;
+			case OR_OP:
+				ret->tbl[i+j] |= val;
+				break;
+			case EQ_OP:
+				val = ~val;
+				/* fall through */
+			case NE_OP:
+				ret->tbl[i+j] ^= val;
+				break;
+			}
+	}
+
+	return ret;
+}
+
+struct truth_table *
+cpp_truth_table(node_t *node)
+{
+	struct truth_table *left, *right, *ret;
+	int i;
+
+	if (!node)
+		return NULL;
+	assert(node->type == nt_expr);
+
+	switch (node->e.op) {
+	case ID:
+		if (! (ret = alloc_truth_table(1)) )
+			return NULL;
+		set_minterm(ret, 1);
+		ret->names[0] = node->str->text;
+		return ret;
+
+	case '!':
+		ret = cpp_truth_table(first_node(&node->child[che_arg1]));
+		if (!ret)
+			return NULL;
+		for (i = 0; i < ret->tblsize; ++i)
+			ret->tbl[i] = ~ret->tbl[i];
+		return ret;
+
+	case AND_OP:
+	case OR_OP:
+	case EQ_OP:
+	case NE_OP:
+		left = cpp_truth_table(first_node(&node->child[che_arg1]));
+		if (!left)
+			return NULL;
+		right = cpp_truth_table(first_node(&node->child[che_arg2]));
+		if (!right) {
+			free_truth_table(left);
+			return NULL;
+		}
+
+		if (! (ret = binop_truth_table(left, right, node->e.op)) ) {
+			free_truth_table(right);
+			free_truth_table(left);
+			return NULL;
+		}
+		return ret;
+
+	default:
+		fprintf(stderr, "%s: Operator %d not supported\n",
+			__func__, node->e.op);
+		exit(1);
+	}
+}
+
+void
+dump_truth_table(const struct truth_table *tbl)
+{
+	unsigned i, j;
+
+	for (i = tbl->n; i; --i)
+		printf("%s ", tbl->names[i-1]);
+	putchar('\n');
+
+	for (i = 0; i < 1 << tbl->n; ++i) {
+		for (j = tbl->n; j; --j) {
+			int len = strlen(tbl->names[j-1]);
+			printf("%*d ", len, !!((i<<1) & (1<<j)));
+		}
+		printf("%d\n", !!test_minterm(tbl, i));
+	}
 }
 
 /************************************************************

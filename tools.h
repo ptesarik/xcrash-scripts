@@ -7,6 +7,39 @@
 int vcheck_cpp_cond(node_t *node, const char **set, const char **unset);
 int check_cpp_cond(node_t *node, ...);
 
+struct truth_table {
+	unsigned n, tblsize;
+	const char **names;
+	unsigned long tbl[];
+};
+
+static inline void
+set_minterm(struct truth_table *tbl, unsigned long n)
+{
+	size_t idx = n/(8*sizeof(long));
+	unsigned bit = n%(8*sizeof(long));
+	tbl->tbl[idx] |= 1<<bit;
+}
+
+static inline void
+clear_minterm(struct truth_table *tbl, unsigned long n)
+{
+	size_t idx = n/(8*sizeof(long));
+	unsigned bit = n%(8*sizeof(long));
+	tbl->tbl[idx] &= ~(1<<bit);
+}
+
+static inline int
+test_minterm(const struct truth_table *tbl, unsigned long n)
+{
+	size_t idx = n/(8*sizeof(long));
+	unsigned bit = n%(8*sizeof(long));
+	return tbl->tbl[idx] & (1<<bit);
+}
+
+struct truth_table *cpp_truth_table(node_t *node);
+void dump_truth_table(const struct truth_table *tbl);
+
 /* Related to raw contents */
 int dynstr_isspace(struct dynstr *ds);
 struct dynstr *dynstr_delspace(struct list_head *list, struct dynstr *ds);
