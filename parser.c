@@ -654,6 +654,59 @@ remove_defined(node_t *node, void *data)
 	return walk_continue;
 }
 
+/* Adapted from configure.c */
+static const char *const all_archs[] = {
+	"X86",
+	"ALPHA",
+	"PPC",
+	"IA64",
+	"S390",
+	"S390X",
+	"PPC64",
+	"X86_64",
+	"ARM",
+	NULL,
+};
+
+/* Make the architecture macros exclusive */
+static enum walk_action
+make_arch_exclusive(node_t *node, void *data)
+{
+	if (! (node->type == nt_expr && node->e.op == ID) )
+		return walk_continue;
+	
+	const char *const *arch;
+	for (arch = all_archs; *arch; ++arch)
+		if (!strcmp(*arch, node->str->text))
+			break;
+	if (!*arch)
+		return walk_continue;
+
+	const char *const *p;
+	for (p = all_archs; *p; ++p) {
+		if (p == arch)
+			continue;
+
+		node_t *other = dupnode_nochild(node);
+		struct dynstr *ds = newdynstr(*p, strlen(*p));
+		set_node_str(other, ds);
+
+		node_t *op_not = dupnode_nochild(other);
+		set_node_str(op_not, NULL);
+		op_not->e.op = '!';
+		set_node_child(op_not, che_arg1, other);
+
+		node_t *op_and = dupnode_nochild(op_not);
+		op_and->e.op = AND_OP;
+
+		list_add_tail(&op_and->list, &node->list);
+		list_del_init(&node->list);
+		set_node_child(op_and, che_arg1, op_not);
+		set_node_child(op_and, che_arg2, node);
+	}
+	return walk_skip_children;
+}
+
 #define CPP_STACK_SIZE	32
 
 struct cpp_cond_state {
@@ -673,6 +726,7 @@ get_cpp_cond(struct cpp_cond_state *state, struct list_head *tree)
 	int op = dir->e.op;
 
 	walk_tree(&dir->child[che_arg1], remove_defined, NULL);
+	walk_tree(&dir->child[che_arg1], make_arch_exclusive, NULL);
 
 	node_t *realroot = first_node(&dir->child[che_arg1]);
 	node_t *root = realroot;
