@@ -102,15 +102,15 @@
 +}
 --- a/defs.h
 +++ b/defs.h
-@@ -47,6 +47,7 @@
- #include <sys/wait.h>
+@@ -48,6 +48,7 @@
  #include <sys/time.h>
  #include <execinfo.h> /* backtrace() */
+ #include <regex.h>
 +#include <endian.h>
  
- #define BASELEVEL_REVISION  "4.0"
- 
-@@ -61,30 +62,48 @@
+ #ifndef ATTRIBUTE_UNUSED
+ #define ATTRIBUTE_UNUSED __attribute__ ((__unused__))
+@@ -66,30 +67,48 @@
  #endif
  
  #ifdef X86
@@ -159,7 +159,7 @@
  #define NR_CPUS  (4)
  #endif
  
-@@ -5031,4 +5050,69 @@ extern int have_full_symbols(void);
+@@ -5386,4 +5405,69 @@ extern int have_full_symbols(void);
  #define XEN_HYPERVISOR_ARCH 
  #endif
  
@@ -231,27 +231,27 @@
  #endif /* !GDB_COMMON */
 --- a/Makefile
 +++ b/Makefile
-@@ -96,7 +96,8 @@ CFILES=main.c tools.c global_data.c memo
- 	netdump.c diskdump.c xendump.c unwind.c unwind_decoder.c \
+@@ -68,7 +68,8 @@ CFILES=main.c tools.c global_data.c memo
+ 	netdump.c diskdump.c makedumpfile.c xendump.c unwind.c unwind_decoder.c \
  	unwind_x86_32_64.c unwind_arm.c \
  	xen_hyper.c xen_hyper_command.c xen_hyper_global_data.c \
--	xen_hyper_dump_tables.c kvmdump.c qemu.c qemu-load.c
-+	xen_hyper_dump_tables.c kvmdump.c qemu.c qemu-load.c \
+-	xen_hyper_dump_tables.c kvmdump.c qemu.c qemu-load.c sadump.c
++	xen_hyper_dump_tables.c kvmdump.c qemu.c qemu-load.c sadump.c \
 +	cross.c
  
  SOURCE_FILES=${CFILES} ${GENERIC_HFILES} ${MCORE_HFILES} \
  	${REDHAT_CFILES} ${REDHAT_HFILES} ${UNWIND_HFILES} \
-@@ -113,7 +114,8 @@ OBJECT_FILES=main.o tools.o global_data.
+@@ -85,7 +86,8 @@ OBJECT_FILES=main.o tools.o global_data.
  	lkcd_x86_trace.o unwind_v1.o unwind_v2.o unwind_v3.o \
  	unwind_x86_32_64.o unwind_arm.o \
  	xen_hyper.o xen_hyper_command.o xen_hyper_global_data.o \
--	xen_hyper_dump_tables.o kvmdump.o qemu.o qemu-load.o
-+	xen_hyper_dump_tables.o kvmdump.o qemu.o qemu-load.o \
+-	xen_hyper_dump_tables.o kvmdump.o qemu.o qemu-load.o sadump.o
++	xen_hyper_dump_tables.o kvmdump.o qemu.o qemu-load.o sadump.o \
 +	cross.o
  
- # These are the current set of crash extensions sources.  They are not built
- # by default unless the third command line of the "all:" stanza is uncommented.
-@@ -501,6 +503,9 @@ xen_hyper_global_data.o: ${GENERIC_HFILE
+ MEMORY_DRIVER_FILES=memory_driver/Makefile memory_driver/crash.c memory_driver/README
+ 
+@@ -485,6 +487,9 @@ xen_hyper_global_data.o: ${GENERIC_HFILE
  xen_hyper_dump_tables.o: ${GENERIC_HFILES} xen_hyper_dump_tables.c
  	cc -c ${CRASH_CFLAGS} xen_hyper_dump_tables.c ${WARNING_OPTIONS} ${WARNING_ERROR}
  

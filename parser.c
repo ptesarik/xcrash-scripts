@@ -25,6 +25,7 @@ static const char *predef_types[] = {
 	"Elf32_Phdr",
 	"Elf32_Shdr",
 	"Elf32_Sym",
+	"Elf64_Addr",
 	"Elf64_Ehdr",
 	"Elf64_Nhdr",
 	"Elf64_Off",
