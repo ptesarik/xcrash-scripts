@@ -40,6 +40,16 @@ test_minterm(const struct truth_table *tbl, unsigned long n)
 struct truth_table *cpp_truth_table(node_t *node);
 void dump_truth_table(const struct truth_table *tbl);
 
+static inline int
+is_always_false(const struct truth_table *tbl)
+{
+	int i;
+	for (i = 0; i < tbl->tblsize; ++i)
+		if (tbl->tbl[i])
+			return 0;
+	return 1;
+}
+
 /* Related to raw contents */
 int dynstr_isspace(struct dynstr *ds);
 struct dynstr *dynstr_delspace(struct list_head *list, struct dynstr *ds);
