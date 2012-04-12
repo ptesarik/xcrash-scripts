@@ -1749,6 +1749,8 @@ static struct xform_desc xforms[] = {
  * Upstreamed patches first...
  */
 
+{ "fix-bt-g.patch", import },
+
 { "remove-VOID_PTR.patch", import },
 
 { "gdb-does-not-need-syment.patch", import },
