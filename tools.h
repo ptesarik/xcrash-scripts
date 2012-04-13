@@ -78,7 +78,7 @@ dynstr_del_rev(struct dynstr *ds)
 
 /* Related to the parsed tree */
 void reset_user_data(struct list_head *tree);
-struct list_head *find_scope(node_t *node);
+struct list_head *find_scope(node_t *node, node_t **pparent);
 void nullify_str(node_t *node);
 
 /* Return the parent of @node with a given @type (or NULL if not found) */

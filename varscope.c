@@ -46,7 +46,7 @@ find_var_scope(node_t *node)
 {
 	struct parsed_file *pf = node->pf;
 	struct list_head *tree = &pf->parsed;
-	struct list_head *scope = find_scope(node);
+	struct list_head *scope = find_scope(node, NULL);
 	if (scope == tree && is_header_file(pf))
 		return NULL; /* global scope */
 	return scope;
@@ -94,10 +94,9 @@ do_find(struct list_head *tree, node_t *scopenode,
 	node_t *ret;
 	struct list_head *scope;
 	do {
-		if (scopenode) {
-			scope = find_scope(scopenode);
-			scopenode = first_node(scope)->parent;
-		} else {
+		if (scopenode)
+			scope = find_scope(scopenode, &scopenode);
+		else {
 			scope = tree;
 			tree = NULL;
 		}

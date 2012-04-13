@@ -762,7 +762,7 @@ target_timeval(node_t *node, void *data)
 		struct varsearch vs;
 		vs.varname = node->parent->str->text;
 		vs.found = NULL;
-		scope = find_scope(node);
+		scope = find_scope(node, NULL);
 		walk_tree(scope, checkselect, &vs);
 		if (vs.found)
 			return 0;

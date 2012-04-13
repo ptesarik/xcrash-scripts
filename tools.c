@@ -470,30 +470,35 @@ child_order(node_t *child, node_t *parent, int idx)
 }
 
 struct list_head *
-find_scope(node_t *node)
+find_scope(node_t *node, node_t **pparent)
 {
-	struct parsed_file *pf = node->pf;
-	struct list_head *tree = &pf->parsed;
+	struct list_head *ret = &node->pf->parsed;
 	node_t *parent;
 	while ( (parent = node->parent) ) {
 		if (parent->type == nt_type &&
 		    (parent->t.category == type_struct ||
 		     parent->t.category == type_union) &&
-		    is_child(node, parent, cht_body))
-			return &parent->child[cht_body];
-		else if (parent->type == nt_type &&
-			 parent->t.category == type_func &&
-			 is_child(node, parent, cht_param)) {
+		    is_child(node, parent, cht_body)) {
+			ret = &parent->child[cht_body];
+			break;
+		} else if (parent->type == nt_type &&
+			   parent->t.category == type_func &&
+			   is_child(node, parent, cht_param)) {
 			parent = typed_parent(parent, nt_decl);
-			return &parent->child[chd_body];
+			ret = &parent->child[chd_body];
+			break;
 		} else if (parent->type == nt_decl &&
 			   (is_child(node, parent, chd_body) ||
-			    is_child(node, parent, chd_decl)) )
-			  return &parent->child[chd_body];
+			    is_child(node, parent, chd_decl)) ) {
+			ret = &parent->child[chd_body];
+			break;
+		}
 
 		node = parent;
 	}
-	return tree;
+	if (pparent)
+		*pparent = parent;
+	return ret;
 }
 
 static enum walk_action
