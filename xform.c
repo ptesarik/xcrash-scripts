@@ -486,44 +486,83 @@ ind_is_func(ind_t ind)
 	return (ind == ind_return || ind > 0);
 }
 
+static node_t *
+array_base_type(node_t *type, const ind_t *ind)
+{
+	if (type->t.category == type_pointer ||
+	    type->t.category == type_array)
+		return first_node(&type->child[cht_type]);
+
+	ind_warn("pointer/array not found", ind);
+	return NULL;
+}
+
+static node_t *
+func_return_type(node_t *type, const ind_t *ind)
+{
+	if (type->t.category == type_func)
+		return first_node(&type->child[cht_type]);
+
+	ind_warn("func not found", ind);
+	return NULL;
+}
+
+static node_t *
+kr_param_type(node_t *fntype, const char *name)
+{
+	node_t *fnvar, *fndecl;
+	if (! (fnvar = fntype->parent) )
+		return NULL;
+	if (! (fndecl = fnvar->parent) )
+		return NULL;
+
+	/* TODO */
+	return NULL;
+}
+
+static node_t *
+func_arg_type(node_t *type, const ind_t *ind)
+{
+	node_t *decl = nth_element(&type->child[cht_param], *ind);
+	if (!decl) {
+		ind_warn("func arg not found", ind);
+		return NULL;
+	}
+	assert(decl->type == nt_decl);
+
+	type = first_node(&decl->child[chd_type]);
+	if (&type->list != &decl->child[chd_type])
+		return type;
+
+	node_t *var = first_node(&decl->child[chd_var]);
+	assert(&var->list != &decl->child[chd_var]);
+	type = first_node(&var->child[chv_type]);
+	if (&type->list != &var->child[chv_type])
+		return type;
+
+	if ( (type = kr_param_type(decl->parent, var->str->text)) )
+		return type;
+
+	ind_warn("K&R arg not found", ind);
+	return NULL;
+}
+
 /* Return the base type of @type according to the instructions in @ind */
 static node_t *
 ind_base_type(node_t *type, const ind_t *ind)
 {
 	while (*ind != ind_stop) {
-		if (ind_is_pointer(*ind)) {
-			if (type->t.category != type_pointer &&
-			    type->t.category != type_array) {
-				ind_warn("pointer/array not found", ind);
-				return NULL;
-			}
-			type = first_node(&type->child[cht_type]);
-		} else if (*ind == ind_return) {
-			if (type->t.category != type_func) {
-				ind_warn("func not found", ind);
-				return NULL;
-			}
-			type = first_node(&type->child[cht_type]);
-		} else {
+		if (ind_is_pointer(*ind))
+			type = array_base_type(type, ind);
+		else if (*ind == ind_return)
+			type = func_return_type(type, ind);
+		else {
 			assert(ind > 0);
-
-			node_t *decl;
-			decl = nth_element(&type->child[cht_param], *ind);
-			if (!decl) {
-				ind_warn("func arg not found", ind);
-				return NULL;
-			}
-			assert(decl->type == nt_decl);
-
-			type = first_node(&decl->child[chd_type]);
-			if (&type->list == &decl->child[chd_type]) {
-				node_t *var;
-				var = first_node(&decl->child[chd_var]);
-				assert(&var->list != &decl->child[chd_var]);
-				type = first_node(&var->child[chv_type]);
-				assert(&type->list != &var->child[chv_type]);
-			}
+			type = func_arg_type(type, ind);
 		}
+		if (!type)
+			break;
+
 		--ind;
 	}
 
