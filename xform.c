@@ -516,8 +516,10 @@ kr_param_type(node_t *fntype, const char *name)
 	if (! (fndecl = fnvar->parent) )
 		return NULL;
 
-	/* TODO */
-	return NULL;
+	node_t *var = varscope_find(&fndecl->child[chd_body], nt_var, name);
+	if (!var)
+		return NULL;
+	return nth_element(&var->child[chv_type], 1);
 }
 
 static node_t *
