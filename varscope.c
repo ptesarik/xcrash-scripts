@@ -114,6 +114,12 @@ varscope_find(node_t *node, enum node_type type)
 }
 
 node_t *
+varscope_find_first(node_t *node)
+{
+	return do_find_one(find_var_scope(node), node->type, node->str->text);
+}
+
+node_t *
 varscope_find_next(node_t *node)
 {
 	struct list_head *scope = find_var_scope(node);
