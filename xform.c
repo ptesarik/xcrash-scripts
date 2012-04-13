@@ -805,6 +805,7 @@ arch_machspec(node_t *node, void *data)
 		{ "ARM", "arm_machine_specific" },
 		{ "X86", "x86_machine_specific" },
 		{ "X86_64", "x86_64_machine_specific" },
+		{ "PPC", "ppc_machine_specific" },
 		{ "PPC64", "ppc64_machine_specific" },
 		{ "IA64", "ia64_machine_specific" },
 		{ NULL, NULL }
