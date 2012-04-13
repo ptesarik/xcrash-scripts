@@ -52,7 +52,7 @@ find_var_scope(node_t *node)
 	return scope;
 }
 
-void
+static void
 varscope_add(node_t *node)
 {
 	struct list_head *scope = find_var_scope(node);
@@ -65,83 +65,28 @@ varscope_add(node_t *node)
 	vshash[idx] = vs;
 }
 
-static node_t *
-do_find_one(struct list_head *scope,
-	    enum node_type type, const char *idname)
+static enum walk_action
+fill_varscope(node_t *node, void *data)
 {
-	struct varscope *vs;
-	unsigned idx = mkhash(idname, scope);
-	for (vs = vshash[idx]; vs; vs = vs->next)
-		if (vs->scope == scope &&
-		    vs->node->type == type &&
-		    !strcmp(vs->node->str->text, idname))
-			return vs->node;
-	return NULL;
+	if (node->type == nt_var && node->str)
+		varscope_add(node);
+	else if (node->type == nt_type && node->str &&
+		 (node->t.category == type_struct ||
+		  node->t.category == type_union ||
+		  node->t.category == type_enum) &&
+		 !list_empty(&node->child[cht_body]))
+		varscope_add(node);
+
+	return walk_continue;
 }
 
-/* do_find - perform a node search
- *
- * @tree	tree corresopnding to the file where @idname is used
- * @scopenode	determines the initial scope - use any node inside the
- *		desired initial scope, e.g. the variable itself
- * @type	type of node to search for
- * @idname	name of the identifier
- */
-static node_t *
-do_find(struct list_head *tree, node_t *scopenode,
-	enum node_type type, const char *idname)
+void
+init_varscope(struct list_head *filelist)
 {
-	node_t *ret;
-	struct list_head *scope;
-	do {
-		if (scopenode)
-			scope = find_scope(scopenode, &scopenode);
-		else {
-			scope = tree;
-			tree = NULL;
-		}
-		if ( (ret = do_find_one(scope, type, idname)) )
-			return ret;
-	} while (scope);
-	return NULL;
-	
-}
-
-node_t *
-varscope_find(node_t *node, enum node_type type)
-{
-	return do_find(&node->pf->parsed, node, type, node->str->text);
-}
-
-node_t *
-varscope_find_first(node_t *node)
-{
-	return do_find_one(find_var_scope(node), node->type, node->str->text);
-}
-
-node_t *
-varscope_find_next(node_t *node)
-{
-	struct list_head *scope = find_var_scope(node);
-	const char *idname = node->str->text;
-	unsigned idx = mkhash(idname, scope);
-	struct varscope *vs;
-	for (vs = vshash[idx]; vs; vs = vs->next)
-		if (vs->node == node)
-			break;
-	if (!vs)
-		return NULL;
-
-	while ( (vs = vs->next) )
-		if (vs->scope == scope &&
-		    vs->node->type == node->type &&
-		    !strcmp(vs->node->str->text, idname))
-			return vs->node;
-
-	if (scope == &node->pf->parsed)
-		return do_find_one(NULL, node->type, idname);
-
-	return NULL;
+	struct parsed_file *pf;
+	free_varscope();
+	list_for_each_entry(pf, filelist, list)
+		walk_tree(&pf->parsed, fill_varscope, NULL);
 }
 
 void
@@ -158,36 +103,92 @@ free_varscope(void)
 	}
 }
 
-
-static enum walk_action
-fill_varscope_fn(node_t *node, void *data)
+/* varscope_find - find an identifier in a given scope
+ *
+ * @scope	the variable scope
+ * @type	type of node to search for
+ * @idname	name of the identifier
+ */
+node_t *
+varscope_find(struct list_head *scope,
+	      enum node_type type, const char *idname)
 {
-	if (node->type == nt_var && node->str)
-		varscope_add(node);
-	else if (node->type == nt_type && node->str &&
-		 (node->t.category == type_struct ||
-		  node->t.category == type_union ||
-		  node->t.category == type_enum) &&
-		 !list_empty(&node->child[cht_body]))
-		varscope_add(node);
-
-	return walk_continue;
+	struct varscope *vs;
+	unsigned idx = mkhash(idname, scope);
+	for (vs = vshash[idx]; vs; vs = vs->next)
+		if (vs->scope == scope &&
+		    vs->node->type == type &&
+		    !strcmp(vs->node->str->text, idname))
+			return vs->node;
+	return NULL;
 }
 
-void
-fill_varscope(struct list_head *filelist)
+/* varscope_traverse - traverse the scopes to find an identifier
+ *
+ * @tree	tree corresponding to the file where @idname is used
+ * @scopenode	determines the initial scope - use any node inside the
+ *		desired initial scope, e.g. the variable itself
+ * @type	type of node to search for
+ * @idname	name of the identifier
+ */
+node_t *
+varscope_traverse(struct list_head *tree, node_t *scopenode,
+		  enum node_type type, const char *idname)
 {
-	struct parsed_file *pf;
-	free_varscope();
-	list_for_each_entry(pf, filelist, list)
-		walk_tree(&pf->parsed, fill_varscope_fn, NULL);
+	node_t *ret;
+	struct list_head *scope;
+	do {
+		if (scopenode)
+			scope = find_scope(scopenode, &scopenode);
+		else {
+			scope = tree;
+			tree = NULL;
+		}
+		if ( (ret = varscope_find(scope, type, idname)) )
+			return ret;
+	} while (scope);
+	return NULL;
+	
+}
+
+node_t *
+varscope_find_first_var(node_t *var)
+{
+	struct list_head *scope = find_var_scope(var);
+	return varscope_find(scope, var->type, var->str->text);
+}
+
+node_t *
+varscope_find_next_var(node_t *var)
+{
+	struct list_head *scope = find_var_scope(var);
+	const char *idname = var->str->text;
+	unsigned idx = mkhash(idname, scope);
+	struct varscope *vs;
+	for (vs = vshash[idx]; vs; vs = vs->next)
+		if (vs->node == var)
+			break;
+	if (!vs)
+		return NULL;
+
+	while ( (vs = vs->next) )
+		if (vs->scope == scope &&
+		    vs->node->type == var->type &&
+		    !strcmp(vs->node->str->text, idname))
+			return vs->node;
+
+	if (scope == &var->pf->parsed)
+		return varscope_find(NULL, var->type, idname);
+
+	return NULL;
 }
 
 static node_t *
 resolve_typedef(struct list_head *tree, node_t *type)
 {
 	while (type->type == nt_type && type->t.category == type_typedef) {
-		node_t *var = do_find(tree, type, nt_var, type->str->text);
+		node_t *var = varscope_traverse(tree, type,
+						nt_var, type->str->text);
 		if (!var)
 			return NULL;
 		type = first_node(&var->child[chv_type]);
@@ -210,7 +211,7 @@ expr_type(node_t *expr)
 	if (expr->e.op == ARRAY) {
 		/* Find the array/pointer variable */
 		var = first_node(&expr->child[che_arg1]);
-		if (! (var = varscope_expr(var)) )
+		if (! (var = varscope_find_expr(var)) )
 			return NULL;
 		assert(var->type == nt_var);
 
@@ -228,7 +229,7 @@ expr_type(node_t *expr)
 			: NULL;	/* unspecified type */
 	} else {
 		/* Find the variable */
-		if (! (var = varscope_expr(expr)) )
+		if (! (var = varscope_find_expr(expr)) )
 			return NULL;
 		assert(var->type == nt_var);
 
@@ -240,7 +241,7 @@ expr_type(node_t *expr)
 }
 
 node_t *
-varscope_expr(node_t *expr)
+varscope_find_expr(node_t *expr)
 {
 	struct list_head *tree = &expr->pf->parsed;
 	node_t *left, *right, *type;
@@ -251,7 +252,7 @@ varscope_expr(node_t *expr)
 
 	switch (expr->e.op) {
 	case ID:
-		ret = do_find(tree, expr, nt_var, expr->str->text);
+		ret = varscope_traverse(tree, expr, nt_var, expr->str->text);
 		break;
 
 	case '.':
@@ -281,13 +282,14 @@ varscope_expr(node_t *expr)
 
 		/* If we only got the struct name, get its declaration */
 		if (list_empty(&type->child[cht_body]) &&
-		    ! (type = do_find(tree, type, nt_type, type->str->text)) )
+		    ! (type = varscope_traverse(tree, type,
+						nt_type, type->str->text)) )
 			return NULL;
 
 		/* Now, find the member in the struct */
 		right = first_node(&expr->child[che_arg2]);
-		ret = do_find_one(&type->child[cht_body],
-				  nt_var, right->str->text);
+		ret = varscope_find(&type->child[cht_body],
+				    nt_var, right->str->text);
 		break;
 
 	default:
@@ -315,7 +317,7 @@ varscope_expr(node_t *expr)
 			if (!cont)
 				break;
 
-			ret = varscope_find_next(ret);
+			ret = varscope_find_next_var(ret);
 		} else
 			break;
 	}
@@ -337,8 +339,8 @@ varscope_type(node_t *scope, const char *name)
 	if ( (dot = strchr(spec, '.')) )
 		*dot = 0;
 
-	if (! (node = do_find(tree, scope, nt_type, spec)) ) {
-		if (! (node = do_find(tree, scope, nt_var, spec)) )
+	if (! (node = varscope_traverse(tree, scope, nt_type, spec)) ) {
+		if (! (node = varscope_traverse(tree, scope, nt_var, spec)) )
 			return NULL;
 		if (list_empty(&node->child[chv_type]))
 			return NULL; /* unspecified type */
@@ -360,7 +362,7 @@ varscope_type(node_t *scope, const char *name)
 		    scope->t.category != type_enum)
 			return NULL;
 
-		node = do_find_one(&scope->child[cht_body], nt_var, spec);
+		node = varscope_find(&scope->child[cht_body], nt_var, spec);
 		if (!node)
 			return NULL;
 		if (list_empty(&node->child[chv_type]))

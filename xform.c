@@ -872,8 +872,8 @@ target_var(node_t *node, void *data)
 		return walk_skip_children;
 
 	node_t *var = (node->e.op == '&')
-		? varscope_expr(first_node(&node->child[che_arg1]))
-		: varscope_expr(node);
+		? varscope_find_expr(first_node(&node->child[che_arg1]))
+		: varscope_find_expr(node);
 	if (!var || list_empty(&var->child[chv_type]))
 		return walk_continue;
 
@@ -1300,7 +1300,7 @@ static void track_expr(node_t *expr, ind_t *ind);
 static enum walk_action
 build_scopes(node_t *node, void *data)
 {
-	node_t *var = varscope_expr(node);
+	node_t *var = varscope_find_expr(node);
 	if (var) {
 		node->user_data = var;
 		if (!var->user_list.next)
@@ -1376,7 +1376,7 @@ is_host_type(node_t *expr, ind_t *ind)
 	case ID:
 	case '.':
 	case PTR_OP:
-		if (! (var = varscope_expr(expr)) )
+		if (! (var = varscope_find_expr(expr)) )
 			return 1;
 		type = first_node(&var->child[chv_type]);
 		break;
@@ -1387,7 +1387,7 @@ is_host_type(node_t *expr, ind_t *ind)
 
 	case FUNC:
 		child = first_node(&expr->child[che_arg1]);
-		if (! (var = varscope_expr(child)) )
+		if (! (var = varscope_find_expr(child)) )
 			/* Standard function prototypes are not part of
 			 * the parse tree, but they cannot be changed
 			 * anyway, so treat them as host-specific. */
@@ -1444,7 +1444,7 @@ track_assign(node_t *expr, ind_t *ind)
 		target = first_node(&target->child[che_arg1]);
 		*(++ind) = ind_pointer;
 	}
-	target = varscope_expr(target);
+	target = varscope_find_expr(target);
 	if (target)
 		subst_target_var(target, ind);
 }
@@ -1457,7 +1457,7 @@ track_assign2(node_t *expr, ind_t *ind)
 		target = first_node(&target->child[che_arg1]);
 		*(++ind) = ind_pointer;
 	}
-	target = varscope_expr(target);
+	target = varscope_find_expr(target);
 	if (target)
 		subst_target_var(target, ind);
 }
@@ -1484,8 +1484,8 @@ try_track_args(node_t *arg, node_t *fn, ind_t *ind)
 	if (!pos)
 		return 0;
 
-	node_t *var = varscope_expr(first_node(&fn->child[che_arg1]));
-	for ( ; var; var = varscope_find_next(var)) {
+	node_t *var = varscope_find_expr(first_node(&fn->child[che_arg1]));
+	for ( ; var; var = varscope_find_next_var(var)) {
 		node_t *type = nth_element(&var->child[chv_type], 1);
 		if (!type)
 			continue;
@@ -1644,11 +1644,11 @@ track_var_usage(node_t *var, ind_t *ind)
 static void
 subst_other_var_decls(node_t *firstvar, ind_t *ind)
 {
-	node_t *var = varscope_find_first(firstvar);
+	node_t *var = varscope_find_first_var(firstvar);
 	while (var) {
 		if (var != firstvar)
 			subst_target_var(var, ind);
-		var = varscope_find_next(var);
+		var = varscope_find_next_var(var);
 	}
 }
 
@@ -1799,7 +1799,7 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 	if ( (res = update_parsed_files(filelist)) )
 		return res;
 
-	fill_varscope(filelist);
+	init_varscope(filelist);
 	list_for_each_entry(pf, filelist, list)
 		walk_tree(&pf->parsed, xform_fn, pf);
 
