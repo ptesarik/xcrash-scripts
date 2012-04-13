@@ -1482,6 +1482,15 @@ track_dereference(node_t *node, ind_t *ind)
 		ind_warn("expected pointer", ind);
 }
 
+static void
+track_typecast(node_t *node, ind_t *ind)
+{
+	node_t *type = first_node(&node->child[che_arg1]);
+
+	if (subst_target_type(type, ind))
+		track_expr(node, ind);
+}
+
 /* Track uses of @expr with indirection level @ind. */
 static void
 track_expr(node_t *expr, ind_t *ind)
@@ -1567,6 +1576,10 @@ track_expr(node_t *expr, ind_t *ind)
 
 		case RETURN:
 			track_return(parent, ind);
+			break;
+
+		case TYPECAST:
+			track_typecast(parent, ind);
 			break;
 		}
 		break;
