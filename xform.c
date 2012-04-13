@@ -599,22 +599,18 @@ subst_target_type(node_t *type, const ind_t *ind)
 static int
 subst_target_var(node_t *firstvar, const ind_t *ind)
 {
+	node_t *var = firstvar;
 	int ret = 0;
 	do {
-		node_t *var = firstvar;
-		do {
-			node_t *type = nth_element(&var->child[chv_type], 1);
-			if (type) {
-				if (type->t.category == type_func &&
-				    ind_is_pointer(*ind))
-					--ind;
-				ret += subst_target_type(type, ind);
-			}
-		} while ((var = next_dup(var)) != firstvar);
+		node_t *type = nth_element(&var->child[chv_type], 1);
+		if (type) {
+			if (type->t.category == type_func &&
+			    ind_is_pointer(*ind))
+				--ind;
+			ret += subst_target_type(type, ind);
+		}
+	} while ((var = next_dup(var)) != firstvar);
 
-		/* Find other declarations, too */
-		firstvar = varscope_find_next(firstvar);
-	} while (firstvar);
 	return ret;
 }
 
@@ -1636,9 +1632,23 @@ track_var_usage(node_t *var, ind_t *ind)
 {
 	assert(var->type == nt_var);
 
-	node_t *node;
-	list_for_each_entry(node, &var->user_list, user_list)
-		track_expr(node, ind);
+	if (var->user_list.next) {
+		node_t *node;
+		list_for_each_entry(node, &var->user_list, user_list)
+			track_expr(node, ind);
+	}
+}
+
+/* Substitute all other declarations of @firstvar */
+static void
+subst_other_var_decls(node_t *firstvar, ind_t *ind)
+{
+	node_t *var = varscope_find_first(firstvar);
+	while (var) {
+		if (var != firstvar)
+			subst_target_var(var, ind);
+		var = varscope_find_next(var);
+	}
 }
 
 /* Check whether @node is a function argument.
@@ -1690,7 +1700,8 @@ track_type(node_t *type)
 			type = parent;
 		}
 
-		if (parent->type == nt_var && parent->user_list.next) {
+		if (parent->type == nt_var) {
+			subst_other_var_decls(parent, ind + idx);
 			track_var_usage(parent, ind + idx);
 			type = parent->parent;
 		} else
