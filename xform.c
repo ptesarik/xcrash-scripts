@@ -265,13 +265,14 @@ replace_type(node_t *node, const char *newtext)
 	newds = split
 		? split->newds
 		: newdynstr(newtext, strlen(newtext));
-	node = flatten_type(node, base);
 	if (split)
 		split_addnode(split, node);
-	else if (node->str->refcount > 1)
+	else if (base->str->refcount > 1)
 		split_add(&splitlist, node, oldds, newds);
-	else
+	else {
+		node = flatten_type(node, base);
 		replace_single_type(node, newds);
+	}
 	return node;
 }
 
@@ -293,31 +294,37 @@ static void
 type_split(struct list_head *raw, struct split_node *split)
 {
 	struct dynstr *ds, *point;
-	node_t *type, *ntype, *first;
+	node_t *type, *ntype;
+	LIST_HEAD(flat_list);
 
-	/* First, remove references via a split ->str to get the number
-	 * of references for each dynstr.
+	/* First, flatten the types and remove references via
+	 * split ->str to get the number of references for each dynstr.
 	 */
-	list_for_each_entry(type, &split->nodes, user_list)
+	while (!list_empty(&split->nodes)) {
+		type = list_entry(split->nodes.prev, node_t, user_list);
+		list_del(&type->user_list);
+		node_t *base = base_type(type);
+		type = flatten_type(type, base);
 		set_node_str(type, NULL);
+		list_add(&type->user_list, &flat_list);
+	}
 
 	/* Check if the split is unnecessary (all vars are converted) */
-	first = list_entry(split->nodes.next, node_t, user_list);
 	if (!split->oldds->refcount) {
-		list_del(&first->user_list);
-		first = replace_single_type(first, split->newds);
-		replace_nodes(&split->nodes, first);
+		list_del(&type->user_list);
+		type = replace_single_type(type, split->newds);
+		replace_nodes(&flat_list, type);
 		return;
 	}
 
 	/* Get the insertion point */
-	node_t *olddecl = typed_parent(first, nt_decl);
+	node_t *olddecl = typed_parent(type, nt_decl);
 	point = olddecl->first_text;
 
 	/* Create a new dynstr chain */
 	insert_text_list(point, split->newds, split->newds);
 	ds = newdynstr(" ", 1);
-	list_for_each_entry_safe(type, ntype, &split->nodes, user_list) {
+	list_for_each_entry_safe(type, ntype, &flat_list, user_list) {
 		if (!ds)
 			ds = newdynstr(", ", 2);
 		insert_text_list(point, ds, ds);
