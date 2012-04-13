@@ -126,11 +126,22 @@ varscope_find_next(node_t *node)
 	if (!vs)
 		return NULL;
 
-	while ( (vs = vs->next) )
-		if (vs->scope == scope &&
-		    vs->node->type == node->type &&
-		    !strcmp(vs->node->str->text, idname))
-			return vs->node;
+	vs = vs->next;
+	do {
+		while (vs) {
+			if (vs->scope == scope &&
+			    vs->node->type == node->type &&
+			    !strcmp(vs->node->str->text, idname))
+				return vs->node;
+			vs = vs->next;
+		}
+		if (scope == &node->pf->parsed) {
+			scope = NULL;
+			idx = mkhash(idname, scope);
+			vs = vshash[idx];
+		}
+	} while (vs);
+
 	return NULL;
 }
 
