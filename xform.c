@@ -488,13 +488,13 @@ ind_base_type(node_t *type, const ind_t *ind)
 			if (type->t.category != type_pointer &&
 			    type->t.category != type_array) {
 				ind_warn("pointer/array not found", ind);
-				return 0;
+				return NULL;
 			}
 			type = first_node(&type->child[cht_type]);
 		} else if (*ind == ind_return) {
 			if (type->t.category != type_func) {
 				ind_warn("func not found", ind);
-				return 0;
+				return NULL;
 			}
 			type = first_node(&type->child[cht_type]);
 		} else {
@@ -504,7 +504,7 @@ ind_base_type(node_t *type, const ind_t *ind)
 			decl = nth_element(&type->child[cht_param], *ind);
 			if (!decl) {
 				ind_warn("func arg not found", ind);
-				return 0;
+				return NULL;
 			}
 			assert(decl->type == nt_decl);
 
@@ -529,7 +529,8 @@ ind_base_type(node_t *type, const ind_t *ind)
 static int
 subst_target_type(node_t *type, const ind_t *ind)
 {
-	type = ind_base_type(type, ind);
+	if (! (type = ind_base_type(type, ind)) )
+		return 0;
 
 	if (type->pf->name) {
 		const char *newtype = target_type_name(type);
@@ -1360,7 +1361,8 @@ is_host_type(node_t *expr, ind_t *ind)
 		return 1;	/* be pessimistic */
 	}
 
-	type = ind_base_type(type, ind);
+	if (! (type = ind_base_type(type, ind)) )
+		return 1;	/* not found - e.g. NULL */
 
 	if (type->t.category == type_pointer)
 		return 1;
