@@ -1251,6 +1251,8 @@ use_ia64_fpreg_t(node_t *node, void *data)
  *
  */
 
+static void track_expr(node_t *expr, ind_t *ind);
+
 static enum walk_action
 build_scopes(node_t *node, void *data)
 {
@@ -1462,6 +1464,17 @@ try_track_args(node_t *arg, node_t *fn, ind_t *ind)
 	return 1;
 }
 
+static void
+track_dereference(node_t *node, ind_t *ind)
+{
+	if (ind_is_pointer(*ind)) {
+		ind_t saveind = *ind--;
+		track_expr(node, ind);
+		*++ind = saveind;
+	} else
+		ind_warn("expected pointer", ind);
+}
+
 /* Track uses of @expr with indirection level @ind. */
 static void
 track_expr(node_t *expr, ind_t *ind)
@@ -1527,16 +1540,14 @@ track_expr(node_t *expr, ind_t *ind)
 			break;
 
 		case '*':
-			if (!list_empty(&parent->child[che_arg2]))
-				/* This is the binary '*' operator */
-				break;
+			/* Check for the unary '*' operator */
+			if (list_empty(&parent->child[che_arg2]))
+				track_dereference(parent, ind);
+			break;
 
-			if (ind_is_pointer(*ind)) {
-				saveind[saveidx++] = *ind--;
-				track_expr(parent, ind);
-				*++ind = saveind[--saveidx];
-			} else
-				ind_warn("expected pointer", ind);
+		case ARRAY:
+			if (is_child(expr, parent, che_arg1))
+				track_dereference(parent, ind);
 			break;
 
 		case '=':
