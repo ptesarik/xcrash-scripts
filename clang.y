@@ -167,12 +167,11 @@ static void hidedecls(struct list_head *);
 
 /* var type */
 %type <node> enum_body enumerator_list enumerator
-%type <node> id_list
 
 /* decl type */
 %type <node> external_decl func_def decl_list decl
 %type <node> param_decl param_list param_type_list
-%type <node> param_type_or_idlist
+%type <node> param_type_or_idlist id_list id_decl
 %type <node> struct_body struct_decl_list struct_decl
 
 /* CPP types */
@@ -258,10 +257,7 @@ macro_declarator	: CPP_IDARG macro_param
 			;
 
 macro_param		: '(' id_list ')'
-			{
-				$$ = newdecl(&@$, NULL, NULL);
-				set_node_child($$, chd_var, $2);
-			}
+			{ $$ = $2; }
 			| '(' ')'
 			{ $$ = NULL; }
 			;
@@ -694,10 +690,6 @@ param_declarator	: '(' param_type_or_idlist ')'
 
 param_type_or_idlist	: param_type_list
 			| id_list
-			{
-				$$ = newdecl(&@$, NULL, NULL);
-				set_node_child($$, chd_var, $1);
-			}
 			;
 
 pointer			: '*'
@@ -742,13 +734,19 @@ param_decl		: type_decl declarator
 			{ $$ = newdecl(&@$, $1, NULL); }
 			;
 
-id_list			: ID
-			{ $$ = newvar(&@$, $1); }
-			| id_list ',' ID
+id_list			: id_decl
+			| id_list ',' id_decl
 			{
-				node_t *var = newvar(&@$, $3);
-				list_add_tail(&var->list, &$1->list);
+				list_add_tail(&$3->list, &$1->list);
 				$$ = $1;
+			}
+			;
+
+id_decl			: ID
+			{
+				node_t *var = newvar(&@$, $1);
+				$$ = newdecl(&@$, NULL, NULL);
+				set_node_child($$, chd_var, var);
 			}
 			;
 
