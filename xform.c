@@ -517,10 +517,11 @@ ind_base_type(node_t *type, const ind_t *ind)
 
 			type = first_node(&decl->child[chd_type]);
 			if (&type->list == &decl->child[chd_type]) {
-				type = first_node(&decl->child[chd_var]);
-				assert(&type->list != &decl->child[chd_var]);
-				type = first_node(&type->child[chv_type]);
-				assert(&type->list != &type->child[chv_type]);
+				node_t *var;
+				var = first_node(&decl->child[chd_var]);
+				assert(&var->list != &decl->child[chd_var]);
+				type = first_node(&var->child[chv_type]);
+				assert(&type->list != &var->child[chv_type]);
 			}
 		}
 		--ind;
