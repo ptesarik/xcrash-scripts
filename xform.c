@@ -1413,7 +1413,9 @@ is_host_type(node_t *expr, ind_t *ind)
 	if (! (type = ind_base_type(type, ind)) )
 		return 1;	/* not found - e.g. NULL */
 
-	if (type->t.category == type_pointer)
+	if (type->t.category == type_pointer ||
+	    type->t.category == type_array ||
+	    type->t.category == type_func)
 		return 1;
 
 	return 0;
