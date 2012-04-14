@@ -1,0 +1,179 @@
+---
+ defs.h          |    2 ++
+ gdb-7.3.1.patch |   20 ++++++++++----------
+ gdb_interface.c |    8 +++++---
+ symbols.c       |   20 ++++++++++----------
+ 4 files changed, 27 insertions(+), 23 deletions(-)
+
+--- a/defs.h
++++ b/defs.h
+@@ -3411,6 +3411,8 @@ struct gnu_request {
+ 	FILE *fp;
+ 	ulong addr;
+ 	ulong addr2;
++	void *hostaddr;
++	void *hostaddr2;
+ 	ulong count;
+ 	ulong flags;
+ 	char *name;
+--- a/gdb-7.3.1.patch
++++ b/gdb-7.3.1.patch
+@@ -869,7 +869,7 @@
+ +        char *secname;
+ +        char buf[80];
+ +    
+-+	gdb_current_load_module = lm = (struct load_module *)req->addr;
+++	gdb_current_load_module = lm = (struct load_module *)req->hostaddr;
+ +
+ +	req->name = lm->mod_namelist;
+ +	gdb_delete_symbol_file(req);
+@@ -963,7 +963,7 @@
+ +	ALL_MSYMBOLS (objfile, msymbol)
+ +	{
+ +		req->name = msymbol->ginfo.name;
+-+		req->addr = (ulong)(&SYMBOL_VALUE_ADDRESS(msymbol));
+++		req->hostaddr = &SYMBOL_VALUE_ADDRESS(msymbol);
+ +		if (!patch_kernel_symbol(req)) {
+ +			req->flags |= GNU_COMMAND_FAILED;
+ +			break;
+@@ -1045,22 +1045,22 @@
+ +{
+ +	extern struct value_print_options user_print_options;
+ +
+-+	req->addr = 0;
+++	req->hostaddr = 0;
+ +
+ +        if (strcmp(req->name, "output_format") == 0)
+-+                req->addr = (ulong)&user_print_options.output_format;
+++                req->hostaddr = &user_print_options.output_format;
+ +        if (strcmp(req->name, "print_max") == 0)
+-+                req->addr = (ulong)&user_print_options.print_max;
+++                req->hostaddr = &user_print_options.print_max;
+ +        if (strcmp(req->name, "prettyprint_structs") == 0)
+-+                req->addr = (ulong)&user_print_options.prettyprint_structs;
+++                req->hostaddr = &user_print_options.prettyprint_structs;
+ +        if (strcmp(req->name, "prettyprint_arrays") == 0)
+-+                req->addr = (ulong)&user_print_options.prettyprint_arrays;
+++                req->hostaddr = &user_print_options.prettyprint_arrays;
+ +        if (strcmp(req->name, "repeat_count_threshold") == 0)
+-+                req->addr = (ulong)&user_print_options.repeat_count_threshold;
+++                req->hostaddr = &user_print_options.repeat_count_threshold;
+ +        if (strcmp(req->name, "stop_print_at_null") == 0)
+-+                req->addr = (ulong)&user_print_options.stop_print_at_null;
+++                req->hostaddr = &user_print_options.stop_print_at_null;
+ +        if (strcmp(req->name, "output_radix") == 0)
+-+                req->addr = (ulong)&output_radix;
+++                req->hostaddr = &output_radix;
+ +}
+ +
+ +#endif
+--- a/gdb_interface.c
++++ b/gdb_interface.c
+@@ -30,7 +30,7 @@ int *gdb_repeat_count_threshold;
+ int *gdb_stop_print_at_null;
+ unsigned int *gdb_output_radix;
+ 
+-static ulong gdb_user_print_option_address(char *);
++static void *gdb_user_print_option_address(char *);
+ 
+ /*
+  *  Called from main() this routine sets up the call-back hook such that
+@@ -487,6 +487,8 @@ dump_gnu_request(struct gnu_request *req
+ 
+         console("addr: %lx ", req->addr);
+         console("addr2: %lx ", req->addr2);
++        console("hostaddr: %p ", req->hostaddr);
++        console("hostaddr2: %p ", req->hostaddr2);
+         console("count: %ld\n", req->count);
+ 
+ 	if ((ulong)req->name > (ulong)PATCH_KERNEL_SYMBOLS_STOP) 
+@@ -920,7 +922,7 @@ gdb_CRASHDEBUG(ulong dval)
+ 	return (pc->cur_req && (pc->cur_req->debug >= dval));
+ }
+ 
+-static ulong 
++static void *
+ gdb_user_print_option_address(char *name)
+ {
+         struct gnu_request request;
+@@ -928,7 +930,7 @@ gdb_user_print_option_address(char *name
+ 	request.command = GNU_USER_PRINT_OPTION;
+ 	request.name = name;
+ 	gdb_command_funnel(&request);    
+-	return request.addr;
++	return request.hostaddr;
+ }
+ 
+ #ifndef ALPHA
+--- a/symbols.c
++++ b/symbols.c
+@@ -9733,7 +9733,7 @@ add_symbol_file(struct load_module *lm)
+ 		lm->mod_flags |= MOD_DO_READNOW;
+ 
+         req->command = GNU_ADD_SYMBOL_FILE;
+-	req->addr = (ulong)lm;
++	req->hostaddr = lm;
+ 	req->buf = GETBUF(len+BUFSIZE);
+ 	if (!CRASHDEBUG(1))
+ 		req->fp = pc->nullfp;
+@@ -10004,7 +10004,7 @@ add_symbol_file_kallsyms(struct load_mod
+ 
+ 	lm->mod_flags |= MOD_NOPATCH;
+         req->command = GNU_ADD_SYMBOL_FILE;
+-	req->addr = (ulong)lm;
++	req->hostaddr = lm;
+ 	if (!CRASHDEBUG(1))
+ 		req->fp = pc->nullfp;
+ 
+@@ -10935,7 +10935,7 @@ clear_text_value_cache(void)
+  *  new one.
+  */
+ 
+-#define last_sp addr2
++#define last_sp hostaddr2
+ 
+ int 
+ patch_kernel_symbol(struct gnu_request *req)
+@@ -10965,16 +10965,16 @@ patch_kernel_symbol(struct gnu_request *
+                 return TRUE;
+         }
+ 
+-	if (!req->name || !req->addr)
++	if (!req->name || !req->hostaddr)
+ 		return FALSE;
+ 
+ 	sp = (struct syment *)req->last_sp; 
+ 	sp += sp ? 1 : 0;
+ 	if (sp && (sp->cnt == 1) && !(sp->flags & SYMBOL_NAME_USED) && 
+ 	    STREQ(sp->name, req->name)) {
+-                *((ulong *)req->addr) = sp->value;
++                *((ulong *)req->hostaddr) = sp->value;
+                 sp->flags |= SYMBOL_NAME_USED;
+-                req->last_sp = (ulong)sp;
++                req->last_sp = sp;
+ 	} else {
+ 		switch (c = get_syment_array(req->name, sp_array, 1000))
+ 		{
+@@ -10982,18 +10982,18 @@ patch_kernel_symbol(struct gnu_request *
+ 			return TRUE;
+ 	
+ 		case 1: 
+-			*((ulong *)req->addr) = sp_array[0]->value;
++			*((ulong *)req->hostaddr) = sp_array[0]->value;
+ 			sp_array[0]->flags |= SYMBOL_NAME_USED;
+-			req->last_sp = (ulong)sp_array[0];
++			req->last_sp = sp_array[0];
+ 			break;
+ 	
+ 		default:
+ 			for (i = 0; i < c; i++) {
+ 				if (sp_array[i]->flags & SYMBOL_NAME_USED)
+ 					continue;
+-				*((ulong *)req->addr) = sp_array[i]->value;
++				*((ulong *)req->hostaddr) = sp_array[i]->value;
+ 				sp_array[i]->flags |= SYMBOL_NAME_USED;
+-				req->last_sp = (ulong)sp_array[i];
++				req->last_sp = sp_array[i];
+ 				break;
+ 			}
+ 			break;

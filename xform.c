@@ -1841,14 +1841,18 @@ static struct xform_desc xforms[] = {
 
 { "fix-bt-g.patch", import },
 
-{ "remove-VOID_PTR.patch", import },
-
 { "gdb-does-not-need-syment.patch", import },
 
 /************************************************************
  * Things that could theoretically go upstream, but are not
  * accepted there
  */
+
+// get rid of the VOID_PTR facilitator macro
+{ "remove-VOID_PTR.patch", import },
+
+// add a host address to struct gnu_request
+{ "gnu_request-hostaddr.patch", import },
 
 // convert mkstring() to a variadic function
 { "variadic-mkstring.patch", import },
