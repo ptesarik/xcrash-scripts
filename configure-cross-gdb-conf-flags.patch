@@ -1,17 +1,18 @@
 ---
- configure.c |   36 +++++++++++++++++++++++-------------
- 1 file changed, 23 insertions(+), 13 deletions(-)
+ configure.c |   42 +++++++++++++++++++++++++-----------------
+ 1 file changed, 25 insertions(+), 17 deletions(-)
 
 --- a/configure.c
 +++ b/configure.c
-@@ -131,10 +131,15 @@ int name_to_target(char *);
- #define TARGET_CFLAGS_ARM_ON_X86_64  "TARGET_CFLAGS=-m32 -D_FILE_OFFSET_BITS=64"
+@@ -136,11 +136,15 @@ char *get_extra_flags(char *);
  #define TARGET_CFLAGS_X86_ON_X86_64  "TARGET_CFLAGS=-m32 -D_FILE_OFFSET_BITS=64"
+ #define TARGET_CFLAGS_PPC_ON_PPC64   "TARGET_CFLAGS=-m32 -D_FILE_OFFSET_BITS=64 -fPIC"
  
 -#define GDB_TARGET_DEFAULT        "GDB_CONF_FLAGS="
 -#define GDB_TARGET_ARM_ON_X86     "GDB_CONF_FLAGS=--target=arm-elf-linux"
 -#define GDB_TARGET_ARM_ON_X86_64  "GDB_CONF_FLAGS=--target=arm-elf-linux CFLAGS=-m32"
 -#define GDB_TARGET_X86_ON_X86_64  "GDB_CONF_FLAGS=--target=i686-pc-linux-gnu CFLAGS=-m32"
+-#define GDB_TARGET_PPC_ON_PPC64   "GDB_CONF_FLAGS=--target=ppc-elf-linux CFLAGS=-m32"
 +#define GDB_TARGET_X86    "GDB_CONF_FLAGS=--target=i686-pc-linux-gnu"
 +#define GDB_TARGET_ALPHA  "GDB_CONF_FLAGS=--target=alpha-linux-gnu"
 +#define GDB_TARGET_PPC    "GDB_CONF_FLAGS=--target=powerpc-linux-gnu"
@@ -24,7 +25,7 @@
  
  /*
   *  The original plan was to allow the use of a particular version
-@@ -523,55 +528,60 @@ build_configure(struct supported_gdb_ver
+@@ -558,59 +562,63 @@ build_configure(struct supported_gdb_ver
  
  	target = target_CFLAGS = NULL;
  
@@ -49,7 +50,13 @@
  		break;
  	case PPC:
  		target = TARGET_PPC;
- 		target_CFLAGS = TARGET_CFLAGS_PPC;
+-		if (target_data.host == PPC64) {
++		if (target_data.host == PPC64)
+                         target_CFLAGS = TARGET_CFLAGS_PPC_ON_PPC64;
+-			gdb_conf_flags = GDB_TARGET_PPC_ON_PPC64;
+-		} else
++		else
+ 			target_CFLAGS = TARGET_CFLAGS_PPC;
 +		gdb_conf_flags = GDB_TARGET_PPC;
  		break;
  	case IA64:
