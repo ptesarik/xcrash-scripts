@@ -1841,6 +1841,8 @@ static struct xform_desc xforms[] = {
 
 { "fix-bt-g.patch", import },
 
+{ "s390x-fix-vtop-for-1M-pages.patch", import },
+
 { "gdb-does-not-need-syment.patch", import },
 
 /************************************************************

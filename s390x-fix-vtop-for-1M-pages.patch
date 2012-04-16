@@ -1,0 +1,27 @@
+Subject: [PATCH] s390x: fix vtop for 1M pages
+
+It seems to me that the address should not be returned directly,
+but rather assigned to the phys_addr output parameter.
+
+Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
+
+---
+ s390x.c |    6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+--- a/s390x.c
++++ b/s390x.c
+@@ -614,9 +614,11 @@ int s390x_vtop(ulong table, ulong vaddr,
+ 	}
+ 
+ 	/* Check if this is a large page. */
+-	if (entry & 0x400ULL)
++	if (entry & 0x400ULL) {
+ 		/* Add the 1MB page offset and return the final value. */
+-		return table + (vaddr & 0xfffffULL);
++		*phys_addr = table + (vaddr & 0xfffffULL);
++		return TRUE;
++	}
+ 
+ 	/* Get the page table entry */
+ 	entry = _kl_pg_table_deref_s390x(vaddr, entry & ~0x7ffULL);
