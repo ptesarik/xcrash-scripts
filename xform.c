@@ -762,6 +762,13 @@ target_types(const char *patchname, struct list_head *filelist, void *data)
 	list_for_each_entry(pf, filelist, list)
 		if (pf->name)
 			walk_tree(&pf->parsed, target_types_fn, pf);
+	list_for_each_entry(pf, filelist, list) {
+		struct split_node *split, *nsplit;
+		list_for_each_entry_safe(split, nsplit, &splitlist, list) {
+			type_split(&pf->raw, split);
+			split_remove(split);
+		}
+	}
 	return quilt_new(patchname, filelist);
 }
 
