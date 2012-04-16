@@ -310,7 +310,7 @@ varscope_find_expr(node_t *expr)
 			struct truth_table *ttbl = cpp_truth_table(op);
 			int cont = is_always_false(ttbl);
 
-			free(ttbl);
+			free_truth_table(ttbl);
 			list_del_init(&expr_cond->list);
 			list_del_init(&ret_cond->list);
 			freenode(op);

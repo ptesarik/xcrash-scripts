@@ -156,13 +156,6 @@ alloc_truth_table(int n)
 	return ret;
 }
 
-static void
-free_truth_table(struct truth_table *tbl)
-{
-	free(tbl->tbl);
-	free(tbl);
-}
-
 /* Translate a minterm index @n (@nbits wide) according to the
  * @xlat table which maps source bit numbers to target bit values.
  */

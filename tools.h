@@ -40,6 +40,12 @@ test_minterm(const struct truth_table *tbl, unsigned long n)
 struct truth_table *cpp_truth_table(node_t *node);
 void dump_truth_table(const struct truth_table *tbl);
 
+static inline void
+free_truth_table(struct truth_table *tbl)
+{
+	free(tbl);
+}
+
 static inline int
 is_always_false(const struct truth_table *tbl)
 {
