@@ -1804,6 +1804,7 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 		return res;
 
 	init_varscope(filelist);
+	INIT_LIST_HEAD(&replacedlist);
 	list_for_each_entry(pf, filelist, list)
 		walk_tree(&pf->parsed, xform_fn, pf);
 
@@ -1816,7 +1817,6 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 			split_remove(split);
 		}
 	}
-	INIT_LIST_HEAD(&replacedlist);
 
 	return quilt_new(patchname, filelist);
 }
