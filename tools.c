@@ -307,11 +307,9 @@ cpp_truth_table(node_t *node)
 			return NULL;
 		}
 
-		if (! (ret = binop_truth_table(left, right, node->e.op)) ) {
-			free_truth_table(right);
-			free_truth_table(left);
-			return NULL;
-		}
+		ret = binop_truth_table(left, right, node->e.op);
+		free_truth_table(right);
+		free_truth_table(left);
 		return ret;
 
 	default:
