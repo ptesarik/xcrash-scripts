@@ -8,7 +8,7 @@
  #include <sys/time.h>
  #include <execinfo.h> /* backtrace() */
  #include <endian.h>
-+#include "gdb-7.0/bfd/bfd.h" /* bfd_vma types */
++#include "gdb-7.3.1/bfd/bfd.h" /* bfd_vma types */
  
  #define BASELEVEL_REVISION  "4.0"
  
