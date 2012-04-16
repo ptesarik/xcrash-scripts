@@ -955,6 +955,7 @@ static int add_file(const char *name)
 	pf->name = name;
 	INIT_LIST_HEAD(&pf->parsed);
 	INIT_LIST_HEAD(&pf->raw);
+	pf->clean = 1;
 	list_add_tail(&pf->list, &files);
 	return 0;
 }
