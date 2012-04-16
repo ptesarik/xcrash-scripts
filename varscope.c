@@ -151,6 +151,22 @@ varscope_traverse(struct list_head *tree, node_t *scopenode,
 	
 }
 
+void
+varscope_remove(node_t *node)
+{
+	struct list_head *scope = find_var_scope(node);
+	unsigned idx = mkhash(node->str->text, scope);
+	struct varscope *vs, **prev = &vshash[idx];
+	while (*prev) {
+		vs = *prev;
+		if (vs->node == node) {
+			*prev = vs->next;
+			break;
+		}
+		prev = &vs->next;
+	}
+}
+
 node_t *
 varscope_find_first_var(node_t *var)
 {
