@@ -730,20 +730,13 @@ target_var(node_t *node, void *data)
 	if (!var || list_empty(&var->child[chv_type]))
 		return walk_continue;
 
-	node_t *type = first_node(&var->child[chv_type]);
-	if (node->e.op == '&' || type->t.category == type_pointer) {
-		const char *newtype;
+	ind_t ind[MAXIND];
+	int idx = 0;
 
-		/* If we're passing the value of a pointer, change the
-		 * pointer's base type */
-		if (node->e.op != '&')
-			type = first_node(&type->child[cht_type]);
-		newtype = target_type_name(type);
-		if (newtype) {
-			replace_type(type, newtype);
-			return walk_terminate;
-		}
-	}
+	ind[idx] = ind_stop;
+	if (node->e.op != '&')
+		ind[++idx] = ind_pointer;
+	subst_target_var(var, ind + idx);
 
 	return walk_skip_children;
 }
