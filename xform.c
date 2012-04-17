@@ -1654,7 +1654,7 @@ track_var_usage(node_t *var, ind_t *ind)
 
 /* Substitute all other declarations of @firstvar */
 static void
-subst_other_var_decls(node_t *firstvar, ind_t *ind)
+subst_other_decls(struct list_head *filelist, node_t *firstvar, ind_t *ind)
 {
 	node_t *var = varscope_find_first_var(firstvar);
 	while (var) {
@@ -1662,6 +1662,23 @@ subst_other_var_decls(node_t *firstvar, ind_t *ind)
 			subst_target_var(var, ind);
 		var = varscope_find_next_var(var);
 	}
+
+	struct list_head *scope = find_var_scope(firstvar);
+	if (scope)
+		return;
+
+	/* Global scope also implies changes in all file scopes */
+	struct parsed_file *pf;
+	list_for_each_entry(pf, filelist, list) {
+		var = varscope_find(&pf->parsed, firstvar->type,
+				    firstvar->str->text);
+		while (var) {
+			if (var != firstvar)
+				subst_target_var(var, ind);
+			var = varscope_find_next_var(var);
+		}
+	}
+
 }
 
 /* Check whether @node is a function argument.
@@ -1690,7 +1707,7 @@ check_func_arg(node_t *node, ind_t *ind)
  * are tracked appropriately.
  */
 static void
-track_type(node_t *type)
+track_type(struct list_head *filelist, node_t *type)
 {
 	ind_t ind[MAXIND];
 	int idx = 0;
@@ -1714,7 +1731,7 @@ track_type(node_t *type)
 		}
 
 		if (parent->type == nt_var) {
-			subst_other_var_decls(parent, ind + idx);
+			subst_other_decls(filelist, parent, ind + idx);
 			track_var_usage(parent, ind + idx);
 			type = parent->parent;
 		} else
@@ -1739,12 +1756,12 @@ track_vars(struct list_head *filelist)
 	do {
 		node_t *type;
 		list_for_each_entry(type, &replacedlist, user_list)
-			track_type(type);
+			track_type(filelist, type);
 		INIT_LIST_HEAD(&replacedlist);
 
 		list_for_each_entry_continue(split, &splitlist, list) {
 			list_for_each_entry(type, &split->nodes, user_list)
-				track_type(type);
+				track_type(filelist, type);
 		}
 		split = list_entry(split->list.prev, struct split_node, list);
 	} while (!list_empty(&replacedlist));

@@ -17,4 +17,6 @@ node_t *varscope_find_next_var(node_t *var);
 node_t *varscope_find_expr(node_t *expr);
 node_t *varscope_type(node_t *scope, const char *name);
 
+struct list_head *find_var_scope(node_t *node);
+
 #endif	/* VARSCOPE_H */

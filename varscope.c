@@ -41,7 +41,7 @@ is_header_file(struct parsed_file *pf)
 		return 1;
 }
 
-static struct list_head *
+struct list_head *
 find_var_scope(node_t *node)
 {
 	struct parsed_file *pf = node->pf;
