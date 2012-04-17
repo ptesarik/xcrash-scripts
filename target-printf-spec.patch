@@ -4,15 +4,15 @@
 
 --- a/defs.h
 +++ b/defs.h
-@@ -49,6 +49,7 @@
- #include <execinfo.h> /* backtrace() */
+@@ -50,6 +50,7 @@
+ #include <regex.h>
  #include <endian.h>
- #include "gdb-7.0/bfd/bfd.h" /* bfd_vma types */
+ #include "gdb-7.3.1/bfd/bfd.h" /* bfd_vma types */
 +#include <inttypes.h>
  
- #define BASELEVEL_REVISION  "4.0"
- 
-@@ -120,6 +121,27 @@ typedef  int64_t tlonglong __attribute__
+ #ifndef ATTRIBUTE_UNUSED
+ #define ATTRIBUTE_UNUSED __attribute__ ((__unused__))
+@@ -125,6 +126,27 @@ typedef  int64_t tlonglong __attribute__
  typedef uint64_t tulonglong __attribute__ ((aligned (8)));
  typedef uint32_t tptr __attribute__ ((aligned (4)));
  
@@ -40,7 +40,7 @@
  #elif defined(_64BIT_)
  
  typedef  int16_t tshort __attribute__ ((aligned (2)));
-@@ -132,6 +154,27 @@ typedef  int64_t tlonglong __attribute__
+@@ -137,6 +159,27 @@ typedef  int64_t tlonglong __attribute__
  typedef uint64_t tulonglong __attribute__ ((aligned (8)));
  typedef uint64_t tptr __attribute__ ((aligned (8)));
  
@@ -67,4 +67,4 @@
 +
  #endif
  
- #define BUFSIZE  (1500)
+ typedef tlong	toff_t;
