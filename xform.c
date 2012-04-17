@@ -1242,9 +1242,7 @@ is_host_type(node_t *expr, ind_t *ind)
 
 		type = first_node(&var->child[chv_type]);
 		assert(type->t.category == type_func);
-
-		/* Macros have no return type => be pessimistic */
-		if (! (type = nth_element(&var->child[chv_type], 1)) )
+		if (! (type = nth_element(&type->child[cht_type], 1)) )
 			return 1;
 
 		break;
