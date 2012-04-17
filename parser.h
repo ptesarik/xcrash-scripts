@@ -269,6 +269,7 @@ last_node(const struct list_head *nodelist)
 node_t *newtype(const YYLTYPE *);
 node_t *newtype_name(const YYLTYPE *, struct dynstr *);
 node_t *newtype_int(const YYLTYPE *);
+node_t *newtype_macro(const YYLTYPE *);
 
 node_t *newvar(const YYLTYPE *, struct dynstr *);
 

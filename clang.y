@@ -19,6 +19,8 @@
 
 static void yyerror(const char *);
 
+static YYLTYPE *empty_loc(const YYLTYPE *);
+
 static void type_merge(node_t *, node_t *);
 
 static void freenodelist(node_t *);
@@ -233,24 +235,24 @@ cpp_cond		: CPP_IF
 
 macro_def		: macro_declarator compound_body
 			{
+				YYLTYPE *loc = empty_loc(&@$);
+				node_t *body = newexpr1(loc, RETURN, $2);
 				$$ = newdecl(&@$, NULL, NULL);
 				set_node_child($$, chd_var, $1);
-				set_node_child($$, chd_body, $2);
+				set_node_child($$, chd_body, body);
 			}
 			;
 
 macro_declarator	: CPP_IDARG macro_param
 			{
-				node_t *type = newtype(&@$);
-				type->t.category = type_func;
+				node_t *type = newtype_macro(&@$);
 				set_node_child(type, cht_param, $2);
 				$$ = newvar(&@1, $1);
 				set_node_child($$, chv_type, type);
 			}
 			| ID
 			{
-				node_t *type = newtype(&@$);
-				type->t.category = type_func;
+				node_t *type = newtype_macro(&@$);
 				$$ = newvar(&@1, $1);
 				set_node_child($$, chv_type, type);
 			}
@@ -1123,6 +1125,19 @@ yyerror(const char *s)
 struct parsed_file *parsed_file;
 struct list_head parsed_tree;
 
+static YYLTYPE *
+empty_loc(const YYLTYPE *point)
+{
+	static YYLTYPE loc;
+	struct dynstr *str = newdynstr(NULL, 0);
+
+	list_add_tail(&str->list, &point->first_text->list);
+	loc.first_line   = loc.last_line   = point->first_line;
+	loc.first_column = loc.last_column = point->first_column;
+	loc.first_text   = loc.last_text   = str;
+	return &loc;
+}
+
 /* Initialize a new node of type @type, room for @nchild children
  * and @extra bytes.
  */
@@ -1251,6 +1266,16 @@ newtype_int(const YYLTYPE *loc)
 	ret->t.category = type_basic;
 	ret->t.btype = TYPE_INT;
 	return ret;
+}
+
+node_t *
+newtype_macro(const YYLTYPE *loc)
+{
+	node_t *rettype = newtype(empty_loc(loc));
+	node_t *type = newtype(loc);
+	type->t.category = type_func;
+	set_node_child(type, cht_type, rettype);
+	return type;
 }
 
 /* Merge the flags and attributes from @other into @merger */
