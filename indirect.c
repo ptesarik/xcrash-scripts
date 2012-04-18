@@ -110,6 +110,7 @@ is_host_type(node_t *expr, ind_t *ind)
 		return is_host_type(child, ind);
 
 	case DEREF_OP:
+	case ARRAY:
 		child = first_node(&expr->child[che_arg1]);
 		*--ind = ind_pointer;
 		return is_host_type(child, ind);
@@ -119,7 +120,6 @@ is_host_type(node_t *expr, ind_t *ind)
 	case '%':
 	case SHL_OP:
 	case SHR_OP:
-	case ARRAY:
 		child = first_node(&expr->child[che_arg1]);
 		return is_host_type(child, ind);
 
