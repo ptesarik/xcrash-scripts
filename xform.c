@@ -565,7 +565,7 @@ ind_base_type(node_t *type, const ind_t *ind)
 		if (!type)
 			break;
 
-		--ind;
+		++ind;
 	}
 
 	return type;
@@ -608,7 +608,7 @@ subst_target_var(node_t *firstvar, const ind_t *ind)
 		if (type) {
 			if (type->t.category == type_func &&
 			    ind_is_pointer(*ind))
-				--ind;
+				++ind;
 			ret += subst_target_type(type, ind);
 		}
 	} while ((var = next_dup(var)) != firstvar);
@@ -731,11 +731,11 @@ target_var(node_t *node, void *data)
 		return walk_continue;
 
 	ind_t ind[MAXIND];
-	int idx = 0;
+	int idx = MAXIND;
 
-	ind[idx] = ind_stop;
+	ind[--idx] = ind_stop;
 	if (node->e.op != '&')
-		ind[++idx] = ind_pointer;
+		ind[--idx] = ind_pointer;
 	subst_target_var(var, ind + idx);
 
 	return walk_skip_children;
@@ -1177,11 +1177,11 @@ is_host_type(node_t *expr, ind_t *ind)
 		child = first_node(&expr->child[che_arg1]);
 		if (list_empty(&expr->child[che_arg2])) {
 			if (expr->e.op == '*')
-				*++ind = ind_pointer;
+				*--ind = ind_pointer;
 			else if (!ind_is_pointer(*ind))
 				return 1;
 			else
-				--ind;
+				++ind;
 		}
 		return is_host_type(child, ind);
 
@@ -1278,8 +1278,8 @@ is_target_arith(node_t *expr, node_t *parent)
 	else
 		sibling = first_node(&parent->child[che_arg1]);
 
-	ind[0] = ind_stop;
-	return !is_host_type(sibling, ind);
+	ind[MAXIND-1] = ind_stop;
+	return !is_host_type(sibling, ind + MAXIND-1);
 }
 
 static void
@@ -1289,7 +1289,7 @@ track_assign(node_t *expr, ind_t *ind)
 	while (target->type == nt_expr &&
 	       (target->e.op == '*' || target->e.op == ARRAY)) {
 		target = first_node(&target->child[che_arg1]);
-		*(++ind) = ind_pointer;
+		*(--ind) = ind_pointer;
 	}
 	target = varscope_find_expr(target);
 	if (target)
@@ -1302,7 +1302,7 @@ track_assign2(node_t *expr, ind_t *ind)
 	node_t *target = first_node(&expr->child[che_arg2]);
 	while (target->type == nt_expr && target->e.op == '*') {
 		target = first_node(&target->child[che_arg1]);
-		*(++ind) = ind_pointer;
+		*(--ind) = ind_pointer;
 	}
 	target = varscope_find_expr(target);
 	if (target)
@@ -1319,7 +1319,7 @@ track_return(node_t *node, ind_t *ind)
 		node = fn;
 	if (fn) {
 		node_t *var = first_node(&fn->child[chd_var]);
-		*(++ind) = ind_return;
+		*(--ind) = ind_return;
 		subst_target_var(var, ind);
 	}
 }
@@ -1360,9 +1360,9 @@ static void
 track_dereference(node_t *node, ind_t *ind)
 {
 	if (ind_is_pointer(*ind)) {
-		ind_t saveind = *ind--;
+		ind_t saveind = *ind++;
 		track_expr(node, ind);
-		*++ind = saveind;
+		*--ind = saveind;
 	} else
 		ind_warn("expected pointer", ind);
 }
@@ -1394,7 +1394,7 @@ track_expr(node_t *expr, ind_t *ind)
 
 	case nt_expr:
 		if (expr->e.op == ID && ind_is_func(*ind))
-			*++ind = ind_implicit;
+			*--ind = ind_implicit;
 
 		switch (parent->e.op) {
 
@@ -1406,7 +1406,7 @@ track_expr(node_t *expr, ind_t *ind)
 			}
 
 			if (*ind != ind_implicit)
-				*++ind = ind_pointer;
+				*--ind = ind_pointer;
 			/* fall through */
 		case INC_OP:
 		case DEC_OP:
@@ -1429,17 +1429,17 @@ track_expr(node_t *expr, ind_t *ind)
 				break;
 
 			if (ind_is_pointer(*ind))
-				saveind[saveidx++] = *ind--;
+				saveind[saveidx++] = *ind++;
 			else
 				ind_warn("non-pointer call", ind);
 
 			if (*ind == ind_return &&
 			    is_child(expr, parent, che_arg1)) {
-				saveind[saveidx++] = *ind--;
+				saveind[saveidx++] = *ind++;
 				track_expr(parent, ind);
 			}
 			while (saveidx)
-				*++ind = saveind[--saveidx];
+				*--ind = saveind[--saveidx];
 			break;
 
 		case '*':
@@ -1456,7 +1456,7 @@ track_expr(node_t *expr, ind_t *ind)
 		case '=':
 			if (is_child(expr, parent, che_arg2))
 				track_assign(parent, ind);
-			else if (ind_is_pointer(*ind) && ind_is_func(ind[-1]))
+			else if (ind_is_pointer(*ind) && ind_is_func(ind[1]))
 				track_assign2(parent, ind);
 			track_expr(parent, ind);
 			break;
@@ -1547,20 +1547,20 @@ static void
 track_type(struct list_head *filelist, node_t *type)
 {
 	ind_t ind[MAXIND];
-	int idx = 0;
+	int idx = MAXIND;
 
-	ind[idx] = ind_stop;
+	ind[--idx] = ind_stop;
 	if (type->t.category == type_func)
-		ind[++idx] = ind_return;
+		ind[--idx] = ind_return;
 
 	do {
 		node_t *parent;
 		while ((parent = type->parent)->type == nt_type) {
 			if (parent->t.category == type_pointer ||
 			    parent->t.category == type_array)
-				ind[++idx] = ind_pointer;
+				ind[--idx] = ind_pointer;
 			else if (parent->t.category == type_func)
-				ind[++idx] = ind_return;
+				ind[--idx] = ind_return;
 			else
 				assert(0);
 
@@ -1573,7 +1573,7 @@ track_type(struct list_head *filelist, node_t *type)
 			type = parent->parent;
 		} else
 			type = parent;
-	} while ((type = check_func_arg(type, &ind[++idx])) != NULL);
+	} while ((type = check_func_arg(type, &ind[--idx])) != NULL);
 }
 
 static void
