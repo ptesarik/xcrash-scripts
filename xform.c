@@ -1251,9 +1251,16 @@ is_host_type(node_t *expr, ind_t *ind)
 		return 1;	/* not found - e.g. NULL */
 
 	if (type->t.category == type_pointer ||
-	    type->t.category == type_array ||
-	    type->t.category == type_func)
+	    type->t.category == type_array)
 		return 1;
+	else if (type->t.category == type_func) {
+		if (! (type = nth_element(&type->child[cht_type], 1)) ) 
+			return 1;
+
+		/* The 'none' pseudo-type denotes a macro */
+		if (type->t.category != type_none)
+			return 1;
+	}
 
 	return 0;
 }
