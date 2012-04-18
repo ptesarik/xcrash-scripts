@@ -1141,13 +1141,14 @@ static enum walk_action
 build_scopes(node_t *node, void *data)
 {
 	node_t *var = varscope_find_expr(node);
-	if (var) {
-		node->user_data = var;
-		if (!var->user_list.next)
-			INIT_LIST_HEAD(&var->user_list);
-		list_add_tail(&node->user_list, &var->user_list);
-	}
-	return walk_continue;
+	if (!var)
+		return walk_continue;
+
+	node->user_data = var;
+	if (!var->user_list.next)
+		INIT_LIST_HEAD(&var->user_list);
+	list_add_tail(&node->user_list, &var->user_list);
+	return walk_skip_children;
 }
 
 /* Check whether @expr refers to host-specific data */
