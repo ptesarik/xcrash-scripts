@@ -1399,9 +1399,11 @@ track_expr(node_t *expr, ind_t *ind)
 		switch (parent->e.op) {
 
 		case '&':
-			if (!list_empty(&parent->child[che_arg2]))
+			if (!list_empty(&parent->child[che_arg2])) {
 				/* This is the binary '&' operator */
+				track_expr(parent, ind);
 				break;
+			}
 
 			if (*ind != ind_implicit)
 				*++ind = ind_pointer;
