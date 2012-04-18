@@ -110,18 +110,12 @@ static inline int is_child(node_t *child, node_t *parent, int idx)
 	return child_order(child, parent, idx) > 0;
 }
 
-/* Type indirection
- *
- * Positive numbers denote the position of a function argument.
- * Negative numbers have special meanings.
- */
-typedef char ind_t;
-enum ind {
-	ind_stop = 0,		/* End-of-array marker */
-	ind_pointer = -1,	/* Pointer to a type */
-	ind_return = -2,	/* Function return type */
-	ind_implicit = -3	/* Implicit pointer */
-};
+/* Return the next duplicate of @node */
+static inline node_t *
+next_dup(node_t *node)
+{
+	return list_entry(node->dup_list.next, node_t, dup_list);
+}
 
 /* Split nodes */
 struct split_node {
