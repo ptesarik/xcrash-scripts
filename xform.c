@@ -711,27 +711,79 @@ arch_machspec(node_t *node, void *data)
  *
  */
 
-static enum walk_action
-target_var(node_t *node, void *data)
+/* Convert all components of @expr to target types */
+static int
+subst_target_expr(node_t *expr, ind_t *ind)
 {
-	if (node->type != nt_expr)
-		return walk_skip_children;
+	node_t *child, *var, *type;
 
-	node_t *var = (node->e.op == ADDR_OF)
-		? varscope_find_expr(first_node(&node->child[che_arg1]))
-		: varscope_find_expr(node);
-	if (!var || list_empty(&var->child[chv_type]))
-		return walk_continue;
+	if ( (var = varscope_find_expr(expr)) )
+		return subst_target_var(var, ind);
 
-	ind_t ind[MAXIND];
-	int idx = MAXIND;
+	switch (expr->e.op) {
+	case ADDR_OF:
+		child = first_node(&expr->child[che_arg1]);
+		if (!ind_is_pointer(*ind))
+			return 0;
+		++ind;
+		return subst_target_expr(child, ind);
 
-	ind[--idx] = ind_stop;
-	if (node->e.op != ADDR_OF)
-		ind[--idx] = ind_pointer;
-	subst_target_var(var, ind + idx);
+	case DEREF_OP:
+	case ARRAY:
+		child = first_node(&expr->child[che_arg1]);
+		*--ind = ind_pointer;
+		return subst_target_expr(child, ind);
 
-	return walk_skip_children;
+	case ID:
+	case '.':
+	case PTR_OP:
+		fprintf(stderr, "%s: variable not found\n", __FUNCTION__);
+		/* fall through */
+	case INT_CONST:
+	case FLOAT_CONST:
+	case CHAR_CONST:
+	case STRING_CONST:
+	case SIZEOF_TYPE:
+	case SIZEOF:
+	case OFFSETOF:
+	case '!':
+		return 0;
+
+	case '~':
+	case '/':
+	case '%':
+	case SHL_OP:
+	case SHR_OP:
+		child = first_node(&expr->child[che_arg1]);
+		return subst_target_expr(child, ind);
+
+	case '+':
+	case '-':
+		/* FIXME: I must put some more thought into these
+		 * The current idea is that an offset to a base type
+		 * is traditionally put to the right of the operator,
+		 * but this may fail horribly...
+		 */
+		child = first_node(&expr->child[che_arg1]);
+		return subst_target_expr(child, ind);
+
+	case TYPECAST:
+		type = first_node(&expr->child[che_arg1]);
+		subst_target_type(type, ind);
+		child = first_node(&expr->child[che_arg2]);
+		return subst_target_expr(child, ind);
+
+	case FUNC:
+		child = first_node(&expr->child[che_arg1]);
+		*--ind = ind_return;
+		return subst_target_expr(child, ind);
+
+	default:
+		fprintf(stderr, "%s: Operator %d not yet handled\n",
+			__FUNCTION__, expr->e.op);
+	}
+
+	return 0;
 }
 
 static enum walk_action
@@ -764,7 +816,6 @@ target_sizeof(node_t *node)
 static enum walk_action
 target_types_symbol_data(node_t *node, void *data)
 {
-	struct parsed_file *pf = data;
 	node_t *arg;
 
 	if (!is_direct_call(node, "get_symbol_data") &&
@@ -776,8 +827,12 @@ target_types_symbol_data(node_t *node, void *data)
 	target_sizeof(arg);
 
 	/* Process the 3rd argument */
+	ind_t ind[MAXIND];
+	int idx = MAXIND;
+	ind[--idx] = ind_stop;
+	ind[--idx] = ind_pointer;
 	arg = nth_element(&node->child[che_arg2], 3);
-	walk_tree_single(arg, target_var, pf);
+	subst_target_expr(arg, ind + idx);
 
 	return walk_continue;
 }
@@ -785,7 +840,6 @@ target_types_symbol_data(node_t *node, void *data)
 static enum walk_action
 target_types_readmem(node_t *node, void *data)
 {
-	struct parsed_file *pf = data;
 	int has_size;
 	node_t *arg;
 
@@ -801,8 +855,12 @@ target_types_readmem(node_t *node, void *data)
 		return walk_continue;
 
 	/* Process the 3rd argument (@buffer) */
+	ind_t ind[MAXIND];
+	int idx = MAXIND;
+	ind[--idx] = ind_stop;
+	ind[--idx] = ind_pointer;
 	arg = nth_element(&node->child[che_arg2], 3);
-	walk_tree_single(arg, target_var, pf);
+	subst_target_expr(arg, ind + idx);
 
 	if (has_size) {
 		/* Process the 4th argument (@size) */
