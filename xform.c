@@ -1162,6 +1162,7 @@ is_host_type(node_t *expr, ind_t *ind)
 	case CHAR_CONST:
 		return 0;
 
+	case '!':
 	case STRING_CONST:
 		return 1;
 
@@ -1177,7 +1178,9 @@ is_host_type(node_t *expr, ind_t *ind)
 		*--ind = ind_pointer;
 		return is_host_type(child, ind);
 
+	case '~':
 	case '/':
+	case '%':
 	case SHL_OP:
 	case SHR_OP:
 	case ARRAY:
