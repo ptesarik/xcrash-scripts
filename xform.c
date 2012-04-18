@@ -582,7 +582,16 @@ subst_target_type(node_t *type, const ind_t *ind)
 		}
 	}
 
-	if (!type->user_list.next)
+	if (type->user_list.next)
+		return 0;
+
+	struct list_head *scope = find_scope(type, NULL);
+	node_t *realtype = resolve_typedef(scope, type);
+	if (!realtype ||
+	    (realtype->t.category != type_struct &&
+	     realtype->t.category != type_union &&
+	     realtype->t.category != type_array &&
+	     realtype->t.category != type_func))
 		list_add_tail(&type->user_list, &replacedlist);
 
 	return 0;

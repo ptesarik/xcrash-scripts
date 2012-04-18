@@ -199,7 +199,7 @@ varscope_find_next_var(node_t *var)
 	return NULL;
 }
 
-static node_t *
+node_t *
 resolve_typedef(struct list_head *tree, node_t *type)
 {
 	while (type->type == nt_type && type->t.category == type_typedef) {

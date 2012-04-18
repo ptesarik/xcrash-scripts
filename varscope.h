@@ -18,5 +18,6 @@ node_t *varscope_find_expr(node_t *expr);
 node_t *varscope_type(node_t *scope, const char *name);
 
 struct list_head *find_var_scope(node_t *node);
+node_t *resolve_typedef(struct list_head *tree, node_t *type);
 
 #endif	/* VARSCOPE_H */
