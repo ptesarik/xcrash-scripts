@@ -1,24 +1,25 @@
 ---
- defs.h    |    6 +++---
- memory.c  |   10 +++++-----
- symbols.c |    2 +-
- x86_64.c  |   12 ++++++------
- 4 files changed, 15 insertions(+), 15 deletions(-)
+ defs.h             |    8 ++++----
+ memory.c           |   10 +++++-----
+ symbols.c          |    2 +-
+ unwind_x86_32_64.c |    2 +-
+ x86_64.c           |    8 ++++----
+ 5 files changed, 15 insertions(+), 15 deletions(-)
 
 --- a/memory.c
 +++ b/memory.c
-@@ -276,8 +276,8 @@ mem_init(void)
-                 error(FATAL, "unsupported sizeof(int): %d\n", sizeof(tint));
-         if ((sizeof(tlong) != SIZEOF_32BIT) && (sizeof(tlong) != SIZEOF_64BIT))
-                 error(FATAL, "unsupported sizeof(long): %d\n", sizeof(tlong));
--        if (sizeof(void *) != sizeof(tlong))
--                error(FATAL, "pointer size: %d is not sizeof(long): %d\n", sizeof(void *), sizeof(tlong));
+@@ -291,8 +291,8 @@ mem_init(void)
+                 error(FATAL, "unsupported sizeof(int): %d\n", sizeof(int));
+         if ((sizeof(long) != SIZEOF_32BIT) && (sizeof(long) != SIZEOF_64BIT))
+                 error(FATAL, "unsupported sizeof(long): %d\n", sizeof(long));
+-        if (sizeof(void *) != sizeof(long))
+-                error(FATAL, "pointer size: %d is not sizeof(long): %d\n", sizeof(void *), sizeof(long));
 +        if (sizeof(tptr) != sizeof(tlong))
 +                error(FATAL, "pointer size: %d is not sizeof(long): %d\n", sizeof(tptr), sizeof(tlong));
  
-         DISPLAY_DEFAULT = (sizeof(tlong) == 8) ? DISPLAY_64 : DISPLAY_32;
+         DISPLAY_DEFAULT = (sizeof(long) == 8) ? DISPLAY_64 : DISPLAY_32;
  }
-@@ -14062,9 +14062,9 @@ nr_to_section(tulong nr)
+@@ -14541,9 +14541,9 @@ nr_to_section(ulong nr)
   * a little bit of information.  There should be at least
   * 3 bits here due to 32-bit alignment.
   */
@@ -33,53 +34,45 @@
  
 --- a/x86_64.c
 +++ b/x86_64.c
-@@ -1716,13 +1716,13 @@ static tint
- x86_64_kvtop(struct task_context *tc, tulong kvaddr, physaddr_t *paddr, tint verbose)
+@@ -1285,7 +1285,7 @@ x86_64_init_kernel_pgd(void)
+ tulong x86_64_VTOP(tulong vaddr) 
  {
- 	tulong *pml4;
--        tulong *pgd;
-+        tulong pgd;
- 	tulong pgd_paddr;
- 	tulong pgd_pte;
--	tulong *pmd;
-+	tulong pmd;
- 	tulong pmd_paddr;
- 	tulong pmd_pte;
--	tulong *ptep;
-+	tulong ptep;
- 	tulong pte_paddr;
- 	tulong pte;
- 	physaddr_t physpage;
-@@ -1774,7 +1774,7 @@ x86_64_kvtop(struct task_context *tc, tu
+ 	if (vaddr >= __START_KERNEL_map)
+-		return ((vaddr) - (ulong)__START_KERNEL_map + machdep->machspec->phys_base);
++		return ((vaddr) - (tulong)__START_KERNEL_map + machdep->machspec->phys_base);
+ 	else
+ 		return ((vaddr) - PAGE_OFFSET);
+ }
+@@ -1890,7 +1890,7 @@ x86_64_kvtop(struct task_context *tc, tu
  		goto no_kpage;
  	pgd_paddr = (*pml4) & PHYSICAL_PAGE_MASK;
  	FILL_PGD(pgd_paddr, PHYSADDR, PAGESIZE());
--	pgd = ((tulong *)pgd_paddr) + pgd_index(kvaddr); 
+-	pgd = ((tptr)pgd_paddr) + pgd_index(kvaddr); 
 +	pgd = pgd_paddr + pgd_index(kvaddr) * sizeof(tulong); 
  	pgd_pte = ULONG(machdep->pgd + PAGEOFFSET(pgd));
          if (verbose) 
                  fprintf(fp, "   PUD: %"PRIlx" => %"PRIlx"\n", (tulong)pgd, pgd_pte);
-@@ -1786,7 +1786,7 @@ x86_64_kvtop(struct task_context *tc, tu
+@@ -1902,7 +1902,7 @@ x86_64_kvtop(struct task_context *tc, tu
  	 */
  	pmd_paddr = pgd_pte & PHYSICAL_PAGE_MASK;
  	FILL_PMD(pmd_paddr, PHYSADDR, PAGESIZE());
--	pmd = ((tulong *)pmd_paddr) + pmd_index(kvaddr);
+-	pmd = ((tptr)pmd_paddr) + pmd_index(kvaddr);
 +	pmd = pmd_paddr + pmd_index(kvaddr) * sizeof(tulong);
  	pmd_pte = ULONG(machdep->pmd + PAGEOFFSET(pmd));
          if (verbose) 
                  fprintf(fp, "   PMD: %"PRIlx" => %"PRIlx"\n", (tulong)pmd, pmd_pte);
-@@ -1811,7 +1811,7 @@ x86_64_kvtop(struct task_context *tc, tu
+@@ -1927,7 +1927,7 @@ x86_64_kvtop(struct task_context *tc, tu
  	 */
  	pte_paddr = pmd_pte & PHYSICAL_PAGE_MASK;
  	FILL_PTBL(pte_paddr, PHYSADDR, PAGESIZE());
--	ptep = ((tulong *)pte_paddr) + pte_index(kvaddr);
+-	ptep = ((tptr)pte_paddr) + pte_index(kvaddr);
 +	ptep = pte_paddr + pte_index(kvaddr) * sizeof(tulong);
  	pte = ULONG(machdep->ptbl + PAGEOFFSET(ptep));
          if (verbose) 
                  fprintf(fp, "   PTE: %"PRIlx" => %"PRIlx"\n", (tulong)ptep, pte);
 --- a/defs.h
 +++ b/defs.h
-@@ -2503,11 +2503,11 @@ struct load_module {
+@@ -2648,11 +2648,11 @@ struct load_module {
   *  for safety, use the 2.6 values to generate it.
   */ 
  #define __PHYSICAL_MASK_SHIFT  40
@@ -94,14 +87,34 @@
  #define PHYSICAL_PAGE_MASK    (~(PAGE_SIZE-1) & (__PHYSICAL_MASK << PAGE_SHIFT))
  
  #define _PAGE_BIT_NX    63
+@@ -4626,7 +4626,7 @@ struct x86_64_stkinfo {
+ 
+ struct x86_64_machine_specific {
+ 	ulong userspace_top;
+-	ulong page_offset;
++	tulong page_offset;
+ 	ulong vmalloc_start_addr;
+ 	ulong vmalloc_end;
+ 	ulong vmemmap_vaddr;
 --- a/symbols.c
 +++ b/symbols.c
-@@ -1297,7 +1297,7 @@ store_module_symbols_v1(tulong total, ti
+@@ -1330,7 +1330,7 @@ store_module_symbols_v1(ulong total, int
  struct kernel_symbol
  {
-         tulong value;
+         unsigned long value;
 -        const char *name;
 +        tptr name;
  };
  
  void
+--- a/unwind_x86_32_64.c
++++ b/unwind_x86_32_64.c
+@@ -194,7 +194,7 @@ static unsigned long read_pointer(const
+                                   const void *end,
+                                   signed ptrType)
+ {
+-	unsigned long value = 0;
++	tulong value = 0;
+ 	union {
+ 		const u8 *p8;
+ 		const u16 *p16u;
