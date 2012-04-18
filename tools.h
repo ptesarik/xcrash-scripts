@@ -120,17 +120,6 @@ enum ind {
 	ind_implicit = -3	/* Implicit pointer */
 };
 
-#ifdef NDEBUG
-# define ind_warn(msg,ind)	do {} while(0)
-#else
-static inline void
-ind_warn(const char *msg, const ind_t *ind)
-{
-	fprintf(stderr, "Indirection WARNING: Got %d, %s\n",
-		*ind, msg);
-}
-#endif	/* NDEBUG */
-
 /* Split nodes */
 struct split_node {
 	struct list_head list;

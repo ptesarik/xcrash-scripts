@@ -487,24 +487,20 @@ ind_is_func(ind_t ind)
 }
 
 static node_t *
-array_base_type(node_t *type, const ind_t *ind)
+array_base_type(node_t *type)
 {
-	if (type->t.category == type_pointer ||
-	    type->t.category == type_array)
-		return first_node(&type->child[cht_type]);
-
-	ind_warn("pointer/array not found", ind);
-	return NULL;
+	return (type->t.category == type_pointer ||
+		type->t.category == type_array)
+		? first_node(&type->child[cht_type])
+		: NULL;
 }
 
 static node_t *
-func_return_type(node_t *type, const ind_t *ind)
+func_return_type(node_t *type)
 {
-	if (type->t.category == type_func)
-		return first_node(&type->child[cht_type]);
-
-	ind_warn("func not found", ind);
-	return NULL;
+	return (type->t.category == type_func)
+		? first_node(&type->child[cht_type])
+		: NULL;
 }
 
 static node_t *
@@ -523,13 +519,11 @@ kr_param_type(node_t *fntype, const char *name)
 }
 
 static node_t *
-func_arg_type(node_t *type, const ind_t *ind)
+func_arg_type(node_t *type, int pos)
 {
-	node_t *decl = nth_element(&type->child[cht_param], *ind);
-	if (!decl) {
-		ind_warn("func arg not found", ind);
+	node_t *decl = nth_element(&type->child[cht_param], pos);
+	if (!decl)
 		return NULL;
-	}
 	assert(decl->type == nt_decl);
 
 	type = first_node(&decl->child[chd_type]);
@@ -545,7 +539,6 @@ func_arg_type(node_t *type, const ind_t *ind)
 	if ( (type = kr_param_type(decl->parent, var->str->text)) )
 		return type;
 
-	ind_warn("K&R arg not found", ind);
 	return NULL;
 }
 
@@ -555,12 +548,12 @@ ind_base_type(node_t *type, const ind_t *ind)
 {
 	while (*ind != ind_stop) {
 		if (ind_is_pointer(*ind))
-			type = array_base_type(type, ind);
+			type = array_base_type(type);
 		else if (*ind == ind_return)
-			type = func_return_type(type, ind);
+			type = func_return_type(type);
 		else {
 			assert(ind > 0);
-			type = func_arg_type(type, ind);
+			type = func_arg_type(type, *ind);
 		}
 		if (!type)
 			break;
@@ -1363,8 +1356,7 @@ track_dereference(node_t *node, ind_t *ind)
 		ind_t saveind = *ind++;
 		track_expr(node, ind);
 		*--ind = saveind;
-	} else
-		ind_warn("expected pointer", ind);
+	}
 }
 
 static void
@@ -1430,8 +1422,6 @@ track_expr(node_t *expr, ind_t *ind)
 
 			if (ind_is_pointer(*ind))
 				saveind[saveidx++] = *ind++;
-			else
-				ind_warn("non-pointer call", ind);
 
 			if (*ind == ind_return &&
 			    is_child(expr, parent, che_arg1)) {
