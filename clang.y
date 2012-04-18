@@ -93,6 +93,8 @@ static void hidedecls(struct list_head *);
 %token <token> GE_OP		">="
 %token <token> EQ_OP		"=="
 %token <token> NE_OP		"!="
+%token <token> ADDR_OF		"&"
+%token <token> DEREF_OP		"*"
 
 /* reserved words */
 %token <token> ATTRIBUTE AUTO BREAK CASE CONST CONTINUE DEFAULT
@@ -1029,7 +1031,11 @@ unary_expr		: postfix_expr
 			| FRAME_REG '(' opt_expr ',' type_name ')'
 			{ $$ = newexpr2(&@$, $1, $5, $3); }
 			;
-unary_op		: '&' | '*' | '+' | '-' | '~' | '!'
+unary_op		: '&'
+			{ $$ = ADDR_OF; }
+			| '*'
+			{ $$ = DEREF_OP; }
+			| '+' | '-' | '~' | '!'
 			;
 unary_lval_op		: "++" | "--" | SIZEOF
 			;

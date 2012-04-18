@@ -717,7 +717,7 @@ target_var(node_t *node, void *data)
 	if (node->type != nt_expr)
 		return walk_skip_children;
 
-	node_t *var = (node->e.op == '&')
+	node_t *var = (node->e.op == ADDR_OF)
 		? varscope_find_expr(first_node(&node->child[che_arg1]))
 		: varscope_find_expr(node);
 	if (!var || list_empty(&var->child[chv_type]))
@@ -727,7 +727,7 @@ target_var(node_t *node, void *data)
 	int idx = MAXIND;
 
 	ind[--idx] = ind_stop;
-	if (node->e.op != '&')
+	if (node->e.op != ADDR_OF)
 		ind[--idx] = ind_pointer;
 	subst_target_var(var, ind + idx);
 
@@ -1165,28 +1165,29 @@ is_host_type(node_t *expr, ind_t *ind)
 	case STRING_CONST:
 		return 1;
 
-	case '&':
-	case '*':
+	case ADDR_OF:
 		child = first_node(&expr->child[che_arg1]);
-		if (list_empty(&expr->child[che_arg2])) {
-			if (expr->e.op == '*')
-				*--ind = ind_pointer;
-			else if (!ind_is_pointer(*ind))
-				return 1;
-			else
-				++ind;
-		}
+		if (!ind_is_pointer(*ind))
+			return 1;
+		++ind;
+		return is_host_type(child, ind);
+
+	case DEREF_OP:
+		child = first_node(&expr->child[che_arg1]);
+		*--ind = ind_pointer;
 		return is_host_type(child, ind);
 
 	case '/':
-	case '|':
-	case '^':
 	case SHL_OP:
 	case SHR_OP:
 	case ARRAY:
 		child = first_node(&expr->child[che_arg1]);
 		return is_host_type(child, ind);
 
+	case '&':
+	case '|':
+	case '^':
+	case '*':
 	case '+':
 	case '-':
 		child = nth_element(&expr->child[che_arg1], 1);
@@ -1280,7 +1281,7 @@ track_assign(node_t *expr, ind_t *ind)
 {
 	node_t *target = first_node(&expr->child[che_arg1]);
 	while (target->type == nt_expr &&
-	       (target->e.op == '*' || target->e.op == ARRAY)) {
+	       (target->e.op == DEREF_OP || target->e.op == ARRAY)) {
 		target = first_node(&target->child[che_arg1]);
 		*(--ind) = ind_pointer;
 	}
@@ -1293,7 +1294,7 @@ static void
 track_assign2(node_t *expr, ind_t *ind)
 {
 	node_t *target = first_node(&expr->child[che_arg2]);
-	while (target->type == nt_expr && target->e.op == '*') {
+	while (target->type == nt_expr && target->e.op == DEREF_OP) {
 		target = first_node(&target->child[che_arg1]);
 		*(--ind) = ind_pointer;
 	}
@@ -1389,14 +1390,8 @@ track_expr(node_t *expr, ind_t *ind)
 			*--ind = ind_implicit;
 
 		switch (parent->e.op) {
-
-		case '&':
-			if (!list_empty(&parent->child[che_arg2])) {
-				/* This is the binary '&' operator */
-				track_expr(parent, ind);
-				break;
-			}
-
+			
+		case ADDR_OF:
 			if (*ind != ind_implicit)
 				*--ind = ind_pointer;
 			/* fall through */
@@ -1410,6 +1405,9 @@ track_expr(node_t *expr, ind_t *ind)
 			if (!is_child(expr, parent, che_arg1))
 				break;
 			/* else fall through */
+		case '&':
+		case '|':
+		case '^':
 		case '+':
 		case '-':
 			if (is_target_arith(expr, parent))
@@ -1432,15 +1430,13 @@ track_expr(node_t *expr, ind_t *ind)
 				*--ind = saveind[--saveidx];
 			break;
 
-		case '*':
-			/* Check for the unary '*' operator */
-			if (list_empty(&parent->child[che_arg2]))
-				track_dereference(parent, ind);
-			break;
-
 		case ARRAY:
-			if (is_child(expr, parent, che_arg1))
-				track_dereference(parent, ind);
+			if (!is_child(expr, parent, che_arg1))
+				/* array index */
+				break;
+			/* else fall through */
+		case DEREF_OP:
+			track_dereference(parent, ind);
 			break;
 
 		case '=':

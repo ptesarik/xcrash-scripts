@@ -335,6 +335,8 @@ static void dump_op(int op)
 	case '?':	fputs("?:", stdout); break;
 	case RANGE:	fputs("...", stdout); break;
 	case PTR_OP:	fputs("=>", stdout); break;
+	case ADDR_OF:   fputs("&", stdout); break;
+	case DEREF_OP:  fputs("*", stdout); break;
 	case SIZEOF_TYPE:
 	case SIZEOF:	fputs("sizeof", stdout); break;
 	case FUNC:	fputs("call", stdout); break;
