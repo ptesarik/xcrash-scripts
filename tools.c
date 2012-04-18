@@ -454,6 +454,19 @@ reset_user_data(struct list_head *tree)
 	walk_tree(tree, reset_user_data_fn, NULL);
 }
 
+/* Get the @pos-th node from @list */
+node_t *
+nth_node(struct list_head *list, int pos)
+{
+	node_t *elem;
+	int i = 0;
+	list_for_each_entry(elem, list, list) {
+		if (++i == pos)
+			return elem;
+	}
+	return NULL;
+}
+
 int
 child_order(node_t *child, node_t *parent, int idx)
 {

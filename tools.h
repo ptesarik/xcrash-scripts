@@ -96,6 +96,9 @@ typed_parent(node_t *node, enum node_type type)
 	return node;
 }
 
+/* Get the @pos-th node from @list */
+node_t *nth_node(struct list_head *list, int pos);
+
 /* Return the order of @child among @parent's children of @idx.
  * Returns zero if @child is not found.
  */

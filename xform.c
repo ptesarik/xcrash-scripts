@@ -145,19 +145,6 @@ is_function(node_t *node)
 		node->t.category == type_func;
 }
 
-/* Get the @pos-th element from @list */
-static node_t *
-nth_element(struct list_head *list, int pos)
-{
-	node_t *elem;
-	int i = 0;
-	list_for_each_entry(elem, list, list) {
-		if (++i == pos)
-			return elem;
-	}
-	return NULL;
-}
-
 /* Get the base type of @type */
 static node_t *
 base_type(node_t *type)
@@ -520,13 +507,13 @@ kr_param_type(node_t *fntype, const char *name)
 	node_t *var = varscope_find(&fndecl->child[chd_body], nt_var, name);
 	if (!var)
 		return NULL;
-	return nth_element(&var->child[chv_type], 1);
+	return nth_node(&var->child[chv_type], 1);
 }
 
 static node_t *
 func_arg_type(node_t *type, int pos)
 {
-	node_t *decl = nth_element(&type->child[cht_param], pos);
+	node_t *decl = nth_node(&type->child[cht_param], pos);
 	if (!decl)
 		return NULL;
 	assert(decl->type == nt_decl);
@@ -625,7 +612,7 @@ subst_target_var(node_t *firstvar, const ind_t *ind)
 	node_t *var = firstvar;
 	int ret = 0;
 	do {
-		node_t *type = nth_element(&var->child[chv_type], 1);
+		node_t *type = nth_node(&var->child[chv_type], 1);
 		if (type) {
 			if (type->t.category == type_func &&
 			    ind_is_pointer(*ind))
@@ -676,7 +663,7 @@ checkselect(node_t *node, void *data)
 	if (!is_direct_call(node, "select"))
 		return walk_continue;
 
-	node_t *arg = nth_element(&node->child[che_arg2], 5);
+	node_t *arg = nth_node(&node->child[che_arg2], 5);
 	walk_tree_single(arg, checkvar, vs);
 	return vs->found ? walk_terminate : walk_continue;
 }
@@ -846,7 +833,7 @@ target_sizeof(node_t *node)
 	if (!typesize)
 		return;
 
-	node_t *type = nth_element(&typesize->child[che_arg1], 1);
+	node_t *type = nth_node(&typesize->child[che_arg1], 1);
 	const char *newtype = target_type_name(type);
 	if (newtype) {
 		replace_text(type, newtype);
@@ -864,7 +851,7 @@ target_types_symbol_data(node_t *node, void *data)
 		return walk_continue;
 
 	/* Process the 2nd argument */
-	arg = nth_element(&node->child[che_arg2], 2);
+	arg = nth_node(&node->child[che_arg2], 2);
 	target_sizeof(arg);
 
 	/* Process the 3rd argument */
@@ -872,7 +859,7 @@ target_types_symbol_data(node_t *node, void *data)
 	int idx = MAXIND;
 	ind[--idx] = ind_stop;
 	ind[--idx] = ind_pointer;
-	arg = nth_element(&node->child[che_arg2], 3);
+	arg = nth_node(&node->child[che_arg2], 3);
 	subst_target_expr(arg, ind + idx);
 
 	return walk_continue;
@@ -900,12 +887,12 @@ target_types_readmem(node_t *node, void *data)
 	int idx = MAXIND;
 	ind[--idx] = ind_stop;
 	ind[--idx] = ind_pointer;
-	arg = nth_element(&node->child[che_arg2], 3);
+	arg = nth_node(&node->child[che_arg2], 3);
 	subst_target_expr(arg, ind + idx);
 
 	if (has_size) {
 		/* Process the 4th argument (@size) */
-		arg = nth_element(&node->child[che_arg2], 4);
+		arg = nth_node(&node->child[che_arg2], 4);
 		target_sizeof(arg);
 	}
 
@@ -974,9 +961,9 @@ mkstring_variadic(node_t *node, void *data)
 		return 0;
 
 	/* Remove MKSTRING if necessary */
-	node_t *opt = nth_element(&node->child[che_arg2], 4);
+	node_t *opt = nth_node(&node->child[che_arg2], 4);
 	if (is_direct_call(opt, "MKSTR")) {
-		node_t *arg = nth_element(&opt->child[che_arg2], 1);
+		node_t *arg = nth_node(&opt->child[che_arg2], 1);
 		nullify_str(opt);
 		remove_text_list(opt->first_text, arg->first_text);
 		remove_text_list_rev(opt->last_text, arg->last_text);
@@ -984,7 +971,7 @@ mkstring_variadic(node_t *node, void *data)
 
 	/* Get the right typecast if necessary */
 	const char *typecast = NULL;
-	node_t *flags = nth_element(&node->child[che_arg2], 3);
+	node_t *flags = nth_node(&node->child[che_arg2], 3);
 	walk_tree_single(flags, mkstring_typecast, &typecast);
 	if (typecast) {
 		struct dynstr *ds = newdynstr(typecast, strlen(typecast));
@@ -1028,7 +1015,7 @@ convert_readmem(node_t *node, void *data)
 	if (!is_direct_call(node, "readmem"))
 		return 0;
 
-	node_t *arg = nth_element(&node->child[che_arg2], 4);
+	node_t *arg = nth_node(&node->child[che_arg2], 4);
 	if (arg->type != nt_expr) {
 		fputs("Huh?! Argument to call not an expression?\n", stderr);
 		return 0;
@@ -1150,7 +1137,7 @@ printf_spec(node_t *node, void *data)
 	else
 		return walk_continue;
 
-	node_t *spec = nth_element(&node->child[che_arg2], pos);
+	node_t *spec = nth_node(&node->child[che_arg2], pos);
 	walk_tree_single(spec, printf_spec_one, data);
 
 	return walk_continue;
@@ -1169,7 +1156,7 @@ static int
 replace_struct(node_t *node, const char *oldname, const char *newname)
 {
 	if (node->type == nt_decl) {
-		node_t *type = nth_element(&node->child[chd_type], 1);
+		node_t *type = nth_node(&node->child[chd_type], 1);
 		if (!is_struct(type, oldname))
 			return 0;
 		varscope_remove(type);
@@ -1202,7 +1189,7 @@ use_pt_regs_x86_64(node_t *node, void *data)
 		return walk_continue;
 
 	if (node->type == nt_decl) {
-		node_t *type = nth_element(&node->child[chd_type], 1);
+		node_t *type = nth_node(&node->child[chd_type], 1);
 		if (is_struct(type, "pt_regs")) {
 			struct dynstr *ds =
 				newdynstr(DEF_PT_REGS_X86_64,
@@ -1293,21 +1280,21 @@ is_host_type(node_t *expr, ind_t *ind)
 	case '*':
 	case '+':
 	case '-':
-		child = nth_element(&expr->child[che_arg1], 1);
+		child = nth_node(&expr->child[che_arg1], 1);
 		if (child && is_host_type(child, ind))
 			return 1;
 
-		child = nth_element(&expr->child[che_arg2], 1);
+		child = nth_node(&expr->child[che_arg2], 1);
 		if (child && is_host_type(child, ind))
 			return 1;
 		return 0;
 
 	case '?':
-		child = nth_element(&expr->child[che_arg3], 1);
+		child = nth_node(&expr->child[che_arg3], 1);
 		if (child && is_host_type(child, ind))
 			return 1;
 
-		child = nth_element(&expr->child[che_arg2], 1);
+		child = nth_node(&expr->child[che_arg2], 1);
 		if (child && is_host_type(child, ind))
 			return 1;
 		return 0;
@@ -1339,7 +1326,7 @@ is_host_type(node_t *expr, ind_t *ind)
 
 		type = first_node(&var->child[chv_type]);
 		assert(type->t.category == type_func);
-		if (! (type = nth_element(&type->child[cht_type], 1)) )
+		if (! (type = nth_node(&type->child[cht_type], 1)) )
 			return 1;
 
 		break;
@@ -1357,7 +1344,7 @@ is_host_type(node_t *expr, ind_t *ind)
 	    type->t.category == type_array)
 		return 1;
 	else if (type->t.category == type_func) {
-		if (! (type = nth_element(&type->child[cht_type], 1)) ) 
+		if (! (type = nth_node(&type->child[cht_type], 1)) ) 
 			return 1;
 
 		/* The 'none' pseudo-type denotes a macro */
@@ -1437,14 +1424,14 @@ try_track_args(node_t *arg, node_t *fn, ind_t *ind)
 
 	node_t *var = varscope_find_expr(first_node(&fn->child[che_arg1]));
 	for ( ; var; var = varscope_find_next_var(var)) {
-		node_t *type = nth_element(&var->child[chv_type], 1);
+		node_t *type = nth_node(&var->child[chv_type], 1);
 		if (!type)
 			continue;
 
 		if (type->t.category == type_pointer)
 			type = first_node(&type->child[cht_type]);
 
-		node_t *argdecl = nth_element(&type->child[cht_param], pos);
+		node_t *argdecl = nth_node(&type->child[cht_param], pos);
 		if (!argdecl)
 			continue;
 
