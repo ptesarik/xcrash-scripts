@@ -366,6 +366,11 @@ type_split(struct list_head *raw, struct split_node *split)
  *
  */
 
+static int subst_target_type(node_t *type, const ind_t *ind);
+static int subst_target_var(node_t *firstvar, const ind_t *ind);
+static int subst_target_decl(node_t *decl, const ind_t *ind);
+static int subst_target_expr(node_t *expr, ind_t *ind);
+
 /* Convert a basic type into its target equivallent */
 static const char *
 btype_to_target(node_t *item)
@@ -564,6 +569,15 @@ ind_base_type(node_t *type, const ind_t *ind)
 	return type;
 }
 
+static enum walk_action
+subst_decl_fn(node_t *node, void *data)
+{
+	ind_t ind[MAXIND];
+	ind[MAXIND-1] = ind_stop;
+	subst_target_decl(node, ind + MAXIND-1);
+	return walk_skip_children;
+}
+
 /* Substitute @type with a target type (if applicable)
  * The target type is at @ind indirection level.
  * Returns 1 if the type was substituted, zero otherwise.
@@ -587,13 +601,18 @@ subst_target_type(node_t *type, const ind_t *ind)
 
 	struct list_head *scope = find_scope(type, NULL);
 	node_t *realtype = resolve_typedef(scope, type);
-	if (!realtype ||
-	    (realtype->t.category != type_struct &&
-	     realtype->t.category != type_union &&
-	     realtype->t.category != type_array &&
-	     realtype->t.category != type_func))
-		list_add_tail(&type->user_list, &replacedlist);
+	if (realtype) {
+		if (realtype->t.category == type_struct) {
+			walk_tree(&realtype->child[cht_body],
+				  subst_decl_fn, NULL);
+			return 0;
+		}
+		if (realtype->t.category == type_array ||
+		    realtype->t.category == type_func)
+			return 0;
+	}
 
+	list_add_tail(&type->user_list, &replacedlist);
 	return 0;
 }
 
@@ -615,6 +634,19 @@ subst_target_var(node_t *firstvar, const ind_t *ind)
 		}
 	} while ((var = next_dup(var)) != firstvar);
 
+	return ret;
+}
+
+/* Substitute the type for all variables in @decl.
+ * The target type is at @ind indirection level.
+ */
+static int
+subst_target_decl(node_t *decl, const ind_t *ind)
+{
+	int ret = 0;
+	node_t *var;
+	list_for_each_entry(var, &decl->child[chd_var], list)
+		ret += subst_target_var(var, ind);
 	return ret;
 }
 
