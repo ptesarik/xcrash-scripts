@@ -1,6 +1,8 @@
 #ifndef TOOLS_H
 #define TOOLS_H
 
+#include <stdlib.h>
+
 #include "parser.h"
 
 /* CPP conditions */
