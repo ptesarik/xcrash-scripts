@@ -1210,9 +1210,8 @@ try_track_args(node_t *arg, node_t *fn, ind_t *ind)
 
 	node_t *var = varscope_find_expr(first_node(&fn->child[che_arg1]));
 	for ( ; var; var = varscope_find_next_var(var)) {
-		node_t *type = nth_node(&var->child[chv_type], 1);
-		if (!type)
-			continue;
+		node_t *type = first_node(&var->child[chv_type]);
+		assert(&type->list != &var->child[chv_type]);
 
 		if (type->t.category == type_pointer)
 			type = first_node(&type->child[cht_type]);
