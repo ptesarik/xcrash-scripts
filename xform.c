@@ -1169,8 +1169,13 @@ track_assign(node_t *expr, ind_t *ind)
 		*(--ind) = ind_pointer;
 	}
 	target = varscope_find_expr(target);
-	if (target)
+	if (target) {
+		fputs("  assigned to ", fdump);
+		shortdump_varind(target, ind);
+		putc('\n', fdump);
+
 		subst_target_var(target, ind);
+	}
 }
 
 static void
@@ -1182,8 +1187,13 @@ track_assign2(node_t *expr, ind_t *ind)
 		*(--ind) = ind_pointer;
 	}
 	target = varscope_find_expr(target);
-	if (target)
+	if (target) {
+		fputs("  assign the value of ", fdump);
+		shortdump_varind(target, ind);
+		putc('\n', fdump);
+
 		subst_target_var(target, ind);
+	}
 }
 
 static void
@@ -1196,6 +1206,11 @@ track_return(node_t *node, ind_t *ind)
 		node = fn;
 	if (fn) {
 		node_t *var = first_node(&fn->child[chd_var]);
+
+		fputs("  returned from ", fdump);
+		shortdump_varind(var, ind);
+		putc('\n', fdump);
+
 		*(--ind) = ind_return;
 		subst_target_var(var, ind);
 	}
@@ -1210,6 +1225,12 @@ try_track_args(node_t *arg, node_t *fn, ind_t *ind)
 
 	node_t *var = varscope_find_expr(first_node(&fn->child[che_arg1]));
 	for ( ; var; var = varscope_find_next_var(var)) {
+		fputs("  passed as ", fdump);
+		dump_ind(ind);
+		fputs(" to ", fdump);
+		shortdump_var(var);
+		fprintf(fdump, " argument #%d", pos);
+
 		node_t *type = first_node(&var->child[chv_type]);
 		assert(&type->list != &var->child[chv_type]);
 
@@ -1217,8 +1238,11 @@ try_track_args(node_t *arg, node_t *fn, ind_t *ind)
 			type = first_node(&type->child[cht_type]);
 
 		node_t *argdecl = nth_node(&type->child[cht_param], pos);
-		if (!argdecl)
+		if (!argdecl) {
+			fputs(": argument not found\n", fdump);
 			continue;
+		}
+		putc('\n', fdump);
 
 		node_t *node = first_node(&argdecl->child[chd_type]);
 		if (&node->list != &argdecl->child[chd_type])
@@ -1247,8 +1271,16 @@ track_typecast(node_t *node, ind_t *ind)
 {
 	node_t *type = first_node(&node->child[che_arg1]);
 
-	if (subst_target_type(type, ind))
+	fputs("  ", fdump);
+	dump_ind(ind);
+	fputs(" cast to ", fdump);
+	shortdump_type(type);
+
+	if (subst_target_type(type, ind)) {
+		fputs(" and\n  ", fdump);
 		track_expr(node, ind);
+	} else
+		fputs(" and not converted\n", fdump);
 }
 
 /* Track uses of @expr with indirection level @ind. */
@@ -1263,8 +1295,13 @@ track_expr(node_t *expr, ind_t *ind)
 
 	switch(parent->type) {
 	case nt_var:
-		if (is_child(expr, parent, chv_init))
+		if (is_child(expr, parent, chv_init)) {
+			fputs("  used to initialize ", fdump);
+			shortdump_varind(parent, ind);
+			putc('\n', fdump);
+
 			subst_target_var(parent, ind);
+		}
 		break;
 
 	case nt_expr:
@@ -1365,8 +1402,8 @@ subst_other_decls_loop(node_t *firstvar, node_t *var, ind_t *ind, int n)
 			continue;
 
 		if (!n++)
-			fputs(", also declared here:", fdump);
-		fputs("\n  ", fdump);
+			fputs(", also declared at:", fdump);
+		fprintf(fdump, "\n  %d. ", n);
 		shortdump_var(var);
 
 		subst_target_var(var, ind);
@@ -1445,10 +1482,8 @@ track_type(struct list_head *filelist, node_t *type)
 		}
 
 		if (parent->type == nt_var) {
-			fputs("Convert ", fdump);
-			shortdump_var(parent);
-			fputs(" as ", fdump);
-			dump_ind(ind + idx);
+			fputs("Track ", fdump);
+			shortdump_varind(parent, ind + idx);
 
 			subst_other_decls(filelist, parent, ind + idx);
 
