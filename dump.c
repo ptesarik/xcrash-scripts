@@ -3,6 +3,8 @@
 #include "parser.h"
 #include "clang.tab.h"
 
+FILE *fdump;
+
 static int indent = 2;
 static int depth = -1;
 
@@ -16,7 +18,7 @@ dump_text(struct dynstr *first, struct dynstr *last)
 {
 	struct dynstr *cur = first;
 	for (;;) {
-		fwrite(cur->text, 1, cur->len, stdout);
+		fwrite(cur->text, 1, cur->len, fdump);
 
 		if (cur == last)
 			break;
@@ -44,8 +46,8 @@ dump_basic_type(type_t *type)
 		if (! (type->btype & (1UL << i)) )
 			continue;
 		if (n++)
-			putchar(' ');
-		fputs(types[i], stdout);
+			putc(' ', fdump);
+		fputs(types[i], fdump);
 	}
 }
 
@@ -60,32 +62,32 @@ dump_type(node_t *node, int showflags)
 {
 	type_t *type = &node->t;
 	if (showflags) {
-		putchar('[');
+		putc('[', fdump);
 		if (type->flags & TF_CONST)
-			fputs(" const", stdout);
+			fputs(" const", fdump);
 		if (type->flags & TF_VOLATILE)
-			fputs(" volatile", stdout);
-		fputs(" ] ", stdout);
+			fputs(" volatile", fdump);
+		fputs(" ] ", fdump);
 
-		putchar('[');
+		putc('[', fdump);
 		if (type->flags & TF_AUTO)
-			fputs(" auto", stdout);
+			fputs(" auto", fdump);
 		if (type->flags & TF_REGISTER)
-			fputs(" register", stdout);
+			fputs(" register", fdump);
 		if (type->flags & TF_STATIC)
-			fputs(" static", stdout);
+			fputs(" static", fdump);
 		if (type->flags & TF_EXTERN)
-			fputs(" extern", stdout);
+			fputs(" extern", fdump);
 		if (type->flags & TF_INLINE)
-			fputs(" inline", stdout);
+			fputs(" inline", fdump);
 		if (type->flags & TF_TYPEDEF)
-			fputs(" typedef", stdout);
-		fputs(" ] ", stdout);
+			fputs(" typedef", fdump);
+		fputs(" ] ", fdump);
 	}
 
 	switch(type->category) {
 	case type_none:
-		fputs("none", stdout);
+		fputs("none", fdump);
 		break;
 
 	case type_basic:
@@ -93,39 +95,39 @@ dump_type(node_t *node, int showflags)
 		break;
 
 	case type_typedef:
-		fputs(node->str->text, stdout);
+		fputs(node->str->text, fdump);
 		break;
 
 	case type_struct:
-		printf("struct %s", name_string(node));
+		fprintf(fdump, "struct %s", name_string(node));
 		break;
 
 	case type_union:
-		printf("union %s", name_string(node));
+		fprintf(fdump, "union %s", name_string(node));
 		break;
 
 	case type_enum:
-		printf("enum %s", name_string(node));
+		fprintf(fdump, "enum %s", name_string(node));
 		break;
 
 	case type_pointer:
-		fputs("ptr to ", stdout);
+		fputs("ptr to ", fdump);
 		break;
 
 	case type_array:
-		fputs("array", stdout);
+		fputs("array", fdump);
 		break;
 
 	case type_func:
-		fputs("func", stdout);
+		fputs("func", fdump);
 		break;
 
 	case type_typeof:
-		fputs("typeof\n", stdout);
+		fputs("typeof\n", fdump);
 		break;
 
 	default:
-		fputs("UNKNOWN!", stdout);
+		fputs("UNKNOWN!", fdump);
 	}
 }
 
@@ -133,68 +135,68 @@ static void
 dump_op(int op)
 {
 	switch(op) {
-	case SHL_ASSIGN:	fputs("<<=", stdout); break;
-	case SHR_ASSIGN:	fputs(">>=", stdout); break;
-	case ADD_ASSIGN:	fputs("+=", stdout); break;
-	case SUB_ASSIGN:	fputs("-=", stdout); break;
-	case MUL_ASSIGN:	fputs("*=", stdout); break;
-	case DIV_ASSIGN:	fputs("/=", stdout); break;
-	case MOD_ASSIGN:	fputs("%=", stdout); break;
-	case AND_ASSIGN:	fputs("&=", stdout); break;
-	case XOR_ASSIGN:	fputs("^=", stdout); break;
-	case OR_ASSIGN:		fputs("|=", stdout); break;
-	case OR_OP:	fputs("||", stdout); break;
-	case AND_OP:	fputs("&&", stdout); break;
-	case EQ_OP:	fputs("==", stdout); break;
-	case NE_OP:	fputs("!=", stdout); break;
-	case LE_OP:	fputs("<=", stdout); break;
-	case GE_OP:	fputs(">=", stdout); break;
-	case SHL_OP:	fputs("<<", stdout); break;
-	case SHR_OP:	fputs(">>", stdout); break;
-	case INC_OP:	fputs("++", stdout); break;
-	case DEC_OP:	fputs("--", stdout); break;
-	case '?':	fputs("?:", stdout); break;
-	case RANGE:	fputs("...", stdout); break;
-	case PTR_OP:	fputs("=>", stdout); break;
-	case ADDR_OF:   fputs("&", stdout); break;
-	case DEREF_OP:  fputs("*", stdout); break;
+	case SHL_ASSIGN:	fputs("<<=", fdump); break;
+	case SHR_ASSIGN:	fputs(">>=", fdump); break;
+	case ADD_ASSIGN:	fputs("+=", fdump); break;
+	case SUB_ASSIGN:	fputs("-=", fdump); break;
+	case MUL_ASSIGN:	fputs("*=", fdump); break;
+	case DIV_ASSIGN:	fputs("/=", fdump); break;
+	case MOD_ASSIGN:	fputs("%=", fdump); break;
+	case AND_ASSIGN:	fputs("&=", fdump); break;
+	case XOR_ASSIGN:	fputs("^=", fdump); break;
+	case OR_ASSIGN:		fputs("|=", fdump); break;
+	case OR_OP:	fputs("||", fdump); break;
+	case AND_OP:	fputs("&&", fdump); break;
+	case EQ_OP:	fputs("==", fdump); break;
+	case NE_OP:	fputs("!=", fdump); break;
+	case LE_OP:	fputs("<=", fdump); break;
+	case GE_OP:	fputs(">=", fdump); break;
+	case SHL_OP:	fputs("<<", fdump); break;
+	case SHR_OP:	fputs(">>", fdump); break;
+	case INC_OP:	fputs("++", fdump); break;
+	case DEC_OP:	fputs("--", fdump); break;
+	case '?':	fputs("?:", fdump); break;
+	case RANGE:	fputs("...", fdump); break;
+	case PTR_OP:	fputs("=>", fdump); break;
+	case ADDR_OF:   fputs("&", fdump); break;
+	case DEREF_OP:  fputs("*", fdump); break;
 	case SIZEOF_TYPE:
-	case SIZEOF:	fputs("sizeof", stdout); break;
-	case FUNC:	fputs("call", stdout); break;
-	case ARRAY:	fputs("idx", stdout); break;
-	case '{':	fputs("block", stdout); break;
-	case LABEL:	fputs("label", stdout); break;
-	case CASE:	fputs("case", stdout); break;
-	case DEFAULT:	fputs("default", stdout); break;
-	case IF:	fputs("if", stdout); break;
-	case SWITCH:	fputs("switch", stdout); break;
-	case WHILE:	fputs("while", stdout); break;
-	case DO:	fputs("dowhile", stdout); break;
-	case FOR:	fputs("for", stdout); break;
-	case GOTO:	fputs("goto", stdout); break;
-	case CONTINUE:	fputs("continue", stdout); break;
-	case BREAK:	fputs("break", stdout); break;
-	case RETURN:	fputs("return", stdout); break;
-	case ELLIPSIS:	fputs("...", stdout); break;
-	case TYPECAST:	fputs("typecast", stdout); break;
-	case CONCAT:	fputs("concat", stdout); break;
+	case SIZEOF:	fputs("sizeof", fdump); break;
+	case FUNC:	fputs("call", fdump); break;
+	case ARRAY:	fputs("idx", fdump); break;
+	case '{':	fputs("block", fdump); break;
+	case LABEL:	fputs("label", fdump); break;
+	case CASE:	fputs("case", fdump); break;
+	case DEFAULT:	fputs("default", fdump); break;
+	case IF:	fputs("if", fdump); break;
+	case SWITCH:	fputs("switch", fdump); break;
+	case WHILE:	fputs("while", fdump); break;
+	case DO:	fputs("dowhile", fdump); break;
+	case FOR:	fputs("for", fdump); break;
+	case GOTO:	fputs("goto", fdump); break;
+	case CONTINUE:	fputs("continue", fdump); break;
+	case BREAK:	fputs("break", fdump); break;
+	case RETURN:	fputs("return", fdump); break;
+	case ELLIPSIS:	fputs("...", fdump); break;
+	case TYPECAST:	fputs("typecast", fdump); break;
+	case CONCAT:	fputs("concat", fdump); break;
 
-	case OFFSETOF:	fputs("offsetof", stdout); break;
-	case FOR_CPU_INDEXES:	fputs("for_cpu_indexes", stdout); break;
-	case FRAME_REG:	fputs ("FRAME_REG", stdout); break;
+	case OFFSETOF:	fputs("offsetof", fdump); break;
+	case FOR_CPU_INDEXES:	fputs("for_cpu_indexes", fdump); break;
+	case FRAME_REG:	fputs ("FRAME_REG", fdump); break;
 
-	case CPP_IF:	fputs("#if", stdout); break;
-	case CPP_IFDEF:	fputs("#ifdef", stdout); break;
-	case CPP_IFNDEF:	fputs("#ifndef", stdout); break;
-	case CPP_ELIF:	fputs("#elif", stdout); break;
-	case CPP_ELSE:	fputs("#else", stdout); break;
-	case CPP_ENDIF:	fputs("#endif", stdout); break;
+	case CPP_IF:	fputs("#if", fdump); break;
+	case CPP_IFDEF:	fputs("#ifdef", fdump); break;
+	case CPP_IFNDEF:	fputs("#ifndef", fdump); break;
+	case CPP_ELIF:	fputs("#elif", fdump); break;
+	case CPP_ELSE:	fputs("#else", fdump); break;
+	case CPP_ENDIF:	fputs("#endif", fdump); break;
 
 	default:
 		if (op <= 255)
-			printf("%c", op);
+			fprintf(fdump, "%c", op);
 		else
-			printf("op%d", op);
+			fprintf(fdump, "op%d", op);
 	}
 }
 
@@ -205,15 +207,15 @@ dump_expr(node_t *node)
 
 	switch (expr->op) {
 	case INT_CONST:
-		printf("%ld", expr->num);
+		fprintf(fdump, "%ld", expr->num);
 		break;
 	case FLOAT_CONST:
-		printf("%f", expr->f);
+		fprintf(fdump, "%f", expr->f);
 		break;
 	case ID:
 	case STRING_CONST:
 	case CHAR_CONST:
-		fputs(node->str->text, stdout);
+		fputs(node->str->text, fdump);
 		break;
 	default:
 		dump_op(expr->op);
@@ -223,7 +225,7 @@ dump_expr(node_t *node)
 static void
 dump_var(node_t *node)
 {
-	printf("name: %s", name_string(node));
+	fprintf(fdump, "name: %s", name_string(node));
 }
 
 static void
@@ -241,45 +243,45 @@ dump_child_pos(node_t *parent, int pos)
 			if (parent->t.category == type_struct ||
 			    parent->t.category == type_union ||
 			    parent->t.category == type_enum)
-				fputs("cht_body", stdout);
+				fputs("cht_body", fdump);
 			else if (parent->t.category == type_typeof)
-				fputs("cht_expr", stdout);
+				fputs("cht_expr", fdump);
 			else
-				fputs("cht_type", stdout);
+				fputs("cht_type", fdump);
 			break;
 
 		case 1:
 			if (parent->t.category == type_array)
-				fputs("cht_size", stdout);
+				fputs("cht_size", fdump);
 			else
-				fputs("cht_param", stdout);
+				fputs("cht_param", fdump);
 			break;
 
 		case cht_attr:
-			fputs("cht_attr", stdout);
+			fputs("cht_attr", fdump);
 			break;
 
 		default:
-			printf("cht_%d", pos);
+			fprintf(fdump, "cht_%d", pos);
 		}
 		break;
 
 	case nt_expr:
-		printf("che_arg%d", pos + 1);
+		fprintf(fdump, "che_arg%d", pos + 1);
 		break;
 
 	case nt_var:
 		if (pos < chv_max)
-			fputs(chv_names[pos], stdout);
+			fputs(chv_names[pos], fdump);
 		else
-			printf("chv_%d", pos);
+			fprintf(fdump, "chv_%d", pos);
 		break;
 
 	case nt_decl:
 		if (pos < chd_max)
-			fputs(chd_names[pos], stdout);
+			fputs(chd_names[pos], fdump);
 		else
-			printf("chd_%d", pos);
+			fprintf(fdump, "chd_%d", pos);
 		break;
 	}
 }
@@ -291,28 +293,26 @@ dump_node(node_t *node)
 
 	++depth;
 
-	printf("%*s(", depth*indent, "");
-	fputs(">>>", stdout);
+	fprintf(fdump, "%*s(>>>", depth*indent, "");
 	dump_text(node->first_text, node->last_text);
-	fputs("<<<\n", stdout);
-	printf("%*s", depth*indent, "");
+	fprintf(fdump, "<<<\n%*s", depth*indent, "");
 	switch (node->type) {
 	case nt_type: dump_type(node, 1); break;
 	case nt_expr: dump_expr(node); break;
 	case nt_var:  dump_var (node); break;
-	case nt_decl: fputs("decl", stdout); break;
+	case nt_decl: fputs("decl", fdump); break;
 	}
-	putchar('\n');
+	putc('\n', fdump);
 
 	for (i = 0; i < node->nchild; ++i) {
 		if (!list_empty(&node->child[i])) {
-			printf("%*s[", depth*indent, "");
+			fprintf(fdump, "%*s[", depth*indent, "");
 			dump_child_pos(node, i);
-			printf("]:\n");
+			fprintf(fdump, "]:\n");
 		}
 		dump_tree(&node->child[i]);
 	}
-	printf("%*s)\n", depth*indent, "");
+	fprintf(fdump, "%*s)\n", depth*indent, "");
 
 	--depth;
 }

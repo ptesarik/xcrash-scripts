@@ -736,6 +736,10 @@ int main(int argc, char **argv)
 				break;
 	}
 
+#if DEBUG
+	fdump = stdout;
+#endif
+
 	if (!ret) {
 #if DEBUG
 		struct parsed_file *pf;
