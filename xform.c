@@ -1448,8 +1448,13 @@ track_type(struct list_head *filelist, node_t *type)
 		if (parent->type == nt_var) {
 			fputs("Convert ", fdump);
 			shortdump_var(parent);
+			fputs(" as ", fdump);
+			dump_ind(ind + idx);
+
 			subst_other_decls(filelist, parent, ind + idx);
+
 			putc('\n', fdump);
+
 			track_var_usage(parent, ind + idx);
 			type = parent->parent;
 		} else

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "parser.h"
+#include "dump.h"
 #include "tools.h"
 #include "clang.tab.h"
 
@@ -394,4 +394,24 @@ shortdump_var(node_t *var)
 	fprintf(fdump, "%s:", file_name(var));
 	shortdump_scope(var);
 	fprintf(fdump, ":%s", var->str->text);
+}
+
+void
+dump_ind(const ind_t *ind)
+{
+	for (;;)
+		switch(*ind++) {
+		case ind_stop:
+			fputs("base type", fdump);
+			return;
+		case ind_implicit:
+			fputs("implicit ", fdump);
+			/* fall through */
+		case ind_pointer:
+			fputs("pointer to ", fdump);
+			break;
+		case ind_return:
+			fputs("return type of ", fdump);
+			break;
+		}
 }
