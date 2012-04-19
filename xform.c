@@ -648,6 +648,8 @@ static int
 subst_target_expr(node_t *expr, ind_t *ind)
 {
 	node_t *child, *var, *type;
+	ind_t saveind;
+	int ret;
 
 	if ( (var = varscope_find_expr(expr)) )
 		return subst_target_var(var, ind);
@@ -657,8 +659,10 @@ subst_target_expr(node_t *expr, ind_t *ind)
 		child = first_node(&expr->child[che_arg1]);
 		if (!ind_is_pointer(*ind))
 			return 0;
-		++ind;
-		return subst_target_expr(child, ind);
+		saveind = *ind++;
+		ret = subst_target_expr(child, ind);
+		*--ind = saveind;
+		return ret;
 
 	case DEREF_OP:
 	case ARRAY:
