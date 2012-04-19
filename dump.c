@@ -411,7 +411,9 @@ dump_ind(const ind_t *ind)
 			fputs("pointer to ", fdump);
 			break;
 		case ind_return:
-			fputs("return type of ", fdump);
+			fputs("function returning ", fdump);
 			break;
+		default:
+			fprintf(fdump, "function with arg #%d ", ind[-1]);
 		}
 }
