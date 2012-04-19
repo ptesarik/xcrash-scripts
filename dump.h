@@ -16,4 +16,6 @@ void shortdump_var(node_t *var);
 
 void dump_ind(const ind_t *ind);
 
+void shortdump_varind(node_t *var, ind_t *ind);
+
 #endif	/* DUMP_H */

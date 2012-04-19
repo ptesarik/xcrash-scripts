@@ -417,3 +417,11 @@ dump_ind(const ind_t *ind)
 			fprintf(fdump, "function with arg #%d ", ind[-1]);
 		}
 }
+
+void
+shortdump_varind(node_t *var, ind_t *ind)
+{
+	shortdump_var(var);
+	fputs(" as ", fdump);
+	dump_ind(ind);
+}
