@@ -4,6 +4,7 @@
 #include <assert.h>
 
 #include "tools.h"
+#include "dump.h"
 #include "varscope.h"
 #include "indirect.h"
 #include "clang.tab.h"
@@ -1357,33 +1358,42 @@ track_var_usage(node_t *var, ind_t *ind)
 	}
 }
 
+static int
+subst_other_decls_loop(node_t *firstvar, node_t *var, ind_t *ind, int n)
+{
+	for ( ; var; var = varscope_find_next_var(var)) {
+		if (var == firstvar)
+			continue;
+
+		if (!n++)
+			fputs(", also declared here:", fdump);
+		fputs("\n  ", fdump);
+		shortdump_var(var);
+
+		subst_target_var(var, ind);
+	}
+	return n;
+}
+
 /* Substitute all other declarations of @firstvar */
-static void
+static int
 subst_other_decls(struct list_head *filelist, node_t *firstvar, ind_t *ind)
 {
 	node_t *var = varscope_find_first_var(firstvar);
-	while (var) {
-		if (var != firstvar)
-			subst_target_var(var, ind);
-		var = varscope_find_next_var(var);
-	}
-
+	int ret = subst_other_decls_loop(firstvar, var, ind, 0);
 	struct list_head *scope = find_var_scope(firstvar);
 	if (scope)
-		return;
+		return ret;
 
 	/* Global scope also implies changes in all file scopes */
 	struct parsed_file *pf;
 	list_for_each_entry(pf, filelist, list) {
 		var = varscope_find(&pf->parsed, firstvar->type,
 				    firstvar->str->text);
-		while (var) {
-			if (var != firstvar)
-				subst_target_var(var, ind);
-			var = varscope_find_next_var(var);
-		}
+		ret = subst_other_decls_loop(firstvar, var, ind, ret);
 	}
 
+	return ret;
 }
 
 /* Check whether @node is a function argument.
@@ -1436,7 +1446,10 @@ track_type(struct list_head *filelist, node_t *type)
 		}
 
 		if (parent->type == nt_var) {
+			fputs("Convert ", fdump);
+			shortdump_var(parent);
 			subst_other_decls(filelist, parent, ind + idx);
+			putc('\n', fdump);
 			track_var_usage(parent, ind + idx);
 			type = parent->parent;
 		} else
@@ -1532,6 +1545,7 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 
 	if ( (res = update_parsed_files(filelist)) )
 		return res;
+	fdump = stdout;
 
 	init_varscope(filelist);
 	INIT_LIST_HEAD(&replacedlist);
