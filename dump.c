@@ -1,6 +1,8 @@
 #include <stdio.h>
+#include <assert.h>
 
 #include "parser.h"
+#include "tools.h"
 #include "clang.tab.h"
 
 FILE *fdump;
@@ -123,7 +125,7 @@ dump_type(node_t *node, int showflags)
 		break;
 
 	case type_typeof:
-		fputs("typeof\n", fdump);
+		fputs("typeof ", fdump);
 		break;
 
 	default:
@@ -323,4 +325,73 @@ dump_tree(struct list_head *tree)
 	node_t *item;
 	list_for_each_entry(item, tree, list)
 		dump_node(item);
+}
+
+static const char *
+file_name(node_t *node)
+{
+	return node->pf->name ?: "<builtin>";
+}
+
+void
+shortdump_type(node_t *type)
+{
+	assert(type->type == nt_type);
+	dump_type(type, 0);
+
+	if (type->t.category == type_pointer ||
+	    type->t.category == type_typeof ||
+	    type->t.category == type_array ||
+	    type->t.category == type_func) {
+		node_t *child = first_node(&type->child[cht_type]);
+		if (&child->list == &type->child[cht_type])
+			return;
+
+		if (type->t.category == type_array) {
+			node_t *size = first_node(&type->child[cht_size]);
+			if (&size->list != &type->child[cht_size]) {
+				putc('[', fdump);
+				dump_text(size->first_text, size->last_text);
+				putc(']', fdump);
+			}
+			fputs(" of ", fdump);
+		} else if (type->t.category == type_func)
+			fputs(" returning ", fdump);
+		shortdump_type(child);
+	}
+}
+
+static void
+shortdump_scope(node_t *node)
+{
+	node_t *parent;
+	struct list_head *scope = find_scope(node, &parent);
+	if (!scope) {
+		fputs("<global>", fdump);
+		return;
+	}
+
+	if (scope == &node->pf->parsed) {
+		fputs("<file>", fdump);
+		return;
+	}
+	if (parent->type == nt_decl) {
+		node_t *var = first_node(&parent->child[chd_var]);
+		if (&var->list == &parent->child[chd_var])
+			fputs("<novar>", fdump);
+		else
+			fputs(var->str->text, fdump);
+	} else if (parent->type == nt_type)
+		shortdump_type(parent);
+	else
+		fputs("<unknown>", fdump);
+}
+
+void
+shortdump_var(node_t *var)
+{
+	assert(var->type == nt_var);
+	fprintf(fdump, "%s:", file_name(var));
+	shortdump_scope(var);
+	fprintf(fdump, ":%s", var->str->text);
 }
