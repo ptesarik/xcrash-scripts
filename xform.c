@@ -357,6 +357,7 @@ static int subst_target_type(node_t *type, const ind_t *ind);
 static int subst_target_var(node_t *firstvar, const ind_t *ind);
 static int subst_target_decl(node_t *decl, const ind_t *ind);
 static int subst_target_expr(node_t *expr, ind_t *ind);
+static int subst_target_call_arg(node_t *call, ind_t *ind);
 
 /* Convert a basic type into its target equivallent */
 static const char *
@@ -722,6 +723,35 @@ subst_target_expr(node_t *expr, ind_t *ind)
 	return 0;
 }
 
+static int
+subst_target_call_arg(node_t *call, ind_t *ind)
+{
+	node_t *fn = first_node(&call->child[che_arg1]);
+	node_t *arg = nth_node(&call->child[che_arg2], *ind);
+	ind_t saveind;
+	int ret;
+
+	fprintf(fdump, "  %s:", node_file_name(call));
+	shortdump_scope(call);
+	fprintf(fdump, ": convert argument #%d of ", *ind);
+	dump_node_text(fn);
+	if (arg) {
+		fputs(" (", fdump);
+		dump_node_text(arg);
+		fputs(") as ", fdump);
+		dump_ind(ind + 1);
+		putc('\n', fdump);
+	} else {
+		fputs(": not found\n", fdump);
+		return 0;
+	}
+
+	saveind = *ind++;
+	ret = subst_target_expr(arg, ind);
+	*--ind = saveind;
+	return ret;
+}
+
 static enum walk_action
 find_sizeof(node_t *node, void *data)
 {
@@ -767,8 +797,8 @@ target_types_symbol_data(node_t *node, void *data)
 	int idx = MAXIND;
 	ind[--idx] = ind_stop;
 	ind[--idx] = ind_pointer;
-	arg = nth_node(&node->child[che_arg2], 3);
-	subst_target_expr(arg, ind + idx);
+	ind[--idx] = 3;
+	subst_target_call_arg(node, ind + idx);
 
 	return walk_continue;
 }
@@ -795,8 +825,8 @@ target_types_readmem(node_t *node, void *data)
 	int idx = MAXIND;
 	ind[--idx] = ind_stop;
 	ind[--idx] = ind_pointer;
-	arg = nth_node(&node->child[che_arg2], 3);
-	subst_target_expr(arg, ind + idx);
+	ind[--idx] = 3;
+	subst_target_call_arg(node, ind + idx);
 
 	if (has_size) {
 		/* Process the 4th argument (@size) */
