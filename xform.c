@@ -783,11 +783,9 @@ target_sizeof(node_t *node)
 		return;
 
 	node_t *type = nth_node(&typesize->child[che_arg1], 1);
-	const char *newtype = target_type_name(type);
-	if (newtype) {
-		replace_text(type, newtype);
-		reparse_node(type, START_TYPE_NAME);
-	}
+	ind_t ind[MAXIND];
+	ind[MAXIND-1] = ind_stop;
+	subst_target_type(type, ind + MAXIND-1);
 }
 
 static enum walk_action
