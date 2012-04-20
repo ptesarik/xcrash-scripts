@@ -327,12 +327,6 @@ dump_tree(struct list_head *tree)
 		dump_node(item);
 }
 
-static const char *
-file_name(node_t *node)
-{
-	return node->pf->name ?: "<builtin>";
-}
-
 void
 shortdump_type(node_t *type)
 {
@@ -361,7 +355,7 @@ shortdump_type(node_t *type)
 	}
 }
 
-static void
+void
 shortdump_scope(node_t *node)
 {
 	node_t *parent;
@@ -391,7 +385,7 @@ void
 shortdump_var(node_t *var)
 {
 	assert(var->type == nt_var);
-	fprintf(fdump, "%s:", file_name(var));
+	fprintf(fdump, "%s:", node_file_name(var));
 	shortdump_scope(var);
 	fprintf(fdump, ":%s", var->str->text);
 }
