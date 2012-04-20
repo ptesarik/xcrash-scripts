@@ -1280,19 +1280,25 @@ track_args(node_t *arg, node_t *fn, ind_t *ind)
 		if (!argdecl)
 			continue;
 
-		fputs("  passed as ", fdump);
-		dump_ind(ind);
-		fputs(" to ", fdump);
-		shortdump_var(var);
-		fprintf(fdump, " argument #%d\n", pos);
-
+		int n = 0;
+		node_t *check = checkpoint_user_list(&replacedlist);
 		node_t *node = first_node(&argdecl->child[chd_type]);
 		if (&node->list != &argdecl->child[chd_type])
-			subst_target_type(node, ind);
+			n += subst_target_type(node, ind);
 
 		node = first_node(&argdecl->child[chd_var]);
 		if (&node->list != &argdecl->child[chd_var])
-			subst_target_var(node, ind);
+			n += subst_target_var(node, ind);
+
+		if (n || !ind_is_pointer(*ind)) {
+			fputs("  passed as ", fdump);
+			dump_ind(ind);
+			fputs(" to ", fdump);
+			shortdump_var(var);
+			fprintf(fdump, " argument #%d\n", pos);
+		} else
+			/* unknown pointer type - roll back everything */
+			rollback_user_list(&replacedlist, check);
 	}
 }
 
