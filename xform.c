@@ -1261,12 +1261,12 @@ track_return(node_t *node, ind_t *ind)
 	}
 }
 
-static int
-try_track_args(node_t *arg, node_t *fn, ind_t *ind)
+static void
+track_args(node_t *arg, node_t *fn, ind_t *ind)
 {
 	int pos = child_order(arg, fn, che_arg2);
 	if (!pos)
-		return 0;
+		return;
 
 	node_t *var = varscope_find_expr(first_node(&fn->child[che_arg1]));
 	for ( ; var; var = varscope_find_next_var(var)) {
@@ -1297,8 +1297,6 @@ try_track_args(node_t *arg, node_t *fn, ind_t *ind)
 		if (&node->list != &argdecl->child[chd_var])
 			subst_target_var(node, ind);
 	}
-
-	return 1;
 }
 
 static void
@@ -1379,14 +1377,16 @@ track_expr(node_t *expr, ind_t *ind)
 			break;
 
 		case FUNC:
-			if (try_track_args(expr, parent, ind))
+			if (is_child(expr, parent, che_arg2)) {
+				track_args(expr, parent, ind);
 				break;
+			}
+			assert(is_child(expr, parent, che_arg1));
 
 			if (ind_is_pointer(*ind))
 				saveind[saveidx++] = *ind++;
 
-			if (*ind == ind_return &&
-			    is_child(expr, parent, che_arg1)) {
+			if (*ind == ind_return) {
 				saveind[saveidx++] = *ind++;
 				track_expr(parent, ind);
 			}
