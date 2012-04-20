@@ -1681,6 +1681,12 @@ static struct xform_desc xforms[] = {
  * accepted there
  */
 
+// do not store struct names for cmd_list in a hash queue
+{ "cmd_list-structnames.patch", import },
+
+// fix the buf argument to va_server's find_data
+{ "va_server-find_data-buf.patch", import },
+
 // get rid of the VOID_PTR facilitator macro
 { "remove-VOID_PTR.patch", import },
 

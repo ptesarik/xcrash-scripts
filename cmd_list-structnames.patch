@@ -1,0 +1,57 @@
+From: Petr Tesarik <ptesarik@suse.cz>
+Subject: Do not store struct names for cmd_list in a hash queue
+
+The hash queue API is intended for storing target-specific data. There
+are two issues with abusing it to store host-specific data (such as
+string pointers):
+
+1. If the target type is smaller than the host type (e.g. x86 on x86_64),
+   then the stored value is truncated.
+2. It confuses the type tracking mechanism.
+
+Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
+
+---
+ tools.c |   17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
+
+--- a/tools.c
++++ b/tools.c
+@@ -3106,6 +3106,7 @@ cmd_list(void)
+ 	struct datatype_member struct_member, *sm;
+ 	struct syment *sp;
+ 	ulong value; 
++	char **newnames;
+ 
+ 	sm = &struct_member;
+ 	ld = &list_data;
+@@ -3124,9 +3125,13 @@ cmd_list(void)
+ 			break;
+ 
+ 		case 's':
+-			if (ld->structname_args++ == 0) 
+-				hq_open();
+-			hq_enter((ulong)optarg);
++			newnames = realloc(ld->structname, sizeof(char *) * (ld->structname_args+1));
++			if (!newnames)
++				error(FATAL, "cannot allocate struct names\n");
++			else {
++				ld->structname = newnames;
++				newnames[ld->structname_args++] = optarg;
++			}
+ 			break;
+ 
+ 		case 'o':
+@@ -3165,12 +3170,6 @@ cmd_list(void)
+ 		cmd_usage(pc->curcmd, SYNOPSIS);
+ 	}
+ 
+-	if (ld->structname_args) {
+-		ld->structname = (char **)GETBUF(sizeof(char *) * ld->structname_args);
+-		retrieve_list((ulong *)ld->structname, ld->structname_args); 
+-		hq_close();
+-	}
+-
+ 	while (args[optind]) {
+ 		if (strstr(args[optind], ".") &&
+ 		    arg_to_datatype(args[optind], sm, RETURN_ON_ERROR) > 1) {

@@ -1,0 +1,62 @@
+From: Petr Tesarik <ptesarik@suse.cz>
+Subject: fix the buf argument to va_server's find_data
+
+The buf is in fact a pointer to host-specific page data,
+so it shouldn't be a u_long. That confuses the type tracking
+algorithm.
+
+Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
+
+---
+ va_server.c |   12 +++++++-----
+ 1 file changed, 7 insertions(+), 5 deletions(-)
+
+--- a/va_server.c
++++ b/va_server.c
+@@ -47,7 +47,7 @@ int vas_version;
+ 
+ int read_map(char *crash_file);
+ void load_data(struct crash_map_entry *m);
+-int find_data(u_long va, u_long *buf, u_long *len, u_long *offset);
++int find_data(u_long va, char **buf, u_long *len, u_long *offset);
+ u_long vas_find_end(void);
+ int vas_free_memory(char *);
+ int vas_memory_used(void);
+@@ -103,7 +103,8 @@ int vas_lseek(u_long position, int whenc
+ 
+ size_t vas_read(void *buf_in, size_t count)
+ {
+-	u_long len, offset, buf, va;
++	char *buf;
++	u_long len, offset, va;
+ 	u_long num, output, remaining;
+ 
+ 	if(vas_version < 2)
+@@ -126,7 +127,8 @@ size_t vas_read(void *buf_in, size_t cou
+ }
+ size_t vas_write(void *buf_in, size_t count)
+ {
+-	u_long len, offset, buf, va;
++	u_long len, offset, va;
++	char *buf;
+ 
+ 	if(vas_version < 2)
+ 		return vas_write_v1(buf_in, count);
+@@ -180,7 +182,7 @@ u_long vas_find_end(void)
+ 	sub_m--;
+ 	return *sub_m;
+ }
+-int find_data(u_long va, u_long *buf, u_long *len, u_long *offset)
++int find_data(u_long va, char **buf, u_long *len, u_long *offset)
+ {
+ 	u_long off;
+ 	struct crash_map_entry *m, *last_m;
+@@ -220,7 +222,7 @@ int find_data(u_long va, u_long *buf, u_
+ 			(u_long)trunc_page(va));
+ 
+ 	if(buf)
+-		*buf = saved ? (u_long)data : (u_long)zero_page;
++		*buf = saved ? data : zero_page;
+ 	return (saved ^ 1);
+ }
+ 
