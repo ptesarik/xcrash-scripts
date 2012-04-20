@@ -1270,12 +1270,6 @@ track_args(node_t *arg, node_t *fn, ind_t *ind)
 
 	node_t *var = varscope_find_expr(first_node(&fn->child[che_arg1]));
 	for ( ; var; var = varscope_find_next_var(var)) {
-		fputs("  passed as ", fdump);
-		dump_ind(ind);
-		fputs(" to ", fdump);
-		shortdump_var(var);
-		fprintf(fdump, " argument #%d", pos);
-
 		node_t *type = first_node(&var->child[chv_type]);
 		assert(&type->list != &var->child[chv_type]);
 
@@ -1283,11 +1277,14 @@ track_args(node_t *arg, node_t *fn, ind_t *ind)
 			type = first_node(&type->child[cht_type]);
 
 		node_t *argdecl = nth_node(&type->child[cht_param], pos);
-		if (!argdecl) {
-			fputs(": argument not found\n", fdump);
+		if (!argdecl)
 			continue;
-		}
-		putc('\n', fdump);
+
+		fputs("  passed as ", fdump);
+		dump_ind(ind);
+		fputs(" to ", fdump);
+		shortdump_var(var);
+		fprintf(fdump, " argument #%d\n", pos);
 
 		node_t *node = first_node(&argdecl->child[chd_type]);
 		if (&node->list != &argdecl->child[chd_type])
