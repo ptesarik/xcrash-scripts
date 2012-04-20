@@ -19,6 +19,12 @@ void dump_ind(const ind_t *ind);
 
 void shortdump_varind(node_t *var, ind_t *ind);
 
+static inline void
+dump_node_text(node_t *node)
+{
+	dump_text(node->first_text, node->last_text);
+}
+
 static inline const char *
 node_file_name(node_t *node)
 {
