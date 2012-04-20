@@ -521,6 +521,16 @@ nullify_str(node_t *node)
 	walk_tree_single(node, nullify_str_fn, NULL);
 }
 
+void
+rollback_user_list(struct list_head *list, node_t *ptr)
+{
+	node_t *next;
+	list_for_each_entry_safe_continue(ptr, next, list, user_list) {
+		list_del(&ptr->user_list);
+		ptr->user_list.next = ptr->user_list.prev = NULL;
+	}
+}
+
 /************************************************************
  * Split nodes
  *

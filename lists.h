@@ -329,6 +329,22 @@ static inline void list_splice_tail_init(struct list_head *list,
 	     pos = list_entry(pos->member.next, typeof(*pos), member))
 
 /**
+ * list_for_each_entry_safe_continue
+ * @pos:	the type * to use as a loop cursor.
+ * @n:		another type * to use as temporary storage
+ * @head:	the head for your list.
+ * @member:	the name of the list_struct within the struct.
+ *
+ * Continue to iterate over list of given type, continuing after
+ * the current position, safe against removal of list entry.
+ */
+#define list_for_each_entry_safe_continue(pos, n, head, member) 	\
+	for (pos = list_entry(pos->member.next, typeof(*pos), member),	\
+		n = list_entry(pos->member.next, typeof(*pos), member);	\
+	     &pos->member != (head);					\
+	     pos = n, n = list_entry(n->member.next, typeof(*n), member))
+
+/**
  * list_pos - return the position of an entry inside a list
  * @list:	the entry's list_head
  * @head:	the list to be searched

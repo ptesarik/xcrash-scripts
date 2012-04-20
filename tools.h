@@ -119,6 +119,16 @@ next_dup(node_t *node)
 	return list_entry(node->dup_list.next, node_t, dup_list);
 }
 
+/* Remember the current last pointer on @list */
+static inline node_t *
+checkpoint_user_list(struct list_head *list)
+{
+	return list_entry(list->prev, node_t, user_list);
+}
+
+/* Remove all nodes from @list, starting at @checkpoint */
+void rollback_user_list(struct list_head *list, node_t *checkpoint);
+
 /* Split nodes */
 struct split_node {
 	struct list_head list;
