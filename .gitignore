@@ -3,5 +3,6 @@
 xcrashify
 *.tab.[ch]
 *.yy.c
+.deps
 crash-6.0.5.tar.gz
 crash-6.0.5
