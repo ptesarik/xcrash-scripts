@@ -656,9 +656,6 @@ subst_target_expr(node_t *expr, ind_t *ind)
 	ind_t saveind;
 	int ret;
 
-	if ( (var = varscope_find_expr(expr)) )
-		return subst_target_var(var, ind);
-
 	switch (expr->e.op) {
 	case ADDR_OF:
 		child = first_node(&expr->child[che_arg1]);
@@ -678,7 +675,17 @@ subst_target_expr(node_t *expr, ind_t *ind)
 	case ID:
 	case '.':
 	case PTR_OP:
-		fprintf(stderr, "%s: variable not found\n", __FUNCTION__);
+		if ( (var = varscope_find_expr(expr)) ) {
+			fputs("    convert ", fdump);
+			shortdump_varind(var, ind);
+			putc('\n', fdump);
+
+			return subst_target_var(var, ind);
+		}
+
+		fputs("    variable not found: ", fdump);
+		dump_node_text(expr);
+		putc('\n', fdump);
 		/* fall through */
 	case INT_CONST:
 	case FLOAT_CONST:
