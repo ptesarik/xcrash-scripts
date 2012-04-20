@@ -495,6 +495,10 @@ subst_target_type(node_t *type, const ind_t *ind)
 	node_t *realtype = resolve_typedef(scope, type);
 	if (realtype) {
 		if (realtype->t.category == type_struct) {
+			fputs("    base type is ", fdump);
+			shortdump_type(realtype);
+			fputs(" - convert all fields\n", fdump);
+
 			walk_tree(&realtype->child[cht_body],
 				  subst_decl_fn, NULL);
 			return 0;
