@@ -784,8 +784,6 @@ type_name		: spec_qualifier_list
 				$$ = $2->abstract.tree;
 				$$->t.flags = $1->t.flags;
 				free($2);
-				set_node_first($$, @$.first_text);
-				set_node_last($$, @$.last_text);
 			}
 			| TYPEOF '(' expr ')'
 			{
