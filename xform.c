@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#include <ctype.h>
 
 #include "tools.h"
 #include "dump.h"
@@ -154,6 +155,20 @@ base_type(node_t *type)
 	return type;
 }
 
+/* Remove whitespace before @node if possible */
+static void
+squeeze_whitespace(node_t *node)
+{
+	struct list_head *raw = &node->pf->raw;
+	struct dynstr *next = next_dynstr(node->last_text);
+	struct dynstr *prev = prev_dynstr(node->first_text);
+	if (&next->list == raw || &prev->list == raw)
+		return;
+	if (isalnum(*next->text) || *next->text == '_')
+		return;
+	dynstr_delspace_rev(raw, prev);
+}
+
 /* "Flatten" @type, i.e. remove all nodes in the hierarchy above
  * @base up to and including @type.
 */
@@ -172,6 +187,7 @@ flatten_type(node_t *type, node_t *base)
 			list_move(&type->first_list, &newfirst->node_first);
 			type->first_text = newfirst;
 		}
+		squeeze_whitespace(type);
 		delete_node(type);
 		type = child;
 	}
