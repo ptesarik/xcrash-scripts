@@ -1522,40 +1522,28 @@ check_func_arg(node_t *node, ind_t *ind)
 static void
 track_type(struct list_head *filelist, node_t *type)
 {
-	ind_t ind[MAXIND];
-	int idx = MAXIND;
+	ind_t indvec[MAXIND];
+	ind_t *ind = indvec + MAXIND;
 
-	ind[--idx] = ind_stop;
+	*--ind = ind_stop;
 	if (type->t.category == type_func)
-		ind[--idx] = ind_return;
+		*--ind = ind_return;
 
 	do {
-		node_t *parent;
-		while ((parent = type->parent)->type == nt_type) {
-			if (parent->t.category == type_pointer ||
-			    parent->t.category == type_array)
-				ind[--idx] = ind_pointer;
-			else if (parent->t.category == type_func)
-				ind[--idx] = ind_return;
-			else
-				assert(0);
-
-			type = parent;
-		}
-
+		node_t *parent = build_ind(type, &ind);
 		if (parent->type == nt_var) {
 			fputs("Track ", fdump);
-			shortdump_varind(parent, ind + idx);
+			shortdump_varind(parent, ind);
 
-			subst_other_decls(filelist, parent, ind + idx);
+			subst_other_decls(filelist, parent, ind);
 
 			putc('\n', fdump);
 
-			track_var_usage(parent, ind + idx);
+			track_var_usage(parent, ind);
 			type = parent->parent;
 		} else
 			type = parent;
-	} while ((type = check_func_arg(type, &ind[--idx])) != NULL);
+	} while ((type = check_func_arg(type, --ind)) != NULL);
 }
 
 static void

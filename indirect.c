@@ -8,6 +8,29 @@
 #include "tools.h"
 #include "clang.tab.h"
 
+node_t *
+build_ind(node_t *type, ind_t **indp)
+{
+	ind_t *ind = *indp;
+	node_t *parent;
+
+	assert(type->type == nt_type);
+	while ((parent = type->parent)->type == nt_type) {
+		if (parent->t.category == type_pointer ||
+		    parent->t.category == type_array)
+			*--ind = ind_pointer;
+		else if (parent->t.category == type_func)
+			*--ind = ind_return;
+		else
+			assert(0);
+
+		type = parent;
+	}
+
+	*indp = ind;
+	return parent;
+}
+
 static node_t *
 array_base_type(node_t *type)
 {

@@ -18,6 +18,14 @@ enum ind {
 
 #define MAXIND	32		/* Arbitrarily chosen constant... */
 
+/* Build the indirection array from a base type
+ * Returns: the first non-type parent node
+ */
+node_t *build_ind(node_t *type, ind_t **indp);
+
+/* Get the base type of @type
+ * Returns NULL if @ind cannot be (fully) followed.
+ */
 node_t *ind_base_type(node_t *type, const ind_t *ind);
 
 /* Check whether @ind refers to a pointer */
