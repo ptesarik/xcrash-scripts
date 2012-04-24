@@ -274,7 +274,7 @@ replace_type(node_t *node, const char *newtext)
 		split_add(&splitlist, node, oldds, newds);
 	else {
 		node = flatten_type(node, base);
-		replace_single_type(node, newds);
+		node = replace_single_type(node, newds);
 	}
 	return node;
 }
