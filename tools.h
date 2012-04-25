@@ -159,6 +159,8 @@ fake_split(node_t *node)
 		((char*)&node->str - offsetof(struct split_node, newds));
 }
 
+struct parsed_file *find_file(struct list_head *filelist, const char *name);
+
 /* Quilt interface */
 int quilt_new(const char *name);
 int quilt_refresh(struct list_head *filelist);

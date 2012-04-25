@@ -600,6 +600,24 @@ split_search(struct list_head *splitlist, struct dynstr *ds,
 }
 
 /************************************************************
+ * Parsed file
+ *
+ */
+
+struct parsed_file *
+find_file(struct list_head *filelist, const char *name)
+{
+	struct parsed_file *pf;
+	list_for_each_entry(pf, filelist, list)
+		if (pf->name == NULL) {
+			if (name == NULL)
+				return pf;
+		} else if (!strcmp(pf->name, name))
+			return pf;
+	return NULL;
+}
+
+/************************************************************
  * System interfaces
  *
  */
