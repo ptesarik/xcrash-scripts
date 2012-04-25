@@ -646,24 +646,28 @@ writeout_files(struct list_head *filelist)
 	return 0;
 }
 
-static const char *quilt_refresh_argv[] =
-{ QUILT, "refresh", "-p", "ab", "--no-timestamp", NULL };
-
 int
-quilt_new(const char *name, struct list_head *filelist)
+quilt_new(const char *name)
 {
-	int n = list_count(filelist);
-	const char **argv = alloca((n+4) * sizeof(char*));
-	struct parsed_file *pf;
-	int i, res;
-
-	i = 0;
+	const char *argv[4];
+	int i = 0;
 	argv[i++] = QUILT;
 	argv[i++] = "new";
 	argv[i++] = name;
 	argv[i] = NULL;
-	if ( (res = run_command(QUILT, argv)) )
-		return res;
+	return run_command(QUILT, argv);
+}
+
+static const char *quilt_refresh_argv[] =
+{ QUILT, "refresh", "-p", "ab", "--no-timestamp", NULL };
+
+int
+quilt_refresh(struct list_head *filelist)
+{
+	int n = list_count(filelist);
+	const char **argv = alloca((n+3) * sizeof(char*));
+	struct parsed_file *pf;
+	int i, res;
 
 	i = 0;
 	argv[i++] = QUILT;

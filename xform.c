@@ -1667,11 +1667,14 @@ static int simple(const char *patchname, struct list_head *filelist,
 
 	if ( (res = update_parsed_files(filelist)) )
 		return res;
+	if ( (res = quilt_new(patchname)) )
+		return res;
 
 	list_for_each_entry(pf, filelist, list) {
 		walk_tree(&pf->parsed, xform_fn, pf);
 	}
-	return quilt_new(patchname, filelist);
+
+	return quilt_refresh(filelist);
 }
 
 /* Helper for substituting types */
@@ -1682,6 +1685,8 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 	int res;
 
 	if ( (res = update_parsed_files(filelist)) )
+		return res;
+	if ( (res = quilt_new(patchname)) )
 		return res;
 	fdump = stdout;
 
@@ -1700,7 +1705,7 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 		}
 	}
 
-	return quilt_new(patchname, filelist);
+	return quilt_refresh(filelist);
 }
 
 /************************************************************
