@@ -707,3 +707,9 @@ quilt_import(const char *name, const char *basedir)
 
 	return run_command(QUILT, quilt_refresh_argv);
 }
+
+FILE *
+quilt_header(void)
+{
+	return popen(QUILT " header -r", "w");
+}

@@ -162,5 +162,6 @@ fake_split(node_t *node)
 int quilt_new(const char *name);
 int quilt_refresh(struct list_head *filelist);
 int quilt_import(const char *name, const char *basedir);
+FILE *quilt_header(void);
 
 #endif	/* TOOLS_H */

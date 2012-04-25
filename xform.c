@@ -1688,7 +1688,8 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 		return res;
 	if ( (res = quilt_new(patchname)) )
 		return res;
-	fdump = stdout;
+	if (! (fdump = quilt_header()) )
+		return -1;
 
 	init_varscope(filelist);
 	INIT_LIST_HEAD(&replacedlist);
@@ -1705,6 +1706,8 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 		}
 	}
 
+	if ( (res = pclose(fdump)) )
+		return res;
 	return quilt_refresh(filelist);
 }
 
