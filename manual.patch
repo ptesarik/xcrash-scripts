@@ -1,10 +1,9 @@
 ---
  defs.h             |    8 ++++----
  memory.c           |   10 +++++-----
- symbols.c          |    2 +-
  unwind_x86_32_64.c |    2 +-
  x86_64.c           |    8 ++++----
- 5 files changed, 15 insertions(+), 15 deletions(-)
+ 4 files changed, 14 insertions(+), 14 deletions(-)
 
 --- a/memory.c
 +++ b/memory.c
@@ -19,7 +18,7 @@
  
          DISPLAY_DEFAULT = (sizeof(long) == 8) ? DISPLAY_64 : DISPLAY_32;
  }
-@@ -14541,9 +14541,9 @@ nr_to_section(ulong nr)
+@@ -14538,9 +14538,9 @@ nr_to_section(ulong nr)
   * a little bit of information.  There should be at least
   * 3 bits here due to 32-bit alignment.
   */
@@ -34,7 +33,7 @@
  
 --- a/x86_64.c
 +++ b/x86_64.c
-@@ -1285,7 +1285,7 @@ x86_64_init_kernel_pgd(void)
+@@ -1284,7 +1284,7 @@ x86_64_init_kernel_pgd(void)
  tulong x86_64_VTOP(tulong vaddr) 
  {
  	if (vaddr >= __START_KERNEL_map)
@@ -43,7 +42,7 @@
  	else
  		return ((vaddr) - PAGE_OFFSET);
  }
-@@ -1890,7 +1890,7 @@ x86_64_kvtop(struct task_context *tc, tu
+@@ -1889,7 +1889,7 @@ x86_64_kvtop(struct task_context *tc, tu
  		goto no_kpage;
  	pgd_paddr = (*pml4) & PHYSICAL_PAGE_MASK;
  	FILL_PGD(pgd_paddr, PHYSADDR, PAGESIZE());
@@ -52,7 +51,7 @@
  	pgd_pte = ULONG(machdep->pgd + PAGEOFFSET(pgd));
          if (verbose) 
                  fprintf(fp, "   PUD: %"PRIlx" => %"PRIlx"\n", (tulong)pgd, pgd_pte);
-@@ -1902,7 +1902,7 @@ x86_64_kvtop(struct task_context *tc, tu
+@@ -1901,7 +1901,7 @@ x86_64_kvtop(struct task_context *tc, tu
  	 */
  	pmd_paddr = pgd_pte & PHYSICAL_PAGE_MASK;
  	FILL_PMD(pmd_paddr, PHYSADDR, PAGESIZE());
@@ -61,7 +60,7 @@
  	pmd_pte = ULONG(machdep->pmd + PAGEOFFSET(pmd));
          if (verbose) 
                  fprintf(fp, "   PMD: %"PRIlx" => %"PRIlx"\n", (tulong)pmd, pmd_pte);
-@@ -1927,7 +1927,7 @@ x86_64_kvtop(struct task_context *tc, tu
+@@ -1926,7 +1926,7 @@ x86_64_kvtop(struct task_context *tc, tu
  	 */
  	pte_paddr = pmd_pte & PHYSICAL_PAGE_MASK;
  	FILL_PTBL(pte_paddr, PHYSADDR, PAGESIZE());
@@ -72,7 +71,7 @@
                  fprintf(fp, "   PTE: %"PRIlx" => %"PRIlx"\n", (tulong)ptep, pte);
 --- a/defs.h
 +++ b/defs.h
-@@ -2648,11 +2648,11 @@ struct load_module {
+@@ -2649,11 +2649,11 @@ struct load_module {
   *  for safety, use the 2.6 values to generate it.
   */ 
  #define __PHYSICAL_MASK_SHIFT  40
@@ -87,7 +86,7 @@
  #define PHYSICAL_PAGE_MASK    (~(PAGE_SIZE-1) & (__PHYSICAL_MASK << PAGE_SHIFT))
  
  #define _PAGE_BIT_NX    63
-@@ -4626,7 +4626,7 @@ struct x86_64_stkinfo {
+@@ -4628,7 +4628,7 @@ struct x86_64_stkinfo {
  
  struct x86_64_machine_specific {
  	ulong userspace_top;
@@ -96,17 +95,6 @@
  	ulong vmalloc_start_addr;
  	ulong vmalloc_end;
  	ulong vmemmap_vaddr;
---- a/symbols.c
-+++ b/symbols.c
-@@ -1330,7 +1330,7 @@ store_module_symbols_v1(ulong total, int
- struct kernel_symbol
- {
-         unsigned long value;
--        const char *name;
-+        tptr name;
- };
- 
- void
 --- a/unwind_x86_32_64.c
 +++ b/unwind_x86_32_64.c
 @@ -194,7 +194,7 @@ static unsigned long read_pointer(const

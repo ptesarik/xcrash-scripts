@@ -1454,7 +1454,8 @@ track_expr(node_t *expr, ind_t *ind)
 			if (*ind == ind_return) {
 				saveind[saveidx++] = *ind++;
 				track_expr(parent, ind);
-			}
+			} else if (*ind > 0)
+				subst_target_call_arg(parent, ind);
 			while (saveidx)
 				*--ind = saveind[--saveidx];
 			break;
