@@ -11,23 +11,23 @@
 node_t *
 build_ind(node_t *type, ind_t **indp)
 {
-	ind_t *ind = *indp;
-	node_t *parent;
-
 	assert(type->type == nt_type);
+
+	node_t *parent;
 	while ((parent = type->parent)->type == nt_type) {
+		ind_t ind;
 		if (parent->t.category == type_pointer ||
 		    parent->t.category == type_array)
-			*--ind = ind_pointer;
+			ind = ind_pointer;
 		else if (parent->t.category == type_func)
-			*--ind = ind_return;
+			ind = ind_return;
 		else
 			assert(0);
 
+		if (indp)
+			*(--*indp) = ind;
 		type = parent;
 	}
-
-	*indp = ind;
 	return parent;
 }
 
