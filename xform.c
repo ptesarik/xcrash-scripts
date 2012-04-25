@@ -1428,9 +1428,16 @@ track_expr(node_t *expr, ind_t *ind)
 		case '&':
 		case '|':
 		case '^':
+			if (is_target_arith(expr, parent))
+				track_expr(parent, ind);
+			break;
+
 		case '+':
 		case '-':
-			if (is_target_arith(expr, parent))
+			if (list_empty(&parent->child[che_arg2]))
+				/* unary '+' or '-' */
+				track_expr(parent, ind);
+			else if (is_target_arith(expr, parent))
 				track_expr(parent, ind);
 			break;
 
