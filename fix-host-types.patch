@@ -1,0 +1,130 @@
+From: Petr Tesarik <ptesarik@suse.cz>
+Subject: Fix host/target type confusion
+
+Sometimes a host-specific type is used in a context that should be
+target-specific. This is no big deal when the target architecture
+is compatible with the host architecture, but it breaks the conversion
+to target types.
+
+Fortunately, there are only a few such places, so we can do this with
+a manual patch.
+
+Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
+
+---
+ lkcd_x86_trace.c |   12 ++++++------
+ symbols.c        |   16 ++++++++--------
+ task.c           |    2 +-
+ 3 files changed, 15 insertions(+), 15 deletions(-)
+
+--- a/symbols.c
++++ b/symbols.c
+@@ -1733,13 +1733,13 @@ store_module_kallsyms_v1(struct load_mod
+ 	ulong name_off;
+ 	ulong sec_name_off;
+ 	ulong section_off;
+-	ulong symptr;
++	char *symptr;
+ 	ulong symbol_addr;
+-	ulong stringptr;
+-	ulong sectionptr;
++	char *stringptr;
++	char *sectionptr;
+ 	char *nameptr;
+ 	char *secnameptr;
+-	ulong secptr;
++	char *secptr;
+ 	char type;
+ 	int mcnt;
+ 	int mcnt_idx;
+@@ -1775,11 +1775,11 @@ store_module_kallsyms_v1(struct load_mod
+ 	if (CRASHDEBUG(7))
+ 		fprintf(fp, "kallsyms: module: %s\n", lm->mod_name);
+ 
+-	symptr = (ulong)(header_buf + 
++	symptr = (char *)(header_buf + 
+ 		ULONG(header_buf + OFFSET(kallsyms_header_symbol_off)));
+-	stringptr = (ulong)(header_buf + 
++	stringptr = (char *)(header_buf + 
+ 		ULONG(header_buf + OFFSET(kallsyms_header_string_off)));
+-	sectionptr = (ulong)(header_buf + 
++	sectionptr = (char *)(header_buf + 
+ 		ULONG(header_buf + OFFSET(kallsyms_header_section_off)));
+ 
+ 	for (i = 0; i < symbols; i++, symptr += SIZE(kallsyms_symbol)) {
+@@ -1787,7 +1787,7 @@ store_module_kallsyms_v1(struct load_mod
+ 		name_off = ULONG(symptr+OFFSET(kallsyms_symbol_name_off));
+ 		section_off = ULONG(symptr+OFFSET(kallsyms_symbol_section_off));
+ 		nameptr = (char *)(stringptr + name_off);
+-		secptr = (ulong)(sectionptr + section_off);
++		secptr = (char *)(sectionptr + section_off);
+ 		sec_name_off = ULONG(secptr+OFFSET(kallsyms_section_name_off));
+ 		secnameptr = (char *)(stringptr + sec_name_off);
+ 
+--- a/lkcd_x86_trace.c
++++ b/lkcd_x86_trace.c
+@@ -1429,7 +1429,7 @@ find_trace(
+ 				return(0);
+ 			}
+ 		}
+-		asp = (uaddr_t*)((uaddr_t)sbp + (STACK_SIZE - (saddr - sp)));
++		asp = (uaddr_t*)((char *)sbp + (STACK_SIZE - (saddr - sp)));
+ 
+ 		if (XEN_HYPER_MODE()) {
+ 			func_name = xen_funcname(bt, pc);
+@@ -1581,7 +1581,7 @@ find_trace(
+ 				ra = 0;
+ 				bp = saddr - 4;
+ 				asp = (uaddr_t*)
+-					((uaddr_t)sbp + (STACK_SIZE - 12));
++					((char *)sbp + (STACK_SIZE - 12));
+ 				curframe = alloc_sframe(trace, flags);
+ 				UPDATE_FRAME(func_name, pc, 
+ 					ra, sp, bp, asp, 0, 0, 16, 0);
+@@ -1626,7 +1626,7 @@ find_trace(
+ 				sp = curframe->fp + 4;
+ 				ra = GET_STACK_ULONG(bp-16);
+ 				curframe = alloc_sframe(trace, flags);
+-				asp = (uaddr_t*)((uaddr_t)sbp + 
++				asp = (uaddr_t*)((char *)sbp + 
+ 					(STACK_SIZE - (saddr - sp)));
+ 				UPDATE_FRAME(func_name, pc, ra, sp, bp, 
+ 					asp, 0, 0, (bp - sp + 4), EX_FRAME);
+@@ -1638,7 +1638,7 @@ find_trace(
+ 				sp = curframe->fp + eframe_incr(pc, func_name);
+ 
+ 				bp = sp + (KERNEL_EFRAME_SZ-1)*4;
+-				asp = (uaddr_t*)((uaddr_t)sbp + (STACK_SIZE - 
++				asp = (uaddr_t*)((char *)sbp + (STACK_SIZE - 
+ 							(saddr - sp)));
+ 				curframe = alloc_sframe(trace, flags);
+ 				ra = asp[INT_EFRAME_EIP];
+@@ -1663,7 +1663,7 @@ find_trace(
+ 				strstr(func_name, "call_function_interrupt"))) {
+ 				/* Interrupt frame */
+ 				sp = curframe->fp + 4;
+-				asp = (uaddr_t*)((uaddr_t)sbp + (STACK_SIZE - 
++				asp = (uaddr_t*)((char *)sbp + (STACK_SIZE - 
+ 						(saddr - sp)));
+ 				frame_type = eframe_type(asp);
+ 				if (frame_type == KERNEL_EFRAME)
+@@ -1698,7 +1698,7 @@ find_trace(
+ 			    STREQ(func_name, "deferred_nmi")) {
+ 				/* Interrupt frame */
+ 				sp = curframe->fp + 4;
+-				asp = (uaddr_t*)((uaddr_t)sbp + (STACK_SIZE - 
++				asp = (uaddr_t*)((char *)sbp + (STACK_SIZE - 
+ 						(saddr - sp)));
+ 				bp = curframe->fp + (12 * 4);
+ 				curframe = alloc_sframe(trace, flags);
+--- a/task.c
++++ b/task.c
+@@ -7376,7 +7376,7 @@ dump_tasks_in_cfs_rq(ulong cfs_rq)
+ 				     OFFSET(sched_entity_run_node));
+ 		if (!tc)
+ 			continue;
+-		if (hq_enter((ulong)tc))
++		if (hq_enter(tc->task))
+ 			dump_task_runq_entry(tc);
+ 		else {
+ 			error(WARNING, "duplicate CFS runqueue node: task %lx\n",

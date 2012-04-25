@@ -1783,6 +1783,9 @@ static struct xform_desc xforms[] = {
 // Give each architecture its own name for machspec
 { "arch-machspec-split-use.patch", simple, arch_machspec },
 
+// Fix host/target type confusion
+{ "fix-host-types.patch", import },
+
 // Target types in calls to (try_)get_symbol_data
 { "target-types-symbol_data.patch", type_subst, target_types_symbol_data },
 
