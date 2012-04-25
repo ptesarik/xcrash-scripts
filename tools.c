@@ -474,6 +474,34 @@ child_order(node_t *child, node_t *parent, int idx)
 }
 
 struct list_head *
+node_scope(node_t *node)
+{
+	switch (node->type) {
+	case nt_type:
+		if (node->t.category == type_struct ||
+		    node->t.category == type_union ||
+		    node->t.category == type_enum)
+			return &node->child[cht_body];
+		else if (node->t.category == type_func) {
+			node = typed_parent(node, nt_decl);
+			return &node->child[chd_body];
+		}
+		break;
+
+	case nt_var:
+		node = node->parent;
+		assert(node->type == nt_decl);
+		/* fall through */
+	case nt_decl:
+		return &node->child[chd_body];
+
+	default:
+		break;
+	}
+	return NULL;
+}
+
+struct list_head *
 find_scope(node_t *node, node_t **pparent)
 {
 	struct list_head *ret = &node->pf->parsed;
