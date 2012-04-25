@@ -216,27 +216,18 @@ replace_nodes(struct list_head *nodelist, node_t *newnode)
 	}
 }
 
-static int
-check_split(node_t *node, struct split_node *split, const char *newtext)
+static void
+inconsistent_replace(struct split_node *split, node_t *type,
+		     node_t *var, const char *newtext)
 {
-	if (!node->user_list.next)
-		return 0;	/* First request for this var */
-	if (split)
-		return 1;	/* Matching split already exists */
-
-	/* If the variable is already on the split list, but no matching
-	 * split was found, there is a split for a different @newtext.
-	 */
-	node_t *var = typed_parent(node, nt_var);
-	node_t *base = base_type(node);
-	list_for_each_entry(split, &splitlist, list)
-		if (split->oldds == base->str)
-			break;
-	fprintf(stderr, "Conflicting type change for '%s %s':"
-		" first '%s', now '%s'\n",
-		base->str->text, var ? var->str->text : "<unknown>",
-		&split->list != &splitlist ? split->newds->text : "<unknown>",
-		newtext);
+	fdump = stderr;
+	shortdump_scope(type);
+	fputs(": conflicting type change for '", fdump);
+	shortdump_type(type);
+	if (var && var->type == nt_var)
+		fprintf(fdump, " %s", var->str->text);
+	fprintf(fdump, "': first '%s', now '%s'\n",
+		split->newds->text, newtext);
 	abort();
 }
 
@@ -256,26 +247,61 @@ replace_single_type(node_t *type, struct dynstr *newds)
 	return type;
 }
 
+static struct split_node *
+find_split(node_t *base, const ind_t *ind, const char *newtext)
+{
+	node_t *type;
+	list_for_each_entry(type, &base->dup_list, dup_list) {
+		node_t *var = build_ind(type, NULL);
+		if (var && var->type == nt_var) {
+			struct split_node *split = var->user_data;
+			if (split && !strcmp(split->newds->text, newtext))
+				return split;
+		}
+	}
+
+	return NULL;
+}
+
 /* Change the type definition of @node */
 static node_t *
 replace_type(node_t *node, const char *newtext)
 {
-	node_t *base = base_type(node);
-	struct dynstr *newds, *oldds = base->str;
-	struct split_node *split = split_search(&splitlist, oldds, newtext);
-	if (check_split(node, split, newtext))
+	node_t *var, *base;
+	struct split_node *split;
+	ind_t indvec[MAXIND];
+	ind_t *ind = indvec + MAXIND;
+
+	base = base_type(node);
+	*--ind = ind_stop;
+	var = build_ind(base, &ind);
+
+	split = var && var->type == nt_var
+		? var->user_data
+		: node->user_data;
+	if (split) {
+		if (strcmp(split->newds->text, newtext))
+			inconsistent_replace(split, node, var, newtext);
 		return node;
-	newds = split
-		? split->newds
-		: newdynstr(newtext, strlen(newtext));
-	if (split)
-		split_addnode(split, node);
-	else if (base->str->refcount > 1)
-		split_add(&splitlist, node, oldds, newds);
-	else {
-		node = flatten_type(node, base);
-		node = replace_single_type(node, newds);
 	}
+
+	split = find_split(base, ind, newtext);
+	if (!split) {
+		struct dynstr *newds = newdynstr(newtext, strlen(newtext));
+		if (base->str->refcount == 1) {
+			node = flatten_type(node, base);
+			node = replace_single_type(node, newds);
+			split = fake_split(node);
+		} else
+			split = split_add(&splitlist, node, base->str, newds);
+	} else
+		split_addnode(split, node);
+
+	if (var && var->type == nt_var)
+		var->user_data = split;
+	else
+		node->user_data = split;
+
 	return node;
 }
 
@@ -1182,6 +1208,21 @@ use_ia64_fpreg_t(node_t *node, void *data)
 /************************************************************
  * Variable tracking
  *
+ */
+
+/* Use of user-specific node fields
+ *
+ * user_list:
+ *	nt_type		link in struct split_node's @nodes list
+ *			or in @replacedlist
+ *	nt_var		head of the list of nt_expr nodes
+ *	nt_expr		link in the variable node's list
+ *
+ * user_data:
+ *	nt_expr		pointer to the corresponding nt_var node
+ *	nt_var		pointer to struct split_node
+ *	nt_type		pointer to struct split_node
+ *			(if there is no	parent var node)
  */
 
 static void track_expr(node_t *expr, ind_t *ind);

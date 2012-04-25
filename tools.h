@@ -149,6 +149,14 @@ split_addnode(struct split_node *split, node_t *node)
 	list_add_tail(&node->user_list, &split->nodes);
 }
 
+/* Make a fake struct split pointer such that its newds field overlaps
+   @node->str */
+static inline struct split_node *
+fake_split(node_t *node)
+{
+	return (struct split_node *)
+		((char*)&node->str - offsetof(struct split_node, newds));
+}
 
 /* Quilt interface */
 int quilt_new(const char *name, struct list_head *filelist);
