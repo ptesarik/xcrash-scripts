@@ -1169,7 +1169,7 @@ replace_struct(node_t *node, const char *oldname, const char *newname)
 static enum walk_action
 use_pt_regs_x86_64(node_t *node, void *data)
 {
-	struct parsed_file *pf = data;
+	struct parsed_file *pf = node->pf;
 	int cond = check_cpp_cond(node->first_text->cpp_cond,
 			      "X86_64", NULL, NULL);
 	if (!cond && pf->name && strcmp(pf->name, "unwind_x86_64.h"))
@@ -1694,7 +1694,7 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 	init_varscope(filelist);
 	INIT_LIST_HEAD(&replacedlist);
 	list_for_each_entry(pf, filelist, list)
-		walk_tree(&pf->parsed, xform_fn, pf);
+		walk_tree(&pf->parsed, xform_fn, filelist);
 
 	track_vars(filelist);
 
