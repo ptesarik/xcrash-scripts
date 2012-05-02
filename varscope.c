@@ -123,6 +123,32 @@ varscope_find(struct list_head *scope,
 	return NULL;
 }
 
+/* varscope_find_next - find the next identifier in a given scope
+ *
+ * @scope	the variable scope
+ * @start	the starting point
+ */
+node_t *
+varscope_find_next(struct list_head *scope, const node_t *start)
+{
+	const char *idname = start->str->text;
+	unsigned idx = mkhash(idname, scope);
+	struct varscope *vs;
+	for (vs = vshash[idx]; vs; vs = vs->next)
+		if (vs->node == start)
+			break;
+	if (!vs)
+		return NULL;
+
+	while ( (vs = vs->next) )
+		if (vs->scope == scope &&
+		    vs->node->type == start->type &&
+		    !strcmp(vs->node->str->text, idname))
+			return vs->node;
+
+	return NULL;
+}
+
 /* varscope_traverse - traverse the scopes to find an identifier
  *
  * @tree	tree corresponding to the file where @idname is used
@@ -178,25 +204,10 @@ node_t *
 varscope_find_next_var(node_t *var)
 {
 	struct list_head *scope = find_var_scope(var);
-	const char *idname = var->str->text;
-	unsigned idx = mkhash(idname, scope);
-	struct varscope *vs;
-	for (vs = vshash[idx]; vs; vs = vs->next)
-		if (vs->node == var)
-			break;
-	if (!vs)
-		return NULL;
-
-	while ( (vs = vs->next) )
-		if (vs->scope == scope &&
-		    vs->node->type == var->type &&
-		    !strcmp(vs->node->str->text, idname))
-			return vs->node;
-
-	if (scope == &var->pf->parsed)
-		return varscope_find(NULL, var->type, idname);
-
-	return NULL;
+	node_t *ret = varscope_find_next(scope, var);
+	if (!ret && scope == &var->pf->parsed)
+		ret = varscope_find(NULL, var->type, var->str->text);
+	return ret;
 }
 
 node_t *
