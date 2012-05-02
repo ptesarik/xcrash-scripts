@@ -16,9 +16,10 @@ void varscope_remove(node_t *node);
 node_t *varscope_find_first_var(node_t *var);
 node_t *varscope_find_next_var(node_t *var);
 node_t *varscope_find_expr(node_t *expr);
-node_t *varscope_type(node_t *scope, const char *name);
 
 struct list_head *find_var_scope(node_t *node);
 node_t *resolve_typedef(struct list_head *tree, node_t *type);
+
+node_t *varscope_symbol(struct list_head *filelist, const char *name);
 
 #endif	/* VARSCOPE_H */

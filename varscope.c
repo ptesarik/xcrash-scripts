@@ -352,50 +352,134 @@ varscope_find_expr(node_t *expr)
 	return ret;
 }
 
-node_t *
-varscope_type(node_t *scope, const char *name)
+static node_t *
+find_global(struct list_head *filelist, struct list_head *scope,
+	    enum node_type type, const char *idname)
 {
-	struct list_head *tree = scope ? &scope->pf->parsed : NULL;;
+	node_t *ret = varscope_find(scope, type, idname);
+	if (!ret && scope)
+		ret = varscope_find(NULL, type, idname);
+	if (ret)
+		return ret;
+
+	struct parsed_file *pf;
+	list_for_each_entry(pf, filelist, list)
+		if ( (ret = varscope_find(&pf->parsed, type, idname)) )
+			break;
+	return ret;
+}
+
+static size_t
+check_prefix(const char *spec, enum node_type *nt, int *extra)
+{
+#define PREFIX(name,nt,cat)	{ name " ", sizeof(name), (nt), (cat) }
+	static const struct {
+		const char *prefix;
+		size_t prefix_len;
+		enum node_type nt;
+		int extra;
+	} prefixes[] = {
+		PREFIX("var", nt_var, -1),
+		PREFIX("typedef", nt_var, TF_TYPEDEF),
+		PREFIX("type", nt_type, -1),
+		PREFIX("struct", nt_type, type_struct),
+		PREFIX("union", nt_type, type_union),
+		PREFIX("enum", nt_type, type_enum),
+		{ NULL }
+	}, *p;
+
+	*nt = *extra = -1;
+	for (p = prefixes; p->prefix; ++p)
+		if (!strncmp(spec, p->prefix, p->prefix_len)) {
+			*nt = p->nt;
+			*extra = p->extra;
+			return p->prefix_len;
+		}
+
+	return 0;
+}
+
+static node_t *
+find_symbol(struct list_head *filelist, struct list_head *scope,
+	    const char *spec)
+{
+	enum node_type nodetype;
+	int extra;
+	spec += check_prefix(spec, &nodetype, &extra);
+
+	node_t *node = (nodetype != -1)
+		? find_global(filelist, scope, nodetype, spec)
+		: (find_global(filelist, scope, nt_var, spec)
+		   ?: find_global(filelist, scope, nt_type, spec));
+
+	while (node) {
+		if (extra == -1)
+			return node;
+
+		if (node->type == nt_type && node->t.category == extra)
+			return node;
+
+		if (node->type == nt_var) {
+			node_t *type = first_node(&node->child[chv_type]);
+			assert(&type->list != &node->child[chv_type]);
+			assert(type->type == nt_type);
+			if (type->t.flags & extra)
+				return node;
+		}
+		node = varscope_find_next(scope, node);
+	}
+	return NULL;
+}
+
+/* varscope_symbol - find a symbol in the varscope database
+ *
+ * @filelist	list of all parsed_file structures
+ * @name	name of the symbol
+ *
+ * The @name is in fact a "path" to the symbol. The general syntax is:
+ *
+ * [<file_name>:][<tag> ]name[.[<tag> ]name]...
+ *
+ * where <tag> specifies the type of the symbol and can be one of:
+ *   var, typedef, type, struct, union, enum
+ */
+node_t *
+varscope_symbol(struct list_head *filelist, const char *name)
+{
+	struct list_head *tree;
 	char localname[strlen(name) + 1];
-	char *spec, *dot;
-	node_t *node;
+	char *spec, *sep;
 
 	spec = localname;
 	strcpy(spec, name);
 
-	if ( (dot = strchr(spec, '.')) )
-		*dot = 0;
+	if ( (sep = strchr(spec, ':')) ) {
+		struct parsed_file *pf;
 
-	if (! (node = varscope_traverse(tree, scope, nt_type, spec)) ) {
-		if (! (node = varscope_traverse(tree, scope, nt_var, spec)) )
+		*sep = 0;
+		if (! (pf = find_file(filelist, spec)) )
 			return NULL;
-		if (list_empty(&node->child[chv_type]))
-			return NULL; /* unspecified type */
-		node = first_node(&node->child[chv_type]);
+		tree = &pf->parsed;
+	} else {
+		sep = spec - 1;
+		tree = NULL;
 	}
 
-	if (! (node = resolve_typedef(tree, node)) )
-		return NULL;
+	struct list_head *scope = tree;
+	node_t *node = NULL;
+	do {
+		spec = sep + 1;
+		if ( (sep = strchr(spec, '.')) )
+			*sep = 0;
 
-	while (dot && dot[1]) {
-		spec = dot + 1;
-		if ( (dot = strchr(spec, '.')) )
-			*dot = 0;
+		if (node)
+			scope = node_scope(node);
 
-		scope = node;
-		assert(scope->type == nt_type);
-		if (scope->t.category != type_struct &&
-		    scope->t.category != type_union &&
-		    scope->t.category != type_enum)
+		if (! (node = find_symbol(filelist, scope, spec)) )
 			return NULL;
-
-		node = varscope_find(&scope->child[cht_body], nt_var, spec);
-		if (!node)
+		if (! (node = resolve_typedef(tree, node)) )
 			return NULL;
-		if (list_empty(&node->child[chv_type]))
-			return NULL; /* unspecified type */
-		node = first_node(&node->child[chv_type]);
-	}
+	} while (sep && sep[1]);
 
 	return node;
 }

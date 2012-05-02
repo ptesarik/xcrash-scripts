@@ -897,6 +897,7 @@ target_facilitators(node_t *node, void *data)
 		NULL
 	};
 	const char *const *name;
+	struct list_head *filelist = data;
 	struct parsed_file *pf = node->pf;
 
 	/* Ignore everything except the built-in file */
@@ -904,11 +905,17 @@ target_facilitators(node_t *node, void *data)
 		return walk_terminate;
 
 	for (name = namelist; *name; ++name) {
-		node_t *type = varscope_type(NULL, *name);
-		if (type)
-			list_add_tail(&type->user_list, &replacedlist);
-		else
+		node_t *var = varscope_symbol(filelist, *name);
+		if (!var) {
 			fprintf(stderr, "ERROR: Cannot find %s\n", *name);
+			continue;
+		}
+		node_t *type = nth_node(&var->child[chv_type], 1);
+		if (!type) {
+			fprintf(stderr, "ERROR: %s has no type?!\n", *name);
+			continue;
+		}
+		list_add_tail(&type->user_list, &replacedlist);
 	}
 
 	return walk_terminate;
