@@ -66,7 +66,8 @@ H			[a-fA-F0-9]
 E			[Ee][+-]?{D}+
 FS			(f|F|l|L)
 IS			(u|U|l|L)*
-CPP			("#"|"%:")[ \t\v\f]*
+WS			[ \t\v\f]
+CPP			("#"|"%:"){WS}*
 
 %s cpp
 %s cpp_condition
@@ -125,7 +126,7 @@ CPP			("#"|"%:")[ \t\v\f]*
 }
 
   /* CPP define name */
-<cpp_def>[ \t\v\f]+		/* skip whitespace except newline */
+<cpp_def>{WS}+			/* skip whitespace except newline */
 <cpp_def>{L}({L}|{D})*/\(	{
 				BEGIN(cpp);
 				return store_token(CPP_IDARG);
