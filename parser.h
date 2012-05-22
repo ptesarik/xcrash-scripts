@@ -207,10 +207,10 @@ extern struct list_head parsed_tree;
 
 /* Parser/lexer interface */
 extern FILE *yyin;
-extern YYLTYPE yylloc;
+union YYSTYPE;
 
 int yyparse(void);
-int yylex(void);
+int yylex(union YYSTYPE *val, YYLTYPE *loc);
 int yylex_destroy(void);
 
 /* Location handling */

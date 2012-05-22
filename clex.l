@@ -32,14 +32,17 @@ static int token_at_eof;
 static struct dynstr *lex_input;
 static char *lex_input_ptr;
 
-static void store_yytext(const char *s);
-#define YY_USER_ACTION	store_yytext(yytext);
+static void store_yytext(YYLTYPE *loc, const char *s);
+#define YY_USER_ACTION	store_yytext(loc, yytext);
 
 static void init_vars(void);
 #define YY_USER_INIT	init_vars()
 
-static int store_token(int);
-static int store_btype(int);
+static int store_token(YYSTYPE *, YYLTYPE *, int);
+static int store_btype(YYSTYPE *, YYLTYPE *, int);
+
+#define STORE_TOKEN(tok)	(store_token(val, loc, (tok)))
+#define STORE_BTYPE(btype)	(store_btype(val, loc, (btype)))
 
 static size_t dynstr_read(void *, size_t);
 
@@ -57,6 +60,8 @@ static size_t dynstr_read(void *, size_t);
 			clearerr(yyin); \
 		} \
 	}
+
+#define YY_DECL	int yylex(YYSTYPE *val, YYLTYPE *loc)
 
 %}
 
@@ -93,34 +98,34 @@ CPP			("#"|"%:"){WS}*
 "define"		{
 			token_at_eof = ';';
 			BEGIN(cpp_def);
-			return store_token(CPP_DEFINE);
+			return STORE_TOKEN(CPP_DEFINE);
 			}
 "if"			{
 			BEGIN(cpp); BEGIN(cpp_condition);
-			return store_token(CPP_IF);
+			return STORE_TOKEN(CPP_IF);
 			}
 "ifdef"			{
 			BEGIN(cpp); BEGIN(cpp_condition);
-			return store_token(CPP_IFDEF);
+			return STORE_TOKEN(CPP_IFDEF);
 			}
 "ifndef"		{
 			BEGIN(cpp); BEGIN(cpp_condition);
-			return store_token(CPP_IFNDEF);
+			return STORE_TOKEN(CPP_IFNDEF);
 			}
 "elif"			{
 			BEGIN(cpp); BEGIN(cpp_condition);
-			return store_token(CPP_ELIF);
+			return STORE_TOKEN(CPP_ELIF);
 			}
 "else"			{
 			BEGIN(cpp_ign);
-			return store_token(CPP_ELSE);
+			return STORE_TOKEN(CPP_ELSE);
 			}
 "endif"			{
 			BEGIN(cpp_ign);
-			return store_token(CPP_ENDIF);
+			return STORE_TOKEN(CPP_ENDIF);
 			}
 (?s:.)			{
-			yylloc.last_text->reuse = 1;
+			loc->last_text->reuse = 1;
 			BEGIN(cpp_ign);
 			}
 }
@@ -129,16 +134,16 @@ CPP			("#"|"%:"){WS}*
 <cpp_def>{WS}+			/* skip whitespace except newline */
 <cpp_def>{L}({L}|{D})*/\(	{
 				BEGIN(cpp);
-				return store_token(CPP_IDARG);
+				return STORE_TOKEN(CPP_IDARG);
 				}
 <cpp_def>{L}({L}|{D})*		{
 				BEGIN(cpp);
-				return store_token(ID);
+				return STORE_TOKEN(ID);
 				}
 
   /* CPP directive (during define) */
-<cpp>"#"		return store_token('#');
-<cpp>"##"		return store_token(CPP_CONCAT);
+<cpp>"#"		return STORE_TOKEN('#');
+<cpp>"##"		return STORE_TOKEN(CPP_CONCAT);
 <cpp><<EOF>>		{
 			/* Simulate a terminating semicolon at the end
 			 * of each macro. This is often needed to make
@@ -152,138 +157,138 @@ CPP			("#"|"%:"){WS}*
 				else {
 					int ret = token_at_eof;
 					token_at_eof = 0;
-					return store_token(ret);
+					return STORE_TOKEN(ret);
 				}
 			}
 
-<cpp_condition>"defined"	return store_token(CPP_DEFINED);
-<cpp_condition>{L}({L}|{D})*	return store_token(ID);
+<cpp_condition>"defined"	return STORE_TOKEN(CPP_DEFINED);
+<cpp_condition>{L}({L}|{D})*	return STORE_TOKEN(ID);
 
   /* CPP ignored directive */
 {CPP}	{
 	if (!lex_input)
-		list_add_tail(&yylloc.last_text->cpp_list, &raw_cpp);
+		list_add_tail(&loc->last_text->cpp_list, &raw_cpp);
 	BEGIN(cpp_ign);
-	yylloc.last_text->reuse = 1;
+	loc->last_text->reuse = 1;
 	}
 <cpp_ign>(.|\\\n)	/* and eat up the directive */
 <cpp_ign>\n		{
-	yylloc.last_text->reuse = 0;
+	loc->last_text->reuse = 0;
 	BEGIN(INITIAL);
 	}
 
-"..."			return store_token(ELLIPSIS);
-">>="			return store_token(SHR_ASSIGN);
-"<<="			return store_token(SHL_ASSIGN);
-"+="			return store_token(ADD_ASSIGN);
-"-="			return store_token(SUB_ASSIGN);
-"*="			return store_token(MUL_ASSIGN);
-"/="			return store_token(DIV_ASSIGN);
-"%="			return store_token(MOD_ASSIGN);
-"&="			return store_token(AND_ASSIGN);
-"^="			return store_token(XOR_ASSIGN);
-"|="			return store_token(OR_ASSIGN);
-">>"			return store_token(SHR_OP);
-"<<"			return store_token(SHL_OP);
-"++"			return store_token(INC_OP);
-"--"			return store_token(DEC_OP);
-"->"			return store_token(PTR_OP);
-"&&"			return store_token(AND_OP);
-"||"			return store_token(OR_OP);
-"<="			return store_token(LE_OP);
-">="			return store_token(GE_OP);
-"=="			return store_token(EQ_OP);
-"!="			return store_token(NE_OP);
-";"			return store_token(';');
-("{"|"<%")		return store_token('{');
-("}"|"%>")		return store_token('}');
-","			return store_token(',');
-":"			return store_token(':');
-"="			return store_token('=');
-"("			return store_token('(');
-")"			return store_token(')');
-("["|"<:")		return store_token('[');
-("]"|":>")		return store_token(']');
-"."			return store_token('.');
-"&"			return store_token('&');
-"!"			return store_token('!');
-"~"			return store_token('~');
-"-"			return store_token('-');
-"+"			return store_token('+');
-"*"			return store_token('*');
-"/"			return store_token('/');
-"%"			return store_token('%');
-"<"			return store_token('<');
-">"			return store_token('>');
-"^"			return store_token('^');
-"|"			return store_token('|');
-"?"			return store_token('?');
+"..."			return STORE_TOKEN(ELLIPSIS);
+">>="			return STORE_TOKEN(SHR_ASSIGN);
+"<<="			return STORE_TOKEN(SHL_ASSIGN);
+"+="			return STORE_TOKEN(ADD_ASSIGN);
+"-="			return STORE_TOKEN(SUB_ASSIGN);
+"*="			return STORE_TOKEN(MUL_ASSIGN);
+"/="			return STORE_TOKEN(DIV_ASSIGN);
+"%="			return STORE_TOKEN(MOD_ASSIGN);
+"&="			return STORE_TOKEN(AND_ASSIGN);
+"^="			return STORE_TOKEN(XOR_ASSIGN);
+"|="			return STORE_TOKEN(OR_ASSIGN);
+">>"			return STORE_TOKEN(SHR_OP);
+"<<"			return STORE_TOKEN(SHL_OP);
+"++"			return STORE_TOKEN(INC_OP);
+"--"			return STORE_TOKEN(DEC_OP);
+"->"			return STORE_TOKEN(PTR_OP);
+"&&"			return STORE_TOKEN(AND_OP);
+"||"			return STORE_TOKEN(OR_OP);
+"<="			return STORE_TOKEN(LE_OP);
+">="			return STORE_TOKEN(GE_OP);
+"=="			return STORE_TOKEN(EQ_OP);
+"!="			return STORE_TOKEN(NE_OP);
+";"			return STORE_TOKEN(';');
+("{"|"<%")		return STORE_TOKEN('{');
+("}"|"%>")		return STORE_TOKEN('}');
+","			return STORE_TOKEN(',');
+":"			return STORE_TOKEN(':');
+"="			return STORE_TOKEN('=');
+"("			return STORE_TOKEN('(');
+")"			return STORE_TOKEN(')');
+("["|"<:")		return STORE_TOKEN('[');
+("]"|":>")		return STORE_TOKEN(']');
+"."			return STORE_TOKEN('.');
+"&"			return STORE_TOKEN('&');
+"!"			return STORE_TOKEN('!');
+"~"			return STORE_TOKEN('~');
+"-"			return STORE_TOKEN('-');
+"+"			return STORE_TOKEN('+');
+"*"			return STORE_TOKEN('*');
+"/"			return STORE_TOKEN('/');
+"%"			return STORE_TOKEN('%');
+"<"			return STORE_TOKEN('<');
+">"			return STORE_TOKEN('>');
+"^"			return STORE_TOKEN('^');
+"|"			return STORE_TOKEN('|');
+"?"			return STORE_TOKEN('?');
 
-"__attribute__"		return store_token(ATTRIBUTE);
-"auto"			return store_token(AUTO);
-"break"			return store_token(BREAK);
-"case"			return store_token(CASE);
-"const"			return store_token(CONST);
-"continue"		return store_token(CONTINUE);
-"default"		return store_token(DEFAULT);
-"do"			return store_token(DO);
-"else"			return store_token(ELSE);
-"enum"			return store_token(ENUM);
-"extern"		return store_token(EXTERN);
-"for"			return store_token(FOR);
-"goto"			return store_token(GOTO);
-"if"			return store_token(IF);
-"inline"		return store_token(INLINE);
-"__inline__"		return store_token(INLINE);
-"register"		return store_token(REGISTER);
-"return"		return store_token(RETURN);
-"sizeof"		return store_token(SIZEOF);
-"static"		return store_token(STATIC);
-"struct"		return store_token(STRUCT);
-"switch"		return store_token(SWITCH);
-"typedef"		return store_token(TYPEDEF);
-"__typeof__"		return store_token(TYPEOF);
-"union"			return store_token(UNION);
-"volatile"		return store_token(VOLATILE);
-"while"			return store_token(WHILE);
+"__attribute__"		return STORE_TOKEN(ATTRIBUTE);
+"auto"			return STORE_TOKEN(AUTO);
+"break"			return STORE_TOKEN(BREAK);
+"case"			return STORE_TOKEN(CASE);
+"const"			return STORE_TOKEN(CONST);
+"continue"		return STORE_TOKEN(CONTINUE);
+"default"		return STORE_TOKEN(DEFAULT);
+"do"			return STORE_TOKEN(DO);
+"else"			return STORE_TOKEN(ELSE);
+"enum"			return STORE_TOKEN(ENUM);
+"extern"		return STORE_TOKEN(EXTERN);
+"for"			return STORE_TOKEN(FOR);
+"goto"			return STORE_TOKEN(GOTO);
+"if"			return STORE_TOKEN(IF);
+"inline"		return STORE_TOKEN(INLINE);
+"__inline__"		return STORE_TOKEN(INLINE);
+"register"		return STORE_TOKEN(REGISTER);
+"return"		return STORE_TOKEN(RETURN);
+"sizeof"		return STORE_TOKEN(SIZEOF);
+"static"		return STORE_TOKEN(STATIC);
+"struct"		return STORE_TOKEN(STRUCT);
+"switch"		return STORE_TOKEN(SWITCH);
+"typedef"		return STORE_TOKEN(TYPEDEF);
+"__typeof__"		return STORE_TOKEN(TYPEOF);
+"union"			return STORE_TOKEN(UNION);
+"volatile"		return STORE_TOKEN(VOLATILE);
+"while"			return STORE_TOKEN(WHILE);
 
-"char"			return store_btype(TYPE_CHAR);
-"double"		return store_btype(TYPE_DOUBLE);
-"int"			return store_btype(TYPE_INT);
-"float"			return store_btype(TYPE_FLOAT);
-"long"			return store_btype(TYPE_LONG);
-"short"			return store_btype(TYPE_SHORT);
-"signed"		return store_btype(TYPE_SIGNED);
-"unsigned"		return store_btype(TYPE_UNSIGNED);
-"void"			return store_btype(TYPE_VOID);
+"char"			return STORE_BTYPE(TYPE_CHAR);
+"double"		return STORE_BTYPE(TYPE_DOUBLE);
+"int"			return STORE_BTYPE(TYPE_INT);
+"float"			return STORE_BTYPE(TYPE_FLOAT);
+"long"			return STORE_BTYPE(TYPE_LONG);
+"short"			return STORE_BTYPE(TYPE_SHORT);
+"signed"		return STORE_BTYPE(TYPE_SIGNED);
+"unsigned"		return STORE_BTYPE(TYPE_UNSIGNED);
+"void"			return STORE_BTYPE(TYPE_VOID);
 
 	/* HACKs */
-"FRAME_REG"		return store_token(FRAME_REG);
-"for_cpu_indexes"	return store_token(FOR_CPU_INDEXES);
-"offsetof"		return store_token(OFFSETOF);
-"struct_offset"		return store_token(OFFSETOF);
-"ATTRIBUTE_UNUSED"	return store_token(ATTRIBUTE_UNUSED);
+"FRAME_REG"		return STORE_TOKEN(FRAME_REG);
+"for_cpu_indexes"	return STORE_TOKEN(FOR_CPU_INDEXES);
+"offsetof"		return STORE_TOKEN(OFFSETOF);
+"struct_offset"		return STORE_TOKEN(OFFSETOF);
+"ATTRIBUTE_UNUSED"	return STORE_TOKEN(ATTRIBUTE_UNUSED);
 
 {L}({L}|{D})*		|
 3COM({L}|{D})*		|	/* HACK */
 3DFX({L}|{D})*		|	/* HACK */
 3DLABS({L}|{D})*	{	/* HACK */
 				if (istypedef(yytext))
-					return store_token(TYPEID);
-				return store_token(ID);
+					return STORE_TOKEN(TYPEID);
+				return STORE_TOKEN(ID);
 			}
 
 0[xX]{H}+{IS}?		|
 0{D}+{IS}?		|
-{D}+{IS}?		return store_token(INT_CONST);
+{D}+{IS}?		return STORE_TOKEN(INT_CONST);
 
 {D}+{E}{FS}?		|
 {D}*"."{D}+({E})?{FS}?	|
-{D}+"."{D}*({E})?{FS}?	return store_token(FLOAT_CONST);
+{D}+"."{D}*({E})?{FS}?	return STORE_TOKEN(FLOAT_CONST);
 
-L?\'(?s:\\.|[^\\'])*\'	/* (hilight) ' */ return store_token(CHAR_CONST);
-				
-L?\"(?s:\\.|[^\\"])*\"	/* (hilight) " */ return store_token(STRING_CONST);
+L?\'(?s:\\.|[^\\'])*\'	/* (hilight) ' */ return STORE_TOKEN(CHAR_CONST);
+
+L?\"(?s:\\.|[^\\"])*\"	/* (hilight) " */ return STORE_TOKEN(STRING_CONST);
 
 <*>\\\n?		/* continuation lines */
 [ \t\v\n\f]+		/* skip whitespace */
@@ -392,21 +397,21 @@ reuse_last_content(const char *s, size_t len)
 	return ds;
 }
 
-static void store_yytext(const char *s)
+static void store_yytext(YYLTYPE *loc, const char *s)
 {
 	struct dynstr *ds;
 	int i;
-	yylloc.first_line = yylloc.last_line;
-	yylloc.first_column = yylloc.last_column;
+	loc->first_line = loc->last_line;
+	loc->first_column = loc->last_column;
 	for (i = 0; i < yyleng; ++i) {
 		if (yytext[i] == '\n') {
-			yylloc.last_line++;
-			yylloc.last_column = 0;
+			loc->last_line++;
+			loc->last_column = 0;
 		} else if (yytext[i] == '\t')
-			yylloc.last_column += tabsize -
-				(yylloc.last_column % tabsize);
+			loc->last_column += tabsize -
+				(loc->last_column % tabsize);
 		else
-			yylloc.last_column++;
+			loc->last_column++;
 	}
 
 	if (curds) {
@@ -422,27 +427,27 @@ static void store_yytext(const char *s)
 		ds = newdynstr(s, yyleng);
 		list_add_tail(&ds->list, &raw_contents);
 	}
-	yylloc.first_text = yylloc.last_text = ds;
+	loc->first_text = loc->last_text = ds;
 }
 
 static int
-store_token(int token)
+store_token(YYSTYPE *val, YYLTYPE *loc, int token)
 {
 	if (token == ID || token == TYPEID || token == CPP_IDARG ||
 	    token == INT_CONST || token == FLOAT_CONST ||
 	    token == CHAR_CONST || token == STRING_CONST)
-		yylval.str = yylloc.first_text;
+		val->str = loc->first_text;
 	else if (token != BASIC_TYPE)
-		yylval.token = token;
-	yylloc.last_text->token = token;
+		val->token = token;
+	loc->last_text->token = token;
 	return token;
 }
 
 static int
-store_btype(int btype)
+store_btype(YYSTYPE *val, YYLTYPE *loc, int btype)
 {
-	yylval.btype = btype;
-	return store_token(BASIC_TYPE);
+	val->btype = btype;
+	return store_token(val, loc, BASIC_TYPE);
 }
 
 static size_t

@@ -17,7 +17,7 @@
 
 #include "parser.h"
 
-static void yyerror(const char *);
+static void yyerror(YYLTYPE *loc, const char *);
 
 static YYLTYPE *empty_loc(const YYLTYPE *);
 
@@ -186,6 +186,7 @@ static void hidedecls(struct list_head *);
 %destructor { if ($$.tree) freenode($$.tree); }	<abstract>
 %destructor { freedeclarator($$); }		<declarator>
 
+%define api.pure
 %error-verbose
 %locations
 %glr-parser
@@ -1108,22 +1109,22 @@ print_last_line(const YYLTYPE *loc, FILE *f)
 }
 
 void
-yyerror(const char *s)
+yyerror(YYLTYPE *loc, const char *s)
 {
 	int first_column;
 	int i;
 
-	first_column = (yylloc.first_line == yylloc.last_line)
-		? yylloc.first_column
+	first_column = (loc->first_line == loc->last_line)
+		? loc->first_column
 		: 0;
 
 	fflush(stdout);
-	print_last_line(&yylloc, stderr);
+	print_last_line(loc, stderr);
 	fprintf(stderr, "%*s", first_column + 1, "^");
-	for (i = 1; i < yylloc.last_column - first_column; ++i)
+	for (i = 1; i < loc->last_column - first_column; ++i)
 		putc('^', stderr);
 	fprintf(stderr, "\n%*s on line %d\n",
-		first_column + 1, s, yylloc.last_line);
+		first_column + 1, s, loc->last_line);
 }
 
 struct parsed_file *parsed_file;
