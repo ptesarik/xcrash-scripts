@@ -33,6 +33,144 @@ list_count(struct list_head *list)
  *
  */
 
+/* Remove unnecessary defined() calls */
+static enum walk_action
+remove_defined(node_t *node, void *data)
+{
+	if (! (node->type == nt_expr && node->e.op == CPP_DEFINED) )
+		return walk_continue;
+	node_t *arg = first_node(&node->child[che_arg1]);
+	list_move(&arg->list, &node->list);
+	arg->parent = node->parent;
+	freenode(node);
+
+	return walk_continue;
+}
+
+/* Adapted from configure.c */
+static const char *const all_archs[] = {
+	"X86",
+	"ALPHA",
+	"PPC",
+	"IA64",
+	"S390",
+	"S390X",
+	"PPC64",
+	"X86_64",
+	"ARM",
+	NULL,
+};
+
+/* Make the architecture macros exclusive */
+static enum walk_action
+make_arch_exclusive(node_t *node, void *data)
+{
+	if (! (node->type == nt_expr && node->e.op == ID) )
+		return walk_continue;
+	
+	const char *const *arch;
+	for (arch = all_archs; *arch; ++arch)
+		if (!strcmp(*arch, node->str->text))
+			break;
+	if (!*arch)
+		return walk_continue;
+
+	const char *const *p;
+	for (p = all_archs; *p; ++p) {
+		if (p == arch)
+			continue;
+
+		node_t *other = dupnode_nochild(node);
+		struct dynstr *ds = newdynstr(*p, strlen(*p));
+		set_node_str(other, ds);
+
+		node_t *op_not = dupnode_nochild(other);
+		set_node_str(op_not, NULL);
+		op_not->e.op = '!';
+		set_node_child(op_not, che_arg1, other);
+
+		node_t *op_and = dupnode_nochild(op_not);
+		op_and->e.op = AND_OP;
+
+		list_add_tail(&op_and->list, &node->list);
+		list_del_init(&node->list);
+		set_node_child(op_and, che_arg1, op_not);
+		set_node_child(op_and, che_arg2, node);
+	}
+	return walk_skip_children;
+}
+
+/* Get the CPP conditions from @state and @tree */
+node_t *
+get_cpp_cond(struct cpp_cond_state *state, struct list_head *tree)
+{
+	node_t *dir = first_node(tree);
+	int op = dir->e.op;
+
+	walk_tree(&dir->child[che_arg1], remove_defined, NULL);
+	walk_tree(&dir->child[che_arg1], make_arch_exclusive, NULL);
+
+	node_t *realroot = first_node(&dir->child[che_arg1]);
+	node_t *root = realroot;
+
+	if (op == CPP_ELSE || op == CPP_ENDIF) {
+		/* Do nothing for directives without arguments,
+		 * because their @root is an invalid pointer.
+		 */
+	} else {
+		detach_text(root->first_text, root->last_text);
+		list_del_init(&root->list);
+	}
+
+	/* Use the latest condition as base on else-blocks */
+	if (op == CPP_ELSE || op == CPP_ELIF) {
+		node_t *lastcond = state->current;
+		if (state->precond)
+			lastcond = first_node(&lastcond->child[che_arg2]);
+		root = dupnode(lastcond);
+	}
+
+	/* Convert negative conditions into positive */
+	if (op == CPP_IFNDEF || op == CPP_ELSE || op == CPP_ELIF)
+		root = newexpr1(&dummyloc, '!', root);
+
+	/* Include the real condition for #elif */
+	if (op == CPP_ELIF) {
+		state->precond = state->precond
+			? newexpr2(&dummyloc, AND_OP,
+				   dupnode(state->precond), root)
+			: root;
+
+		root = realroot;
+	}
+
+	/* Push new state when starting a conditional block */
+	if (op == CPP_IF || op == CPP_IFDEF || op == CPP_IFNDEF) {
+		state->stack[state->stackptr].node = state->current;
+		state->stack[state->stackptr].precond = state->precond;
+		state->stackptr++;
+
+		state->precond = state->current;
+	}
+
+	/* Add the new condition */
+	if (op == CPP_IF || op == CPP_IFDEF || op == CPP_IFNDEF ||
+	    op == CPP_ELSE || op == CPP_ELIF)
+		state->current = state->precond
+			? newexpr2(&dummyloc, AND_OP,
+				   dupnode(state->precond), root)
+			: root;
+
+	/* Pop the previous state on #endif */
+	if (op == CPP_ENDIF) {
+		--state->stackptr;
+		state->current = state->stack[state->stackptr].node;
+		state->precond = state->stack[state->stackptr].precond;
+	}
+
+	return state->current;
+}
+
 /* Check whether a CPP condition is met. The condition is met if:
  * - at least one of the identifiers in @set is set
  * - none of the identifiers in @unset is set

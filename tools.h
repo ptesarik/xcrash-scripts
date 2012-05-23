@@ -120,6 +120,21 @@ next_dup(node_t *node)
 	return list_entry(node->dup_list.next, node_t, dup_list);
 }
 
+/* CPP conditions */
+#define CPP_STACK_SIZE	32
+
+struct cpp_cond_state {
+	node_t *current;
+	node_t *precond;
+	unsigned stackptr;
+	struct {
+		node_t *node;
+		node_t *precond;
+	} stack[CPP_STACK_SIZE];
+};
+
+node_t *get_cpp_cond(struct cpp_cond_state *state, struct list_head *tree);
+
 /* Remember the current last pointer on @list */
 static inline node_t *
 checkpoint_user_list(struct list_head *list)
