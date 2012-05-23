@@ -165,7 +165,7 @@ CPP			("#"|"%:"){WS}*
 <cpp_condition>{L}({L}|{D})*	return STORE_TOKEN(ID);
 
   /* CPP ignored directive */
-{CPP}	{
+^{WS}*{CPP}	{
 	if (!lex_input)
 		list_add_tail(&loc->last_text->cpp_list, &raw_cpp);
 	BEGIN(cpp_ign);
