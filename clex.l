@@ -143,19 +143,19 @@ CPP			("#"|"%:"){WS}*
 			return STORE_TOKEN(CPP_DEFINE);
 			}
 "if"			{
-			BEGIN(cpp); BEGIN(cpp_condition);
+			BEGIN(cpp_condition);
 			return STORE_TOKEN(CPP_IF);
 			}
 "ifdef"			{
-			BEGIN(cpp); BEGIN(cpp_condition);
+			BEGIN(cpp_condition);
 			return STORE_TOKEN(CPP_IFDEF);
 			}
 "ifndef"		{
-			BEGIN(cpp); BEGIN(cpp_condition);
+			BEGIN(cpp_condition);
 			return STORE_TOKEN(CPP_IFNDEF);
 			}
 "elif"			{
-			BEGIN(cpp); BEGIN(cpp_condition);
+			BEGIN(cpp_condition);
 			return STORE_TOKEN(CPP_ELIF);
 			}
 "else"			{
