@@ -90,7 +90,7 @@ CPP			("#"|"%:"){WS}*
 %}
 
 <*>"/*"([^*]+|\*+[^*/])*\*+\/	/* ignore comments */
-<*>"//".*\n?		/* ignore line comments */
+<*>"//".*		/* ignore line comments */
 
   /* CPP directive (start) */
 <cpp_dir>{
