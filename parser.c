@@ -273,7 +273,6 @@ node_t *reparse_node(node_t *node, int type)
 	INIT_LIST_HEAD(&raw_contents);
 	lex_input_first = node->first_text;
 	lex_input_last = node->last_text;
-	lex_cpp_mode = 0;
 	start_symbol = type;
 	res = yyparse();
 	yylex_destroy();
@@ -346,7 +345,6 @@ int parse_file(struct parsed_file *pf)
 		lex_input_first = list_entry(oldraw.next, struct dynstr, list);
 		lex_input_last = list_entry(oldraw.prev, struct dynstr, list);
 	}
-	lex_cpp_mode = 0;
 	start_symbol = 0;
 	ret = yyparse();
 	if (yyin && yyin != stdin && fclose(yyin)) {

@@ -23,7 +23,6 @@
 #include "tools.h"
 
 int start_symbol;
-int lex_cpp_mode;
 
 struct list_head raw_contents;
 struct list_head raw_cpp;
@@ -336,9 +335,6 @@ static void init_vars(void)
 
 	memset(&cond_state, 0, sizeof cond_state);
 	cpp_cond = NULL;
-
-	if (lex_cpp_mode)
-		BEGIN(cpp_dir);
 }
 
 struct dynstr *newdynstr(const char *s, size_t len)
