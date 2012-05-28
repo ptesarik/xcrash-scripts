@@ -78,7 +78,7 @@ IS			(u|U|l|L)*
 WS			[ \t\v\f]
 CPP			("#"|"%:"){WS}*
 
-%s cpp
+%s cpp_macro
 %s cpp_condition
 %x cpp_dir
 %x cpp_def
@@ -110,9 +110,9 @@ CPP			("#"|"%:"){WS}*
 			BEGIN(INITIAL);
 		}
   /* skip whitespace except newline */
-<cpp,cpp_condition,cpp_dir,cpp_def>{WS}+
+<cpp_macro,cpp_condition,cpp_dir,cpp_def>{WS}+
   /* A newline terminates the directive */
-<cpp,cpp_condition,cpp_dir,cpp_def,cpp_ign>\n	{
+<cpp_macro,cpp_condition,cpp_dir,cpp_def,cpp_ign>\n	{
 			/* Simulate a terminating semicolon at the end
 			 * of each macro. This is often needed to make
 			 * the macro body a valid statement, because
@@ -174,17 +174,17 @@ CPP			("#"|"%:"){WS}*
 
   /* CPP define name */
 <cpp_def>{L}({L}|{D})*/\(	{
-				BEGIN(cpp);
+				BEGIN(cpp_macro);
 				return STORE_TOKEN(CPP_IDARG);
 				}
 <cpp_def>{L}({L}|{D})*		{
-				BEGIN(cpp);
+				BEGIN(cpp_macro);
 				return STORE_TOKEN(ID);
 				}
 
   /* CPP directive (during define) */
-<cpp>"#"		return STORE_TOKEN('#');
-<cpp>"##"		return STORE_TOKEN(CPP_CONCAT);
+<cpp_macro>"#"		return STORE_TOKEN('#');
+<cpp_macro>"##"		return STORE_TOKEN(CPP_CONCAT);
 
 <cpp_condition>"defined"	return STORE_TOKEN(CPP_DEFINED);
 <cpp_condition>{L}({L}|{D})*	return STORE_TOKEN(ID);
