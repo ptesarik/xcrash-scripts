@@ -20,6 +20,7 @@
 
 #include "parser.h"
 #include "clang.tab.h"
+#include "tools.h"
 
 int start_symbol;
 int lex_cpp_mode;
@@ -31,6 +32,9 @@ struct dynstr *lex_input_first, *lex_input_last;
 static int token_at_eof;
 static struct dynstr *lex_input;
 static char *lex_input_ptr;
+
+static struct cpp_cond_state cond_state;
+static node_t *cpp_cond;
 
 static void store_yytext(YYLTYPE *loc, const char *s);
 #define YY_USER_ACTION	store_yytext(loc, yytext);
@@ -45,6 +49,7 @@ static int store_btype(YYSTYPE *, YYLTYPE *, int);
 #define STORE_BTYPE(btype)	(store_btype(val, loc, (btype)))
 
 static size_t dynstr_read(void *, size_t);
+static int parse_cpp(void);
 
 #define YY_INPUT(buf,result,max_size) \
 	if (lex_input) { \
@@ -79,6 +84,7 @@ CPP			("#"|"%:"){WS}*
 %x cpp_dir
 %x cpp_def
 %x cpp_ign
+%x cpp_recover
 
 %%
 %{
@@ -92,9 +98,46 @@ CPP			("#"|"%:"){WS}*
 <*>"/*"([^*]+|\*+[^*/])*\*+\/	/* ignore comments */
 <*>"//".*		/* ignore line comments */
 
+  /* CPP directive */
+^{WS}*{CPP}	{
+			BEGIN(cpp_dir);
+			if (parse_cpp() && YY_START != INITIAL) {
+				loc->last_text->reuse = 1;
+				BEGIN(cpp_recover);
+			}
+		}
+<cpp_recover>\n	{
+			loc->last_text->reuse = 0;
+			BEGIN(INITIAL);
+		}
+  /* skip whitespace except newline */
+<cpp,cpp_condition,cpp_dir,cpp_def>{WS}+
+  /* A newline terminates the directive */
+<cpp,cpp_condition,cpp_dir,cpp_def,cpp_ign>\n	{
+			/* Simulate a terminating semicolon at the end
+			 * of each macro. This is often needed to make
+			 * the macro body a valid statement, because
+			 * a semicolon is assumed after the macro when
+			 * used. And in the worst case we'll add an
+			 * empty expression at the end.
+			 */
+			if (token_at_eof) {
+				struct dynstr *ds = loc->last_text;
+				int ret = token_at_eof;
+				token_at_eof = 0;
+
+				yyless(0);
+				ds->text[--ds->len] = 0;
+				return STORE_TOKEN(ret);
+			}
+
+			loc->last_text->reuse = 0;
+			BEGIN(INITIAL);
+			yyterminate();
+		}
+
   /* CPP directive (start) */
 <cpp_dir>{
-^{CPP}			/* skip whitespace except newline */
 "define"		{
 			token_at_eof = ';';
 			BEGIN(cpp_def);
@@ -131,7 +174,6 @@ CPP			("#"|"%:"){WS}*
 }
 
   /* CPP define name */
-<cpp_def>{WS}+			/* skip whitespace except newline */
 <cpp_def>{L}({L}|{D})*/\(	{
 				BEGIN(cpp);
 				return STORE_TOKEN(CPP_IDARG);
@@ -144,38 +186,11 @@ CPP			("#"|"%:"){WS}*
   /* CPP directive (during define) */
 <cpp>"#"		return STORE_TOKEN('#');
 <cpp>"##"		return STORE_TOKEN(CPP_CONCAT);
-<cpp><<EOF>>		{
-			/* Simulate a terminating semicolon at the end
-			 * of each macro. This is often needed to make
-			 * the macro body a valid statement, because
-			 * a semicolon is assumed after the macro when
-			 * used. And in the worst case we'll add an
-			 * empty expression at the end.
-			 */
-				if (!token_at_eof)
-					yyterminate();
-				else {
-					int ret = token_at_eof;
-					token_at_eof = 0;
-					return STORE_TOKEN(ret);
-				}
-			}
 
 <cpp_condition>"defined"	return STORE_TOKEN(CPP_DEFINED);
 <cpp_condition>{L}({L}|{D})*	return STORE_TOKEN(ID);
 
-  /* CPP ignored directive */
-^{WS}*{CPP}	{
-	if (!lex_input)
-		list_add_tail(&loc->last_text->cpp_list, &raw_cpp);
-	BEGIN(cpp_ign);
-	loc->last_text->reuse = 1;
-	}
-<cpp_ign>(.|\\\n)	/* and eat up the directive */
-<cpp_ign>\n		{
-	loc->last_text->reuse = 0;
-	BEGIN(INITIAL);
-	}
+<cpp_ign,cpp_recover>.	/* eat up an ignored directive */
 
 "..."			return STORE_TOKEN(ELLIPSIS);
 ">>="			return STORE_TOKEN(SHR_ASSIGN);
@@ -291,7 +306,7 @@ L?\'(?s:\\.|[^\\'])*\'	/* (hilight) ' */ return STORE_TOKEN(CHAR_CONST);
 L?\"(?s:\\.|[^\\"])*\"	/* (hilight) " */ return STORE_TOKEN(STRING_CONST);
 
 <*>\\\n?		/* continuation lines */
-[ \t\v\n\f]+		/* skip whitespace */
+<INITIAL>[ \t\v\n\f]+	/* skip whitespace */
 .			/* ignore bad characters */
 
 %%
@@ -318,6 +333,10 @@ static void init_vars(void)
 		lex_input = NULL;
 		curds = NULL;
 	}
+
+	memset(&cond_state, 0, sizeof cond_state);
+	cpp_cond = NULL;
+
 	if (lex_cpp_mode)
 		BEGIN(cpp_dir);
 }
@@ -427,6 +446,7 @@ static void store_yytext(YYLTYPE *loc, const char *s)
 		ds = newdynstr(s, yyleng);
 		list_add_tail(&ds->list, &raw_contents);
 	}
+	ds->cpp_cond = cpp_cond;
 	loc->first_text = loc->last_text = ds;
 }
 
@@ -467,4 +487,66 @@ dynstr_read(void *buf, size_t max_size)
 	memcpy(buf, lex_input_ptr, n);
 	lex_input_ptr += n;
 	return n;
+}
+
+/* Check whether @tree is a CPP conditional */
+static int
+is_cpp_cond(struct list_head *tree)
+{
+	node_t *dir = first_node(tree);
+	if (! (dir->type == nt_expr) )
+		return 0;
+
+	int op = dir->e.op;
+	return (op == CPP_IF || op == CPP_IFDEF ||
+		op == CPP_IFNDEF || op == CPP_ELIF ||
+		op == CPP_ELSE || op == CPP_ENDIF);
+}
+
+/* Check whether a parsed tree is a "defined()" CPP operator */
+static int
+is_define(struct list_head *tree)
+{
+	if (list_empty(tree))
+		return 0;
+
+	node_t *node = first_node(tree);
+	return (node->type == nt_decl);
+}
+
+/* Discard the result of parsing */
+static void
+discard_parsing(void)
+{
+	node_t *node, *nnode;
+	list_for_each_entry_safe(node, nnode, &parsed_tree, list)
+		freenode(node);
+}
+
+static int
+parse_cpp(void)
+{
+	struct list_head savedparsed;
+	struct dynstr *ds;
+	int ret;
+
+	/* Save the original parsed_tree and start a new one */
+	list_add(&savedparsed, &parsed_tree);
+	list_del_init(&parsed_tree);
+
+	ds = newdynstr(NULL, 0);
+	ds->reuse = 1;
+	list_add_tail(&ds->list, &raw_contents);
+
+	start_symbol = START_DIRECTIVE;
+	ret = yyparse();
+
+	if (!ret && is_cpp_cond(&parsed_tree))
+		cpp_cond = get_cpp_cond(&cond_state, &parsed_tree);
+	if (ret || !is_define(&parsed_tree))
+		discard_parsing();
+
+	list_splice(&savedparsed, &parsed_tree);
+
+	return ret;
 }

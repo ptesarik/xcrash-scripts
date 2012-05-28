@@ -11,7 +11,6 @@ void (*signal(int sig, void (*func)(int handler_sig)))(int oldhandler_sig);
 #include <argp.h>
 #include "parser.h"
 #include "clang.tab.h"
-#include "tools.h"
 
 /* Swap these two lines if you want to enable debugging */
 #define DEBUG	1
@@ -299,106 +298,6 @@ node_t *reparse_node(node_t *node, int type)
 	return newnode;
 }
 
-static void
-discard_parsing(void)
-{
-	node_t *node, *nnode;
-	list_for_each_entry_safe(node, nnode, &parsed_tree, list)
-		freenode(node);
-
-	struct dynstr *ds, *dsnext;
-	list_for_each_entry_safe(ds, dsnext, &raw_contents, list)
-		freedynstr(ds);
-}
-
-/* Check whether @tree is a CPP conditional */
-static int
-is_cpp_cond(struct list_head *tree)
-{
-	node_t *dir = first_node(tree);
-	if (! (dir->type == nt_expr) )
-		return 0;
-
-	int op = dir->e.op;
-	return (op == CPP_IF || op == CPP_IFDEF ||
-		op == CPP_IFNDEF || op == CPP_ELIF ||
-		op == CPP_ELSE || op == CPP_ENDIF);
-}
-
-/* Check whether a parsed tree is a "defined()" CPP operator */
-static int
-is_define(struct list_head *tree)
-{
-	if (list_empty(tree))
-		return 0;
-
-	node_t *node = first_node(tree);
-	return (node->type == nt_decl);
-}
-
-/* Parse macro bodies saved during the first stage */
-static void parse_macros(void)
-{
-	struct dynstr *ds, *next;
-	struct cpp_cond_state cond_state;
-	struct dynstr *cond_ds = NULL;
-	node_t *lastcond;
-
-	memset(&cond_state, 0, sizeof cond_state);
-
-	list_for_each_entry_safe(ds, next, &raw_cpp, cpp_list) {
-		struct list_head savedparsed;
-		struct list_head savedraw;
-		int ret;
-
-		/* Save the original parsed_tree and start a new one */
-		list_add(&savedparsed, &parsed_tree);
-		list_del_init(&parsed_tree);
-
-		/* Save the original raw list and start a new one */
-		list_add(&savedraw, &raw_contents);
-		list_del_init(&raw_contents);
-
-		lex_input_first = lex_input_last = ds;
-		lex_cpp_mode = 1;
-		start_symbol = START_DIRECTIVE;
-		ret = yyparse();
-		yylex_destroy();
-
-		if (!ret && is_define(&parsed_tree)) {
-			struct dynstr *first, *last;
-			first = list_entry(raw_contents.next,
-					   struct dynstr, list);
-			last = list_entry(raw_contents.prev,
-					  struct dynstr, list);
-			replace_text_list(ds, ds, first, last);
-		} else {
-			if (!ret && is_cpp_cond(&parsed_tree)) {
-				if (!cond_ds)
-					cond_ds = ds;
-				while (cond_ds != ds) {
-					cond_ds->cpp_cond = lastcond;
-					cond_ds = next_dynstr(cond_ds);
-				}
-				lastcond = get_cpp_cond(&cond_state,
-							&parsed_tree);
-			}
-			discard_parsing();
-		}
-
-		list_splice(&savedparsed, &parsed_tree);
-
-		list_add(&raw_contents, &savedraw);
-		list_del(&savedraw);
-	}
-
-	if (cond_ds)
-		while (cond_ds != ds) {
-			cond_ds->cpp_cond = lastcond;
-			cond_ds = next_dynstr(cond_ds);
-		}
-}
-
 /* Parse an external file */
 int parse_file(struct parsed_file *pf)
 {
@@ -460,8 +359,6 @@ int parse_file(struct parsed_file *pf)
 	if (ret) {
 		fprintf(stderr, "Parser failed with %d\n", ret);
 	} else {
-		parse_macros();
-
 		list_add_tail(&pf->parsed, &parsed_tree);
 		list_del_init(&parsed_tree);
 		list_add_tail(&pf->raw, &raw_contents);
