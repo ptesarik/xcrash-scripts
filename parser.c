@@ -12,14 +12,6 @@ void (*signal(int sig, void (*func)(int handler_sig)))(int oldhandler_sig);
 #include "parser.h"
 #include "clang.tab.h"
 
-/* Swap these two lines if you want to enable debugging */
-#define DEBUG	1
-#undef DEBUG
-
-#if DEBUG
-# include "dump.h"
-#endif
-
 static const char *predef_types[] = {
 	"__time_t",		/* from types.h */
 	"Bytef",		/* from zlib.h */
@@ -474,7 +466,6 @@ int main(int argc, char **argv)
 	argp_parse(&argp, argc, argv, 0, &i, &arguments);
 
 	add_builtin_file();
-	init_predef_types();
 	if (i >= argc)
 		ret = add_file("-");
 	else {
@@ -483,28 +474,8 @@ int main(int argc, char **argv)
 				break;
 	}
 
-#if DEBUG
-	fdump = stdout;
-#endif
+	if (ret)
+		return ret;
 
-	if (!ret) {
-#if DEBUG
-		struct parsed_file *pf;
-		list_for_each_entry(pf, &files, list) {
-			parse_file(pf);
-			printf("File %s original\n", pf->name);
-			dump_tree(&pf->parsed);
-		}
-#endif
-		ret = xform_files(&arguments, &files);
-
-#if DEBUG
-		list_for_each_entry(pf, &files, list) {
-			printf("File %s transformed\n", pf->name);
-			dump_tree(&pf->parsed);
-		}
-#endif
-	}
-
-	return ret;
+	return xform_files(&arguments, &files);
 }
