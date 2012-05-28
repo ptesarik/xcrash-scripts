@@ -102,6 +102,7 @@ CPP			("#"|"%:"){WS}*
 			BEGIN(cpp);
 			if (parse_cpp() && YY_START != INITIAL) {
 				loc->last_text->reuse = 1;
+				token_at_eof = 0;
 				BEGIN(cpp_recover);
 			}
 		}
