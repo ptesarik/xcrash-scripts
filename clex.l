@@ -78,12 +78,12 @@ IS			(u|U|l|L)*
 WS			[ \t\v\f]
 CPP			("#"|"%:"){WS}*
 
-%s cpp_macro
-%s cpp_condition
-%x cpp_dir
+%x cpp
 %x cpp_def
 %x cpp_ign
 %x cpp_recover
+%s cpp_macro
+%s cpp_condition
 
 %%
 %{
@@ -99,7 +99,7 @@ CPP			("#"|"%:"){WS}*
 
   /* CPP directive */
 ^{WS}*{CPP}	{
-			BEGIN(cpp_dir);
+			BEGIN(cpp);
 			if (parse_cpp() && YY_START != INITIAL) {
 				loc->last_text->reuse = 1;
 				BEGIN(cpp_recover);
@@ -110,9 +110,9 @@ CPP			("#"|"%:"){WS}*
 			BEGIN(INITIAL);
 		}
   /* skip whitespace except newline */
-<cpp_macro,cpp_condition,cpp_dir,cpp_def>{WS}+
+<cpp_macro,cpp_condition,cpp,cpp_def>{WS}+
   /* A newline terminates the directive */
-<cpp_macro,cpp_condition,cpp_dir,cpp_def,cpp_ign>\n	{
+<cpp_macro,cpp_condition,cpp,cpp_def,cpp_ign>\n	{
 			/* Simulate a terminating semicolon at the end
 			 * of each macro. This is often needed to make
 			 * the macro body a valid statement, because
@@ -136,7 +136,7 @@ CPP			("#"|"%:"){WS}*
 		}
 
   /* CPP directive (start) */
-<cpp_dir>{
+<cpp>{
 "define"		{
 			token_at_eof = ';';
 			BEGIN(cpp_def);
