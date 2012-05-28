@@ -341,7 +341,6 @@ struct dynstr *newdynstr(const char *s, size_t len)
 {
 	struct dynstr *ds = malloc(sizeof(struct dynstr) + len + 1);
 	INIT_LIST_HEAD(&ds->list);
-	INIT_LIST_HEAD(&ds->cpp_list);
 	INIT_LIST_HEAD(&ds->node_first);
 	INIT_LIST_HEAD(&ds->node_last);
 	ds->cpp_cond = NULL;
@@ -384,8 +383,6 @@ reuse_last_content(const char *s, size_t len)
 		struct dynstr tmp;
 		list_add_tail(&tmp.list, &ds->list);
 		list_del(&ds->list);
-		list_add_tail(&tmp.cpp_list, &ds->cpp_list);
-		list_del(&ds->cpp_list);
 		list_add_tail(&tmp.node_first, &ds->node_first);
 		list_del(&ds->node_first);
 		list_add_tail(&tmp.node_last, &ds->node_last);
@@ -399,8 +396,6 @@ reuse_last_content(const char *s, size_t len)
 		/* Fix up list pointers */
 		list_add(&ds->list, &tmp.list);
 		list_del(&tmp.list);
-		list_add(&ds->cpp_list, &tmp.cpp_list);
-		list_del(&tmp.cpp_list);
 		list_add(&ds->node_first, &tmp.node_first);
 		list_del(&tmp.node_first);
 		list_add(&ds->node_last, &tmp.node_last);

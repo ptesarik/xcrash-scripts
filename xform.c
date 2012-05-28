@@ -86,7 +86,6 @@ replace_node_str(node_t *node, const char *newtext)
 	struct dynstr *newds = newdynstr(newtext, strlen(newtext));
 
 	list_add(&newds->list, &oldds->list);
-	list_add(&newds->cpp_list, &oldds->cpp_list);
 	list_add(&newds->node_first, &oldds->node_first);
 	list_add(&newds->node_last, &oldds->node_last);
 	newds->cpp_cond = oldds->cpp_cond;
