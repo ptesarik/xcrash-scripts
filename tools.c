@@ -117,10 +117,8 @@ get_cpp_cond(struct cpp_cond_state *state, struct list_head *tree)
 		/* Do nothing for directives without arguments,
 		 * because their @root is an invalid pointer.
 		 */
-	} else {
-		detach_text(root->first_text, root->last_text);
+	} else
 		list_del_init(&root->list);
-	}
 
 	/* Use the latest condition as base on else-blocks */
 	if (op == CPP_ELSE || op == CPP_ELIF) {
