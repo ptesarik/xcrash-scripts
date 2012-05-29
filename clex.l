@@ -432,15 +432,19 @@ static void store_yytext(YYLTYPE *loc, const char *s)
 	int i;
 	loc->first_line = loc->last_line;
 	loc->first_column = loc->last_column;
+	loc->first_vcolumn = loc->last_vcolumn;
 	for (i = 0; i < yyleng; ++i) {
 		if (yytext[i] == '\n') {
 			loc->last_line++;
-			loc->last_column = 0;
-		} else if (yytext[i] == '\t')
-			loc->last_column += tabsize -
-				(loc->last_column % tabsize);
-		else
+			loc->last_column = loc->last_vcolumn = 0;
+		} else {
 			loc->last_column++;
+			if (yytext[i] == '\t')
+				loc->last_vcolumn += tabsize -
+					(loc->last_vcolumn % tabsize);
+			else
+				loc->last_vcolumn++;
+		}
 	}
 
 	if (! (ds = reuse_last_content(s, yyleng)) ) {

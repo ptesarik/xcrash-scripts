@@ -48,9 +48,9 @@ extern struct dynstr *lex_input_first, *lex_input_last;
 
 typedef struct {
 	int first_line;
-	int first_column;
+	int first_column, first_vcolumn;
 	int last_line;
-	int last_column;
+	int last_column, last_vcolumn;
 	struct dynstr *first_text, *last_text;
 } loc_t;
 #define YYLTYPE	loc_t

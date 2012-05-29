@@ -42,20 +42,24 @@ static void hidedecls(struct list_head *);
     do									\
       if (N)								\
 	{								\
-	  (Current).first_line	 = YYRHSLOC(Rhs, 1).first_line;		\
-	  (Current).first_column = YYRHSLOC(Rhs, 1).first_column;	\
-	  (Current).first_text   = YYRHSLOC(Rhs, 1).first_text;		\
-	  (Current).last_line	 = YYRHSLOC(Rhs, N).last_line;		\
-	  (Current).last_column	 = YYRHSLOC(Rhs, N).last_column;	\
-	  (Current).last_text    = YYRHSLOC(Rhs, N).last_text;		\
+	  (Current).first_line    = YYRHSLOC(Rhs, 1).first_line;	\
+	  (Current).first_column  = YYRHSLOC(Rhs, 1).first_column;	\
+	  (Current).first_vcolumn = YYRHSLOC(Rhs, 1).first_vcolumn;	\
+	  (Current).first_text    = YYRHSLOC(Rhs, 1).first_text;	\
+	  (Current).last_line     = YYRHSLOC(Rhs, N).last_line;		\
+	  (Current).last_column   = YYRHSLOC(Rhs, N).last_column;	\
+	  (Current).last_vcolumn  = YYRHSLOC(Rhs, N).last_vcolumn;	\
+	  (Current).last_text     = YYRHSLOC(Rhs, N).last_text;		\
 	}								\
       else								\
 	{								\
-	  (Current).first_line	 = (Current).last_line	 =		\
+	  (Current).first_line    = (Current).last_line    =		\
 	    YYRHSLOC(Rhs, 0).last_line;					\
-	  (Current).first_column = (Current).last_column =		\
+	  (Current).first_column  = (Current).last_column  =		\
 	    YYRHSLOC(Rhs, 0).last_column;				\
-	  (Current).first_text   = (Current).last_text   =		\
+	  (Current).first_vcolumn = (Current).last_vcolumn =		\
+	    YYRHSLOC(Rhs, 0).last_vcolumn;				\
+	  (Current).first_text    = (Current).last_text    =		\
 	    YYRHSLOC(Rhs, 0).last_text;					\
 	}								\
     while (0)
@@ -197,9 +201,10 @@ static void hidedecls(struct list_head *);
 {
 	struct dynstr *ds = newdynstr(NULL, 0);
 	list_add_tail(&ds->list, &raw_contents);
-	@$.first_line   = @$.last_line   = 1;
-	@$.first_column = @$.last_column = 0;
-	@$.first_text   = @$.last_text   = ds;
+	@$.first_line    = @$.last_line    = 1;
+	@$.first_column  = @$.last_column  = 0;
+	@$.first_vcolumn = @$.last_vcolumn = 0;
+	@$.first_text    = @$.last_text    = ds;
 }
 %%
 
@@ -1116,20 +1121,20 @@ print_last_line(const YYLTYPE *loc)
 void
 yyerror(YYLTYPE *loc, const char *s)
 {
-	int first_column;
+	int first_vcolumn;
 	int i;
 
-	first_column = (loc->first_line == loc->last_line)
-		? loc->first_column
+	first_vcolumn = (loc->first_line == loc->last_line)
+		? loc->first_vcolumn
 		: 0;
 
 	fflush(stdout);
 	print_last_line(loc);
-	fprintf(stderr, "%*s", first_column + 1, "^");
-	for (i = 1; i < loc->last_column - first_column; ++i)
+	fprintf(stderr, "%*s", first_vcolumn + 1, "^");
+	for (i = 1; i < loc->last_vcolumn - first_vcolumn; ++i)
 		putc('^', stderr);
 	fprintf(stderr, "\n%*s on line %d\n",
-		first_column + 1, s, loc->last_line);
+		first_vcolumn + 1, s, loc->last_line);
 }
 
 struct parsed_file *parsed_file;
@@ -1142,9 +1147,10 @@ empty_loc(const YYLTYPE *point)
 	struct dynstr *str = newdynstr(NULL, 0);
 
 	list_add_tail(&str->list, &point->first_text->list);
-	loc.first_line   = loc.last_line   = point->first_line;
-	loc.first_column = loc.last_column = point->first_column;
-	loc.first_text   = loc.last_text   = str;
+	loc.first_line    = loc.last_line    = point->first_line;
+	loc.first_column  = loc.last_column  = point->first_column;
+	loc.first_vcolumn = loc.last_vcolumn = point->first_vcolumn;
+	loc.first_text    = loc.last_text    = str;
 	return &loc;
 }
 
