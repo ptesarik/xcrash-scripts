@@ -17,6 +17,8 @@
 
 #include "parser.h"
 
+#define HASH_SIZE	512
+
 static void yyerror(YYLTYPE *loc, const char *);
 
 static YYLTYPE *empty_loc(const YYLTYPE *);
@@ -1469,7 +1471,10 @@ newexpr4(const YYLTYPE *loc, int op,
 	return ret;
 }
 
-#define HASH_SIZE	512
+/************************************************************
+ * Typedef hash
+ *
+ */
 
 struct hashed_type {
 	char *name;
@@ -1605,4 +1610,113 @@ hidefnparams(declarator_t *first)
 
 		decl = list_entry(decl->list.next, declarator_t, list);
 	} while (decl != first);
+}
+
+/************************************************************
+ * Macro hash
+ *
+ */
+
+static struct hashed_macro *macros[HASH_SIZE];
+
+void
+clearmacros(void)
+{
+	unsigned hash;
+	for (hash = 0; hash < HASH_SIZE; ++hash) {
+		struct hashed_macro *hm, *next;
+		next = macros[hash];
+		macros[hash] = NULL;
+		while ( (hm = next) ) {
+			next = hm->next;
+			free(hm);
+		}
+	}
+}
+
+struct hashed_macro *
+findmacro(const char *name)
+{
+	unsigned hash = mkhash(name);
+	struct hashed_macro *hm;
+	for (hm = macros[hash]; hm; hm = hm->next) {
+		if (!strcmp(name, hm->name))
+			return hm;
+	}
+	return NULL;
+}
+
+static struct hashed_macro *
+addmacro(const char *name)
+{
+	unsigned hash = mkhash(name);
+	struct hashed_macro *hm;
+
+	hm = malloc(sizeof(struct hashed_macro) + strlen(name) + 1);
+	hm->name = (char*)(hm + 1);
+	hm->next = macros[hash];
+	strcpy(hm->name, name);
+	macros[hash] = hm;
+	return hm;
+}
+
+void
+delmacro(const char *name)
+{
+	unsigned hash = mkhash(name);
+	struct hashed_macro *hm, **pprev;
+	pprev = &macros[hash];
+	while ( (hm = *pprev) ) {
+		if (!strcmp(name, hm->name)) {
+			*pprev = hm->next;
+			free(hm);
+			break;
+		}
+		pprev = &hm->next;
+	}
+}
+
+int
+yyparse_macro(YYLTYPE *loc, const char *name, int hasparam)
+{
+	struct hashed_macro *hm;
+	YYSTYPE val;
+	int token, ntoken;
+
+	if (! (hm = addmacro(name)) )
+		return -1;
+
+	if (hasparam) {
+		token = yylex(&val, loc);
+		if (token != '(') {
+			yyerror(loc, "expecting '('");
+			return 1;
+		}
+
+		do {
+			token = yylex(&val, loc);
+			if (token == ')')
+				break;
+			if (token != ID && token != ELLIPSIS) {
+				yyerror(loc, "expecting ')', ID or '...'");
+				return 1;
+			}
+			ntoken = yylex(&val, loc);
+			if (token == ID && ntoken == ELLIPSIS)
+				ntoken = yylex(&val, loc);
+			token = ntoken;
+		} while (token == ',');
+		if (token != ',' && token != ')') {
+			yyerror(loc, "expecting ',' or ')'");
+			return 1;
+		}
+	}
+
+	token = yylex(&val, loc);
+	hm->begin = loc->first_text;
+	while (token)
+		token = yylex(&val, loc);
+	hm->end = loc->last_text;
+
+	return 0;
 }

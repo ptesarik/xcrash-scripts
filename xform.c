@@ -1645,6 +1645,7 @@ update_parsed_files(struct list_head *filelist)
 		return 0;
 	}
 
+	clearmacros();
 	init_predef_types();
 	list_for_each_entry(pf, filelist, list) {
 		int res = parse_file(pf);

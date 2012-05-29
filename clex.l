@@ -141,7 +141,6 @@ CPP			("#"|"%:"){WS}*
 "define"		{
 			token_at_eof = ';';
 			BEGIN(cpp_def);
-			return STORE_TOKEN(CPP_DEFINE);
 			}
 "if"			{
 			BEGIN(cpp_condition);
@@ -175,13 +174,17 @@ CPP			("#"|"%:"){WS}*
 
   /* CPP define name */
 <cpp_def>{L}({L}|{D})*/\(	{
-				BEGIN(cpp_macro);
-				return STORE_TOKEN(CPP_IDARG);
-				}
+		BEGIN(cpp_macro);
+		if (yyparse_macro(loc, yytext, 1))
+			YY_FATAL_ERROR("yyparse_macro failed");
+		yyterminate();
+	}
 <cpp_def>{L}({L}|{D})*		{
-				BEGIN(cpp_macro);
-				return STORE_TOKEN(ID);
-				}
+		BEGIN(cpp_macro);
+		if (yyparse_macro(loc, yytext, 0))
+			YY_FATAL_ERROR("yyparse_macro failed");
+		yyterminate();
+	}
 
   /* CPP directive (during define) */
 <cpp_macro>"#"		return STORE_TOKEN('#');

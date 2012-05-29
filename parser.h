@@ -209,6 +209,8 @@ extern FILE *yyin;
 union YYSTYPE;
 
 int yyparse(void);
+int yyparse_macro(YYLTYPE *, const char *, int);
+
 int yylex(union YYSTYPE *val, YYLTYPE *loc);
 int yylex_destroy(void);
 
@@ -220,6 +222,17 @@ void cleartypedefs(void);
 void addtypedef(const char *name);
 int istypedef(const char *name);
 void init_predef_types(void);
+
+/* Macro hash */
+struct hashed_macro {
+	struct hashed_macro *next;
+	char *name;
+	struct dynstr *begin, *end;
+};
+
+void clearmacros(void);
+struct hashed_macro *findmacro(const char *name);
+void delmacro(const char *name);
 
 /* Parse tree */
 node_t *newnode(const YYLTYPE *, enum node_type, int);
