@@ -281,8 +281,8 @@ CPP			("#"|"%:"){WS}*
 3COM({L}|{D})*		|	/* HACK */
 3DFX({L}|{D})*		|	/* HACK */
 3DLABS({L}|{D})*	{	/* HACK */
-		struct hashed_macro *hm = findmacro(yytext);
-		if (hm) {
+		struct hashed_macro *hm;
+		if (YY_START == INITIAL && (hm = findmacro(yytext)) ) {
 			expand_macro(hm);
 			return yylex(val, loc);
 		}
