@@ -28,7 +28,6 @@ struct list_head raw_contents;
 struct list_head raw_cpp;
 struct dynstr *lex_input_first, *lex_input_last;
 
-static int token_at_eof;
 static struct dynstr *lex_input;
 static char *lex_input_ptr;
 
@@ -113,7 +112,6 @@ CPP			("#"|"%:"){WS}*
 			BEGIN(cpp);
 			if (parse_cpp() && YY_START != INITIAL) {
 				loc->last_text->reuse = 1;
-				token_at_eof = 0;
 				BEGIN(cpp_recover);
 			}
 		}
@@ -125,23 +123,6 @@ CPP			("#"|"%:"){WS}*
 <cpp_macro,cpp_condition,cpp,cpp_def>{WS}+
   /* A newline terminates the directive */
 <cpp_macro,cpp_condition,cpp,cpp_def,cpp_ign>\n	{
-			/* Simulate a terminating semicolon at the end
-			 * of each macro. This is often needed to make
-			 * the macro body a valid statement, because
-			 * a semicolon is assumed after the macro when
-			 * used. And in the worst case we'll add an
-			 * empty expression at the end.
-			 */
-			if (token_at_eof) {
-				struct dynstr *ds = loc->last_text;
-				int ret = token_at_eof;
-				token_at_eof = 0;
-
-				yyless(0);
-				ds->text[--ds->len] = 0;
-				return STORE_TOKEN(ret);
-			}
-
 			loc->last_text->reuse = 0;
 			BEGIN(INITIAL);
 			yyterminate();
@@ -150,7 +131,6 @@ CPP			("#"|"%:"){WS}*
   /* CPP directive (start) */
 <cpp>{
 "define"		{
-			token_at_eof = ';';
 			BEGIN(cpp_def);
 			}
 "if"			{
@@ -339,7 +319,6 @@ int tabsize = 8;
 
 static void init_vars(void)
 {
-	token_at_eof = 0;
 	if (lex_input_first) {
 		lex_input = lex_input_first;
 		lex_input_ptr = lex_input->text;
