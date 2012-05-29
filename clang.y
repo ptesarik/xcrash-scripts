@@ -1720,10 +1720,11 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam)
 	}
 
 	token = yylex(&val, loc);
-	hm->first = loc->first_text;
-	while (token)
+	hm->last = hm->first = loc->first_text;
+	while (token) {
+		hm->last = loc->last_text;
 		token = yylex(&val, loc);
-	hm->last = loc->last_text;
+	}
 
 	return 0;
 }
