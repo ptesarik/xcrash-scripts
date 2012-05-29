@@ -229,6 +229,7 @@ struct hashed_macro {
 	char *name;
 	struct list_head params;
 	struct dynstr *first, *last;
+	int hasparam:1;
 };
 
 void clearmacros(void);

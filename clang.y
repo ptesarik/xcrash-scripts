@@ -1665,6 +1665,7 @@ addmacro(const char *name)
 	hm = malloc(sizeof(struct hashed_macro) + strlen(name) + 1);
 	hm->name = (char*)(hm + 1);
 	hm->next = macros[hash];
+	hm->hasparam = 0;
 	strcpy(hm->name, name);
 	INIT_LIST_HEAD(&hm->params);
 	macros[hash] = hm;
@@ -1698,6 +1699,8 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam)
 		return -1;
 
 	if (hasparam) {
+		hm->hasparam = 1;
+
 		token = yylex(&val, loc);
 		if (token != '(') {
 			yyerror(loc, "expecting '('");
