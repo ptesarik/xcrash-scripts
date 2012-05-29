@@ -25,7 +25,6 @@
 int start_symbol;
 
 struct list_head raw_contents;
-struct list_head raw_cpp;
 struct dynstr *lex_input_first, *lex_input_last;
 
 static struct dynstr *lex_input;

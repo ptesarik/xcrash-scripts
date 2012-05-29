@@ -330,7 +330,6 @@ int parse_file(struct parsed_file *pf)
 	parsed_file = pf;
 	INIT_LIST_HEAD(&parsed_tree);
 	INIT_LIST_HEAD(&raw_contents);
-	INIT_LIST_HEAD(&raw_cpp);
 	if (yyin)
 		lex_input_first = lex_input_last = NULL;
 	else {

@@ -33,7 +33,6 @@ void freedynstr(struct dynstr *ds);
         (struct dynstr *)(__mptr - offsetof(struct dynstr,text) );})
 
 extern struct list_head raw_contents;
-extern struct list_head raw_cpp;
 
 /* If non-zero, this is the first token returned by the lexer
  * It is used to override the parser's start symbol by forcing
