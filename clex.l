@@ -94,11 +94,18 @@ CPP			("#"|"%:"){WS}*
 		return ret;
 	}
 
+	while (macrods) {
+		if (&macrods->list == &raw_contents) {
+			macrods = NULL;
+		} else if (!macrods->token)
+			macrods = next_dynstr(macrods);
+		else
+			break;
+	}
+
 	if (macrods) {
 		int ret = macrods->token;
 		macrods = next_dynstr(macrods);
-		if (&macrods->list == &raw_contents)
-			macrods = NULL;
 		return STORE_TOKEN(ret);
 	}
 %}
