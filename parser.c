@@ -248,9 +248,12 @@ void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 int dump_contents(struct list_head *contents, FILE *f)
 {
 	struct dynstr *ds;
-	list_for_each_entry(ds, contents, list)
+	list_for_each_entry(ds, contents, list) {
+		if (ds->fake)
+			continue;
 		if (fwrite(ds->text, 1, ds->len, f) != ds->len)
 			return -1;
+	}
 	return 0;
 }
 

@@ -16,6 +16,7 @@ struct dynstr {
 	int refcount;		/* external references (with node->str) */
 
 	int reuse:1;
+	int fake:1;
 
 	size_t len, alloc;
 	char text[];

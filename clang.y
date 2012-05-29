@@ -1094,13 +1094,17 @@ static void
 print_last_line(const YYLTYPE *loc)
 {
 	int column = loc->last_column;
-	struct dynstr *ds;
+	struct dynstr *ds = loc->last_text;
 
-	for (ds = loc->last_text; column > ds->len; ds = prev_dynstr(ds))
-		column -= ds->len;
+	while (ds->fake || column > ds->len) {
+		if (!ds->fake)
+			column -= ds->len;
+		ds = prev_dynstr(ds);
+	}
 	for (;;) {
-		fwrite(ds->text + ds->len - column, sizeof(char), column,
-		       stderr);
+		if (!ds->fake)
+			fwrite(ds->text + ds->len - column,
+			       sizeof(char), column, stderr);
 		if (ds == loc->last_text)
 			break;
 		ds = next_dynstr(ds);
