@@ -321,21 +321,14 @@ int yywrap(void)
 
 int tabsize = 8;
 
-static struct dynstr *curds;
-static size_t curdsoff;
-
 static void init_vars(void)
 {
 	token_at_eof = 0;
 	if (lex_input_first) {
 		lex_input = lex_input_first;
 		lex_input_ptr = lex_input->text;
-		curds = lex_input;
-		curdsoff = 0;
-	} else {
+	} else
 		lex_input = NULL;
-		curds = NULL;
-	}
 
 	memset(&cond_state, 0, sizeof cond_state);
 	cpp_cond = NULL;
@@ -426,15 +419,6 @@ static void store_yytext(YYLTYPE *loc, const char *s)
 				(loc->last_column % tabsize);
 		else
 			loc->last_column++;
-	}
-
-	if (curds) {
-		curdsoff += yyleng;
-		while(curdsoff > curds->len || !curds->len) {
-			curdsoff -= curds->len;
-			curds = list_entry(curds->list.next,
-					   struct dynstr, list);
-		}
 	}
 
 	if (! (ds = reuse_last_content(s, yyleng)) ) {
