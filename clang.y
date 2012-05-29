@@ -1089,23 +1089,22 @@ string_const		: STRING_CONST
 %%
 
 static void
-print_last_line(const YYLTYPE *loc, FILE *f)
+print_last_line(const YYLTYPE *loc)
 {
 	int column = loc->last_column;
 	struct dynstr *ds;
 
-	for (ds = loc->last_text; column > ds->len;
-	     ds = list_entry(ds->list.prev, struct dynstr, list))
+	for (ds = loc->last_text; column > ds->len; ds = prev_dynstr(ds))
 		column -= ds->len;
 	for (;;) {
-		fwrite(ds->text + ds->len - column, sizeof(char), column, f);
+		fwrite(ds->text + ds->len - column, sizeof(char), column,
+		       stderr);
 		if (ds == loc->last_text)
 			break;
-		ds = list_entry(ds->list.next, struct dynstr, list);
+		ds = next_dynstr(ds);
 		column = ds->len;
-		
 	}
-	putc('\n', f);
+	putc('\n', stderr);
 }
 
 void
@@ -1119,7 +1118,7 @@ yyerror(YYLTYPE *loc, const char *s)
 		: 0;
 
 	fflush(stdout);
-	print_last_line(loc, stderr);
+	print_last_line(loc);
 	fprintf(stderr, "%*s", first_column + 1, "^");
 	for (i = 1; i < loc->last_column - first_column; ++i)
 		putc('^', stderr);
