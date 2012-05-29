@@ -227,6 +227,7 @@ void init_predef_types(void);
 struct hashed_macro {
 	struct hashed_macro *next;
 	char *name;
+	struct list_head params;
 	struct dynstr *begin, *end;
 };
 

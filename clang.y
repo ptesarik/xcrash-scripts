@@ -1656,6 +1656,7 @@ addmacro(const char *name)
 	hm->name = (char*)(hm + 1);
 	hm->next = macros[hash];
 	strcpy(hm->name, name);
+	INIT_LIST_HEAD(&hm->params);
 	macros[hash] = hm;
 	return hm;
 }
@@ -1694,6 +1695,8 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam)
 		}
 
 		do {
+			node_t *var;
+
 			token = yylex(&val, loc);
 			if (token == ')')
 				break;
@@ -1701,6 +1704,10 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam)
 				yyerror(loc, "expecting ')', ID or '...'");
 				return 1;
 			}
+
+			var = newvar(loc, val.str);
+			list_add_tail(&var->list, &hm->params);
+
 			ntoken = yylex(&val, loc);
 			if (token == ID && ntoken == ELLIPSIS)
 				ntoken = yylex(&val, loc);
