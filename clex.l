@@ -50,6 +50,9 @@ static int store_btype(YYSTYPE *, YYLTYPE *, int);
 static size_t dynstr_read(void *, size_t);
 static int parse_cpp(void);
 
+static int expand_macro(struct hashed_macro *);
+static struct dynstr *macrods;
+
 #define YY_INPUT(buf,result,max_size) \
 	if (lex_input) { \
 		result = dynstr_read(buf, max_size); \
@@ -91,6 +94,14 @@ CPP			("#"|"%:"){WS}*
 		int ret = start_symbol;
 		start_symbol = 0;
 		return ret;
+	}
+
+	if (macrods) {
+		int ret = macrods->token;
+		macrods = next_dynstr(macrods);
+		if (&macrods->list == &raw_contents)
+			macrods = NULL;
+		return STORE_TOKEN(ret);
 	}
 %}
 
@@ -291,10 +302,15 @@ CPP			("#"|"%:"){WS}*
 3COM({L}|{D})*		|	/* HACK */
 3DFX({L}|{D})*		|	/* HACK */
 3DLABS({L}|{D})*	{	/* HACK */
-				if (istypedef(yytext))
-					return STORE_TOKEN(TYPEID);
-				return STORE_TOKEN(ID);
-			}
+		struct hashed_macro *hm = findmacro(yytext);
+		if (hm) {
+			expand_macro(hm);
+			return yylex(val, loc);
+		}
+		if (istypedef(yytext))
+			return STORE_TOKEN(TYPEID);
+		return STORE_TOKEN(ID);
+	}
 
 0[xX]{H}+{IS}?		|
 0{D}+{IS}?		|
@@ -330,6 +346,8 @@ static void init_vars(void)
 	} else
 		lex_input = NULL;
 
+	macrods = NULL;
+
 	memset(&cond_state, 0, sizeof cond_state);
 	cpp_cond = NULL;
 }
@@ -350,6 +368,23 @@ struct dynstr *newdynstr(const char *s, size_t len)
 		memcpy(ds->text, s, len);
 	ds->text[ds->len] = '\0';
 	return ds;
+}
+
+static struct dynstr *
+dupdynstr(struct dynstr *ds)
+{
+	struct dynstr *ret = malloc(sizeof(struct dynstr) + ds->len + 1);
+	INIT_LIST_HEAD(&ret->list);
+	INIT_LIST_HEAD(&ret->node_first);
+	INIT_LIST_HEAD(&ret->node_last);
+	ret->cpp_cond = ds->cpp_cond;
+	ret->token = ds->token;
+	ret->refcount = 0;
+	ret->len = ds->len;
+	ret->alloc = ds->len + 1;
+	ret->reuse = 0;
+	memcpy(ret->text, ds->text, ds->len + 1);
+	return ret;
 }
 
 void freedynstr(struct dynstr *ds)
@@ -528,4 +563,25 @@ parse_cpp(void)
 	list_splice(&savedparsed, &parsed_tree);
 
 	return ret;
+}
+
+static int
+expand_macro(struct hashed_macro *hm)
+{
+	struct dynstr *ds, *dup;
+
+	if (!list_empty(&hm->params)) {
+	}
+
+	ds = hm->first;
+	macrods = dup = dupdynstr(ds);
+	list_add_tail(&dup->list, &raw_contents);
+
+	while (ds != hm->last) {
+		ds = next_dynstr(ds);
+		dup = dupdynstr(ds);
+		list_add_tail(&dup->list, &raw_contents);
+	}
+
+	return 0;
 }
