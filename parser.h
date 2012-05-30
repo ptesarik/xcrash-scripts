@@ -220,6 +220,7 @@ struct hashed_macro {
 	struct list_head params;
 	struct dynstr *first, *last;
 	int hasparam:1;
+	int noexpand:1;
 };
 
 void clearmacros(void);

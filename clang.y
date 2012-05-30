@@ -1666,6 +1666,7 @@ addmacro(const char *name)
 	hm->name = (char*)(hm + 1);
 	hm->next = macros[hash];
 	hm->hasparam = 0;
+	hm->noexpand = 0;
 	strcpy(hm->name, name);
 	INIT_LIST_HEAD(&hm->params);
 	macros[hash] = hm;

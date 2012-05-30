@@ -566,7 +566,8 @@ expand_text(YYLTYPE *loc, struct dynstr *first, struct dynstr *last, int dup)
 	for (ds = first; ; ds = next_dynstr(ds)) {
 		struct hashed_macro *nested;
 		if (ds->token == ID &&
-		    (nested = findmacro(ds->text))) {
+		    (nested = findmacro(ds->text)) &&
+		    !nested->noexpand) {
 			macrods = next_dynstr(ds);
 			int ret = expand_macro(loc, nested);
 			if (ret)
@@ -604,7 +605,10 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 	}
 
 	prevend = raw_contents.prev;
+
+	hm->noexpand = 1;
 	expand_text(loc, hm->first, hm->last, 1);
+	hm->noexpand = 0;
 
 	list_for_each_entry(param, &hm->params, list)
 		delmacro(param->str->text);
