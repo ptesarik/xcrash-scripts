@@ -204,16 +204,6 @@ extern struct parsed_file *parsed_file;
 /* When yyparse() succeeds, the resulting tree is here: */
 extern struct list_head parsed_tree;
 
-/* Parser/lexer interface */
-extern FILE *yyin;
-union YYSTYPE;
-
-int yyparse(void);
-int yyparse_macro(YYLTYPE *, const char *, int);
-
-int yylex(union YYSTYPE *val, YYLTYPE *loc);
-int yylex_destroy(void);
-
 /* Location handling */
 extern int tabsize;
 
@@ -235,6 +225,16 @@ struct hashed_macro {
 void clearmacros(void);
 struct hashed_macro *findmacro(const char *name);
 void delmacro(const char *name);
+
+/* Parser/lexer interface */
+extern FILE *yyin;
+union YYSTYPE;
+
+int yyparse(void);
+int yyparse_macro(YYLTYPE *, const char *, int);
+
+int yylex(union YYSTYPE *val, YYLTYPE *loc);
+int yylex_destroy(void);
 
 /* Parse tree */
 node_t *newnode(const YYLTYPE *, enum node_type, int);
