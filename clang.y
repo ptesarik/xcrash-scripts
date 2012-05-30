@@ -1758,6 +1758,7 @@ yyparse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 	list_for_each_entry(param, &hm->params, list) {
 		int paren = 0;
 		struct hashed_macro *arg = addmacro(param->str->text);
+		param->user_data = arg;
 		token = yylex(&val, loc);
 		arg->first = loc->first_text;
 

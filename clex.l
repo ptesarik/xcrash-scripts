@@ -559,9 +559,34 @@ parse_cpp(void)
 }
 
 static int
+expand_text(YYLTYPE *loc, struct dynstr *first, struct dynstr *last, int dup)
+{
+	struct dynstr *ds, *dupds;
+
+	for (ds = first; ; ds = next_dynstr(ds)) {
+		struct hashed_macro *nested;
+		if (ds->token == ID &&
+		    (nested = findmacro(ds->text))) {
+			macrods = next_dynstr(ds);
+			int ret = expand_macro(loc, nested);
+			if (ret)
+				return ret;
+		} else if (dup) {
+			dupds = dupdynstr(ds);
+			list_add_tail(&dupds->list, &raw_contents);
+		}
+
+		if (ds == last)
+			break;
+	}
+
+	return 0;
+}
+
+static int
 expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 {
-	struct dynstr *ds, *dup;
+	struct list_head *prevend;
 	node_t *param;
 
 	if (hm->hasparam) {
@@ -571,20 +596,19 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 		BEGIN(INITIAL);
 		if (ret)
 			return ret;
+
+		list_for_each_entry(param, &hm->params, list) {
+			struct hashed_macro *arg = param->user_data;
+			expand_text(loc, arg->first, arg->last, 0);
+		}
 	}
 
-	ds = hm->first;
-	macrods = dup = dupdynstr(ds);
-	list_add_tail(&dup->list, &raw_contents);
-
-	while (ds != hm->last) {
-		ds = next_dynstr(ds);
-		dup = dupdynstr(ds);
-		list_add_tail(&dup->list, &raw_contents);
-	}
+	prevend = raw_contents.prev;
+	expand_text(loc, hm->first, hm->last, 1);
 
 	list_for_each_entry(param, &hm->params, list)
 		delmacro(param->str->text);
 
+	macrods = list_entry(prevend->next, struct dynstr, list);
 	return 0;
 }
