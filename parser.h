@@ -232,6 +232,7 @@ union YYSTYPE;
 
 int yyparse(void);
 int yyparse_macro(YYLTYPE *, const char *, int);
+int yyparse_macro_args(YYLTYPE *, struct hashed_macro *);
 
 int yylex(union YYSTYPE *val, YYLTYPE *loc);
 int yylex_destroy(void);

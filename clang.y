@@ -1741,3 +1741,42 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam)
 
 	return 0;
 }
+
+int
+yyparse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
+{
+	node_t *param;
+	YYSTYPE val;
+	int token;
+
+	token = yylex(&val, loc);
+	if (token != '(') {
+		yyerror(loc, "expecting '('");
+		return 1;
+	}
+
+	list_for_each_entry(param, &hm->params, list) {
+		int paren = 0;
+		struct hashed_macro *arg = addmacro(param->str->text);
+		token = yylex(&val, loc);
+		arg->first = loc->first_text;
+
+		while (token && (paren || (token != ',' && token != ')')) ) {
+			if (token == '(')
+				++paren;
+			else if (token == ')')
+				--paren;
+			arg->last = loc->last_text;
+			token = yylex(&val, loc);
+		}
+	}
+
+	if (list_empty(&hm->params))
+		token = yylex(&val, loc);
+	if (token != ')') {
+		yyerror(loc, "expecting ')'");
+		return 1;
+	}
+
+	return 0;
+}

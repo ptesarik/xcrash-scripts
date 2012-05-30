@@ -560,9 +560,10 @@ static int
 expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 {
 	struct dynstr *ds, *dup;
+	node_t *param;
 
-	if (!list_empty(&hm->params)) {
-	}
+	if (hm->hasparam && yyparse_macro_args(loc, hm))
+		return 1;
 
 	ds = hm->first;
 	macrods = dup = dupdynstr(ds);
@@ -573,6 +574,9 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 		dup = dupdynstr(ds);
 		list_add_tail(&dup->list, &raw_contents);
 	}
+
+	list_for_each_entry(param, &hm->params, list)
+		delmacro(param->str->text);
 
 	return 0;
 }
