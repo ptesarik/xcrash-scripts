@@ -85,7 +85,7 @@ CPP			("#"|"%:"){WS}*
 %x cpp_recover
 %s cpp_macro
 %s cpp_condition
-%s noexpand
+%s cpp_arg
 
 %%
 %{
@@ -313,7 +313,7 @@ L?\'(?s:\\.|[^\\'])*\'	/* (hilight) ' */ return STORE_TOKEN(CHAR_CONST);
 L?\"(?s:\\.|[^\\"])*\"	/* (hilight) " */ return STORE_TOKEN(STRING_CONST);
 
 <*>\\\n?		/* continuation lines */
-<INITIAL,noexpand>[ \t\v\n\f]+	/* skip whitespace */
+<INITIAL,cpp_arg>[ \t\v\n\f]+	/* skip whitespace */
 .			/* ignore bad characters */
 
 %%
@@ -591,7 +591,7 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 
 	if (hm->hasparam) {
 		int ret;
-		BEGIN(noexpand);
+		BEGIN(cpp_arg);
 		ret = yyparse_macro_args(loc, hm);
 		BEGIN(INITIAL);
 		if (ret)
