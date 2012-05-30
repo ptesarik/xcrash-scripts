@@ -106,6 +106,7 @@ CPP			("#"|"%:"){WS}*
 
 	if (macrods) {
 		int ret = macrods->token;
+		loc->first_text = loc->last_text = macrods;
 		macrods = next_dynstr(macrods);
 		return STORE_TOKEN(ret);
 	}
