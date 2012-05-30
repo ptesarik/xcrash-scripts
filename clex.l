@@ -48,7 +48,7 @@ static int store_btype(YYSTYPE *, YYLTYPE *, int);
 static size_t dynstr_read(void *, size_t);
 static int parse_cpp(void);
 
-static int expand_macro(struct hashed_macro *);
+static int expand_macro(YYLTYPE *, struct hashed_macro *);
 static struct dynstr *macrods;
 
 #define YY_INPUT(buf,result,max_size) \
@@ -288,10 +288,10 @@ CPP			("#"|"%:"){WS}*
 3COM({L}|{D})*		|	/* HACK */
 3DFX({L}|{D})*		|	/* HACK */
 3DLABS({L}|{D})*	{	/* HACK */
-		struct hashed_macro *hm;
-		if (YY_START == INITIAL && (hm = findmacro(yytext)) ) {
-			expand_macro(hm);
-			return yylex(val, loc);
+		if (YY_START == INITIAL) {
+			struct hashed_macro *hm = findmacro(yytext);
+			if (hm && !expand_macro(loc, hm))
+				return yylex(val, loc);
 		}
 		if (istypedef(yytext))
 			return STORE_TOKEN(TYPEID);
@@ -557,7 +557,7 @@ parse_cpp(void)
 }
 
 static int
-expand_macro(struct hashed_macro *hm)
+expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 {
 	struct dynstr *ds, *dup;
 
