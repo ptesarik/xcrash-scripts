@@ -574,9 +574,27 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, int dup)
 		if (ds->token == ID &&
 		    (nested = findmacro(ds->text)) &&
 		    !nested->noexpand) {
+			struct dynstr *oldfirst = ds, *newfirst;
+			struct dynstr *oldmacrods = macrods;
+
 			macrods = next_dynstr(ds);
-			if (!expand_macro(loc, nested))
+			if (! (newfirst = expand_macro(loc, nested)) )
 				return 1;
+			ds = macrods ? prev_dynstr(macrods) : hm->last;
+			macrods = oldmacrods;
+
+			if (!dup) {
+				struct dynstr *newlast = 
+					last_dynstr(&raw_contents);
+				raw_contents.prev = newfirst->list.prev;
+				replace_text_list(oldfirst, ds,
+						  newfirst, newlast);
+				if (hm->first == oldfirst)
+					hm->first = newfirst;
+				if (hm->last == ds)
+					hm->last = newlast;
+				ds = newlast;
+			}
 		} else if (dup) {
 			dupds = dupdynstr(ds);
 			list_add_tail(&dupds->list, &raw_contents);
