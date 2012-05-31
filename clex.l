@@ -48,7 +48,7 @@ static int store_btype(YYSTYPE *, YYLTYPE *, int);
 static size_t dynstr_read(void *, size_t);
 static int parse_cpp(void);
 
-static int expand_macro(YYLTYPE *, struct hashed_macro *);
+static struct dynstr *expand_macro(YYLTYPE *, struct hashed_macro *);
 static struct dynstr *macrods;
 
 #define YY_INPUT(buf,result,max_size) \
@@ -292,7 +292,7 @@ CPP			("#"|"%:"){WS}*
 3DLABS({L}|{D})*	{	/* HACK */
 		if (YY_START == INITIAL) {
 			struct hashed_macro *hm = findmacro(yytext);
-			if (hm && !expand_macro(loc, hm))
+			if (hm && (macrods = expand_macro(loc, hm)))
 				return yylex(val, loc);
 		}
 		if (istypedef(yytext))
@@ -575,9 +575,8 @@ expand_text(YYLTYPE *loc, struct dynstr *first, struct dynstr *last, int dup)
 		    (nested = findmacro(ds->text)) &&
 		    !nested->noexpand) {
 			macrods = next_dynstr(ds);
-			int ret = expand_macro(loc, nested);
-			if (ret)
-				return ret;
+			if (!expand_macro(loc, nested))
+				return 1;
 		} else if (dup) {
 			dupds = dupdynstr(ds);
 			list_add_tail(&dupds->list, &raw_contents);
@@ -590,10 +589,10 @@ expand_text(YYLTYPE *loc, struct dynstr *first, struct dynstr *last, int dup)
 	return 0;
 }
 
-static int
+static struct dynstr *
 expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 {
-	struct list_head *prevend;
+	struct dynstr *rawlast;
 	node_t *param;
 
 	if (hm->hasparam) {
@@ -602,7 +601,7 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 		ret = yyparse_macro_args(loc, hm);
 		BEGIN(INITIAL);
 		if (ret)
-			return ret;
+			return NULL;
 
 		list_for_each_entry(param, &hm->params, list) {
 			struct hashed_macro *arg = param->user_data;
@@ -610,7 +609,7 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 		}
 	}
 
-	prevend = raw_contents.prev;
+	rawlast = last_dynstr(&raw_contents);
 
 	hm->noexpand = 1;
 	expand_text(loc, hm->first, hm->last, 1);
@@ -619,6 +618,8 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 	list_for_each_entry(param, &hm->params, list)
 		delmacro(param->str->text);
 
-	macrods = list_entry(prevend->next, struct dynstr, list);
-	return 0;
+	rawlast = next_dynstr(rawlast);
+	if (&rawlast->list == &raw_contents)
+		return NULL;
+	return rawlast;
 }
