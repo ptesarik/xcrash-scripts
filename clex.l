@@ -565,11 +565,11 @@ parse_cpp(void)
 }
 
 static int
-expand_text(YYLTYPE *loc, struct dynstr *first, struct dynstr *last, int dup)
+expand_body(YYLTYPE *loc, struct hashed_macro *hm, int dup)
 {
 	struct dynstr *ds, *dupds;
 
-	for (ds = first; ; ds = next_dynstr(ds)) {
+	for (ds = hm->first; ; ds = next_dynstr(ds)) {
 		struct hashed_macro *nested;
 		if (ds->token == ID &&
 		    (nested = findmacro(ds->text)) &&
@@ -582,7 +582,7 @@ expand_text(YYLTYPE *loc, struct dynstr *first, struct dynstr *last, int dup)
 			list_add_tail(&dupds->list, &raw_contents);
 		}
 
-		if (ds == last)
+		if (ds == hm->last)
 			break;
 	}
 
@@ -605,14 +605,14 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 
 		list_for_each_entry(param, &hm->params, list) {
 			struct hashed_macro *arg = param->user_data;
-			expand_text(loc, arg->first, arg->last, 0);
+			expand_body(loc, arg, 0);
 		}
 	}
 
 	rawlast = last_dynstr(&raw_contents);
 
 	hm->noexpand = 1;
-	expand_text(loc, hm->first, hm->last, 1);
+	expand_body(loc, hm, 1);
 	hm->noexpand = 0;
 
 	list_for_each_entry(param, &hm->params, list)
