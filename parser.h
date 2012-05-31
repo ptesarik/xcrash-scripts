@@ -219,8 +219,9 @@ struct hashed_macro {
 	char *name;
 	struct list_head params;
 	struct dynstr *first, *last;
-	int hasparam:1;
-	int noexpand:1;
+	int hidden:1;		/* macro should be ignored in searches */
+	int hasparam:1;		/* a macro that has parameters */
+	int noexpand:1;		/* should not expand (prevent recursion) */
 };
 
 void clearmacros(void);

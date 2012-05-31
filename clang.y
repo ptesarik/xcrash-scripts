@@ -1650,7 +1650,7 @@ findmacro(const char *name)
 	unsigned hash = mkhash(name);
 	struct hashed_macro *hm;
 	for (hm = macros[hash]; hm; hm = hm->next) {
-		if (!strcmp(name, hm->name))
+		if (!hm->hidden && !strcmp(name, hm->name))
 			return hm;
 	}
 	return NULL;
@@ -1665,6 +1665,7 @@ addmacro(const char *name)
 	hm = malloc(sizeof(struct hashed_macro) + strlen(name) + 1);
 	hm->name = (char*)(hm + 1);
 	hm->next = macros[hash];
+	hm->hidden = 0;
 	hm->hasparam = 0;
 	hm->noexpand = 0;
 	strcpy(hm->name, name);

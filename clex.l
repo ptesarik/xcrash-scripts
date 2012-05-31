@@ -607,6 +607,16 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, int dup)
 	return 0;
 }
 
+static void
+set_params_hide(struct hashed_macro *hm, int val)
+{
+	node_t *param;
+	list_for_each_entry(param, &hm->params, list) {
+		struct hashed_macro *arg = param->user_data;
+		arg->hidden = val;
+	}
+}
+
 static struct dynstr *
 expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 {
@@ -621,10 +631,12 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 		if (ret)
 			return NULL;
 
+		set_params_hide(hm, 1);
 		list_for_each_entry(param, &hm->params, list) {
 			struct hashed_macro *arg = param->user_data;
 			expand_body(loc, arg, 0);
 		}
+		set_params_hide(hm, 0);
 	}
 
 	rawlast = last_dynstr(&raw_contents);
