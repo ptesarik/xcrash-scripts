@@ -385,6 +385,12 @@ void freedynstr(struct dynstr *ds)
 	free(ds);
 }
 
+static struct dynstr *
+last_dynstr(struct list_head *list)
+{
+	return list_entry(list->prev, struct dynstr, list);
+}
+
 #define ALLOC_INC	256
 
 /* Try to reuse existing dynstr */
@@ -396,7 +402,7 @@ reuse_last_content(const char *s, size_t len)
 	if (list_empty(&raw_contents))
 		return NULL;
 
-	ds = list_entry(raw_contents.prev, struct dynstr, list);
+	ds = last_dynstr(&raw_contents);
 	if (!ds->reuse)
 		return NULL;
 
