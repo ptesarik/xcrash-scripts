@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <assert.h>
 
 #include "parser.h"
 #include "clang.tab.h"
@@ -399,6 +400,9 @@ expand_params(YYLTYPE *loc, struct hashed_macro *hm)
 	list_for_each_entry(param, &hm->params, list) {
 		struct hashed_macro *arg = param->user_data;
 		arg->hidden = 0;
+		assert(arg->next);
+		assert(arg->next->hidden);
+		assert(!strcmp(arg->next->name, arg->name));
 		arg->next->hidden = 0;
 	}
 }
