@@ -615,10 +615,35 @@ set_params_hide(struct hashed_macro *hm, int val)
 	}
 }
 
+static void
+expand_params(YYLTYPE *loc, struct hashed_macro *hm)
+{
+	node_t *param, *exp;
+
+	set_params_hide(hm, 1);
+
+	list_for_each_entry(param, &hm->params, list) {
+		struct hashed_macro *arg = param->user_data;
+		exp = expand_body(loc, arg, &arg->first->list);
+		arg->last = exp ? prev_dynstr(arg->first) : NULL;
+		arg->first = exp;
+	}
+
+	set_params_hide(hm, 0);
+}
+
+static void
+delete_params(struct hashed_macro *hm)
+{
+	node_t *param;
+	list_for_each_entry(param, &hm->params, list) {
+		delmacro(param->str->text);
+	}
+}
+
 static struct dynstr *
 expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 {
-	node_t *param;
 	struct dynstr *ret;
 
 	if (hm->hasparam) {
@@ -629,22 +654,14 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 		if (res)
 			return NULL;
 
-		set_params_hide(hm, 1);
-		list_for_each_entry(param, &hm->params, list) {
-			struct hashed_macro *arg = param->user_data;
-			ret = expand_body(loc, arg, &arg->first->list);
-			arg->last = ret ? prev_dynstr(arg->first) : NULL;
-			arg->first = ret;
-		}
-		set_params_hide(hm, 0);
+		expand_params(loc, hm);
 	}
 
 	hm->noexpand = 1;
 	ret = expand_body(loc, hm, &raw_contents);
 	hm->noexpand = 0;
 
-	list_for_each_entry(param, &hm->params, list)
-		delmacro(param->str->text);
+	delete_params(hm);
 
 	return ret;
 }
