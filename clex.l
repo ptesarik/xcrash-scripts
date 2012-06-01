@@ -47,7 +47,13 @@ static int store_btype(YYSTYPE *, YYLTYPE *, int);
 #define STORE_BTYPE(btype)	(store_btype(val, loc, (btype)))
 
 static size_t dynstr_read(void *, size_t);
-static int parse_cpp(void);
+static int parse_cpp(YYLTYPE *loc);
+
+static YYLTYPE fileloc = {
+	1, 0, 0,		/* first_line, first_column, first_vcolumn */
+	1, 0, 0,		/* last_line, last_column, last_vcolumn */
+	NULL, NULL		/* first_text, last_text */
+};
 
 #define YY_INPUT(buf,result,max_size) \
 	if (lex_input) { \
@@ -116,7 +122,7 @@ CPP			("#"|"%:"){WS}*
   /* CPP directive */
 ^{WS}*{CPP}	{
 			BEGIN(cpp);
-			if (parse_cpp() && YY_START != INITIAL) {
+			if (parse_cpp(loc) && YY_START != INITIAL) {
 				loc->last_text->reuse = 1;
 				BEGIN(cpp_recover);
 			}
@@ -347,6 +353,9 @@ static void init_vars(void)
 
 	memset(&cond_state, 0, sizeof cond_state);
 	cpp_cond = NULL;
+	fileloc.last_line = 1;
+	fileloc.last_column = 0;
+	fileloc.last_vcolumn = 0;
 }
 
 struct dynstr *newdynstr(const char *s, size_t len)
@@ -438,6 +447,22 @@ reuse_last_content(const char *s, size_t len)
 	return ds;
 }
 
+static void
+update_loc(YYLTYPE *loc, char c)
+{
+	if (c == '\n') {
+		loc->last_line++;
+		loc->last_column = loc->last_vcolumn = 0;
+	} else {
+		loc->last_column++;
+		if (c == '\t')
+			loc->last_vcolumn += tabsize -
+				(loc->last_vcolumn % tabsize);
+		else
+			loc->last_vcolumn++;
+	}
+}
+
 static void store_yytext(YYLTYPE *loc, const char *s)
 {
 	struct dynstr *ds;
@@ -446,17 +471,8 @@ static void store_yytext(YYLTYPE *loc, const char *s)
 	loc->first_column = loc->last_column;
 	loc->first_vcolumn = loc->last_vcolumn;
 	for (i = 0; i < yyleng; ++i) {
-		if (yytext[i] == '\n') {
-			loc->last_line++;
-			loc->last_column = loc->last_vcolumn = 0;
-		} else {
-			loc->last_column++;
-			if (yytext[i] == '\t')
-				loc->last_vcolumn += tabsize -
-					(loc->last_vcolumn % tabsize);
-			else
-				loc->last_vcolumn++;
-		}
+		update_loc(loc, yytext[i]);
+		update_loc(&fileloc, yytext[i]);
 	}
 
 	if (! (ds = reuse_last_content(s, yyleng)) ) {
@@ -540,8 +556,8 @@ discard_parsing(void)
 		freenode(node);
 }
 
-static int
-parse_cpp(void)
+int
+parse_cpp(YYLTYPE *loc)
 {
 	struct list_head savedparsed;
 	struct dynstr *ds;
@@ -556,7 +572,13 @@ parse_cpp(void)
 	list_add_tail(&ds->list, &raw_contents);
 
 	start_symbol = START_DIRECTIVE;
+	fileloc.last_line = loc->last_line;
+	fileloc.last_column = loc->last_column;
+	fileloc.last_vcolumn = loc->last_vcolumn;
 	ret = yyparse();
+	loc->last_line = fileloc.last_line;
+	loc->last_column = fileloc.last_column;
+	loc->last_vcolumn = fileloc.last_vcolumn;
 
 	if (!ret && is_cpp_cond(&parsed_tree))
 		cpp_cond = get_cpp_cond(&cond_state, &parsed_tree);
