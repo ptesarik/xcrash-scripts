@@ -76,7 +76,7 @@ static YYLTYPE fileloc = {
 D			[0-9]
 L			[a-zA-Z_]
 H			[a-fA-F0-9]
-E			[Ee][+-]?{D}+
+E			[EePp][+-]?{D}+
 FS			(f|F|l|L)
 IS			(u|U|l|L)*
 WS			[ \t\v\f]
