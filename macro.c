@@ -21,6 +21,7 @@ struct hashed_macro {
 	struct dynstr *first, *last;
 	int hidden:1;		/* macro should be ignored in searches */
 	int hasparam:1;		/* a macro that has parameters */
+	int isparam:1;		/* is a macro parameter? */
 	int noexpand:1;		/* should not expand (prevent recursion) */
 };
 
@@ -78,6 +79,7 @@ addmacro(const char *name)
 	hm->first = hm->last = NULL;
 	hm->hidden = 0;
 	hm->hasparam = 0;
+	hm->isparam = 0;
 	hm->noexpand = 0;
 	macros[hash] = hm;
 	return hm;
@@ -213,19 +215,58 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 }
 
 static struct dynstr *
+dupmerge(struct dynstr *first, struct dynstr *last)
+{
+	struct dynstr *endmark = next_dynstr(last);
+	struct dynstr *ds, *ret;
+
+	size_t len = 0;
+	for (ds = first, len = 0; ds != endmark; ds = next_dynstr(ds))
+		len += ds->len;
+	ret = newdynstr(NULL, len);
+
+	char *p = ret->text;
+	for (ds = first; ds != endmark; ds = next_dynstr(ds)) {
+		memcpy(p, ds->text, ds->len);
+		p += ds->len;
+	}
+	return ret;
+}
+
+static struct dynstr *
 expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 {
 	struct dynstr *ds, *ret;
+	enum {
+		normal,		/* Initial state */
+		stringify,	/* After the '#' token was seen */
+	} state;
 
 	if (!hm->first)
 		return NULL;
 
+	state = normal;
 	ret = last_dynstr(point);
 	for (ds = hm->first; ; ds = next_dynstr(ds)) {
 		struct hashed_macro *nested;
-		if (ds->token == ID &&
-		    (nested = findmacro(ds->text)) &&
-		    !nested->noexpand) {
+		if (state == stringify) {
+			struct dynstr *dupds;
+			if (ds->token)
+				state = normal;
+			if (ds->token == ID &&
+			    (nested = findmacro(ds->text)) &&
+			    nested->isparam) {
+				nested = nested->next;
+				dupds = dupmerge(nested->first, nested->last);
+				dupds->token = STRING_CONST;
+				list_add_tail(&dupds->list, point);
+			} else
+				yyerror(loc, "Invalid use of '#'");
+		} else if (ds->token == '#')
+			state = stringify;
+		else if (ds->token == ID &&
+			 (nested = findmacro(ds->text)) &&
+			 !nested->noexpand) {
 			struct dynstr *newfirst, *newlast;
 			struct dynstr *oldmacrods = macrods;
 
@@ -264,8 +305,9 @@ expand_params(YYLTYPE *loc, struct hashed_macro *hm)
 	list_for_each_entry(param, &hm->params, list) {
 		struct hashed_macro *arg = param->user_data;
 		struct hashed_macro *newarg = addmacro(arg->name);
-
+		newarg->isparam = 1;
 		newarg->hidden = 1;
+
 		newarg->first = expand_body(loc, arg, &arg->first->list);
 		newarg->last = newarg->first ? prev_dynstr(arg->first) : NULL;
 
