@@ -1675,6 +1675,19 @@ addmacro(const char *name)
 	return hm;
 }
 
+static void
+delmacro_text(struct hashed_macro *hm)
+{
+	struct dynstr *ds = hm->first;
+
+	detach_text(hm->first, hm->last);
+	do {
+		struct dynstr *next = next_dynstr(ds);
+		freedynstr(ds);
+		ds = next;
+	} while (ds != hm->first);
+}		
+
 void
 delmacro(const char *name)
 {
@@ -1684,6 +1697,7 @@ delmacro(const char *name)
 	while ( (hm = *pprev) ) {
 		if (!strcmp(name, hm->name)) {
 			*pprev = hm->next;
+			delmacro_text(hm);
 			free(hm);
 			break;
 		}
