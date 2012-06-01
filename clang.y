@@ -1656,7 +1656,7 @@ findmacro(const char *name)
 	return NULL;
 }
 
-static struct hashed_macro *
+struct hashed_macro *
 addmacro(const char *name)
 {
 	unsigned hash = mkhash(name);

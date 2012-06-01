@@ -225,6 +225,7 @@ struct hashed_macro {
 };
 
 void clearmacros(void);
+struct hashed_macro *addmacro(const char *name);
 struct hashed_macro *findmacro(const char *name);
 void delmacro(const char *name);
 
