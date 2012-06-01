@@ -70,6 +70,18 @@ findmacro(const char *name, node_t *cpp_cond)
 }
 
 static struct hashed_macro *
+findhiddenmacro(const char *name)
+{
+	unsigned hash = mkhash(name);
+	struct hashed_macro *hm;
+	for (hm = macros[hash]; hm; hm = hm->next) {
+		if (hm->hidden && !strcmp(name, hm->name))
+			return hm;
+	}
+	return NULL;
+}
+
+static struct hashed_macro *
 addmacro(const char *name)
 {
 	unsigned hash = mkhash(name);
@@ -197,7 +209,6 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 		int paren = 0;
 		struct hashed_macro *arg = addmacro(param->str->text);
 		arg->hidden = 1;
-		param->user_data = arg;
 
 		while ((token = yylex_cpp_arg(&val, loc)) &&
 		       (paren || (token != ',' && token != ')')) ) {
@@ -386,19 +397,17 @@ expand_params(YYLTYPE *loc, struct hashed_macro *hm)
 	node_t *param;
 
 	list_for_each_entry(param, &hm->params, list) {
-		struct hashed_macro *arg = param->user_data;
+		struct hashed_macro *arg = findhiddenmacro(param->str->text);
 		struct hashed_macro *newarg = addmacro(arg->name);
 		newarg->isparam = 1;
 		newarg->hidden = 1;
 
 		newarg->first = expand_body(loc, arg, &arg->first->list);
 		newarg->last = newarg->first ? prev_dynstr(arg->first) : NULL;
-
-		param->user_data = newarg;
 	}
 
 	list_for_each_entry(param, &hm->params, list) {
-		struct hashed_macro *arg = param->user_data;
+		struct hashed_macro *arg = findhiddenmacro(param->str->text);
 		arg->hidden = 0;
 		assert(arg->next);
 		assert(arg->next->hidden);
