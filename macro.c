@@ -215,6 +215,17 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 }
 
 static struct dynstr *
+dupconcat(struct dynstr *a, struct dynstr *b)
+{
+	struct dynstr *ret = newdynstr(NULL, a->len + b->len);
+	char *p = ret->text;
+	memcpy(p, a->text, a->len);
+	memcpy(p + a->len, b->text, b->len);
+	ret->fake = 1;
+	return ret;
+}
+
+static struct dynstr *
 dupmerge(struct dynstr *first, struct dynstr *last)
 {
 	struct dynstr *endmark = next_dynstr(last);
@@ -249,22 +260,61 @@ duplist(struct dynstr *first, struct dynstr *last)
 	return ret;
 }
 
+static void
+cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
+{
+	struct hashed_macro *nested;
+	struct dynstr *dupds, *merged;
+
+	if (ds->token == ID &&
+	    (nested = findmacro(ds->text)) &&
+	    nested->isparam) {
+		nested = nested->next;
+		dupds = duplist(nested->first, nested->last);
+		insert_text_list(list_entry(point, struct dynstr, list),
+				 dupds, prev_dynstr(dupds));
+	} else {
+		dupds = dupdynstr(ds);
+		list_add_tail(&dupds->list, point);
+	}
+
+	struct dynstr *last = last_dynstr(&raw_contents);
+
+	merged = dupconcat(prevtok, dupds);
+	lex_push_state();
+	lex_input_first = lex_input_last = merged;
+	YYSTYPE val; YYLTYPE loc;
+	while (yylex(&val, &loc));
+	lex_pop_state();
+	freedynstr(merged);
+
+	struct dynstr *first = next_dynstr(last);
+	if (&first->list != &raw_contents) {
+		last = last_dynstr(&raw_contents);
+		detach_text(first, last);
+		replace_text_list(prevtok, dupds, first, last);
+	}
+}
+
 static struct dynstr *
 expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 {
-	struct dynstr *ds, *ret;
+	struct dynstr *ds, *prevtok, *ret;
 	enum {
 		normal,		/* Initial state */
 		stringify,	/* After the '#' token was seen */
+		concat,		/* After the '##' token was seen */
 	} state;
 
 	if (!hm->first)
 		return NULL;
 
 	state = normal;
+	prevtok = NULL;
 	ret = last_dynstr(point);
 	for (ds = hm->first; ; ds = next_dynstr(ds)) {
 		struct hashed_macro *nested;
+
 		if (state == stringify) {
 			struct dynstr *dupds;
 			if (ds->token)
@@ -278,9 +328,18 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 				list_add_tail(&dupds->list, point);
 			} else
 				yyerror(loc, "Invalid use of '#'");
+		} else if (state == concat) {
+			if (ds->token) {
+				state = normal;
+				cpp_concat(point, ds, prevtok);
+				prevtok = last_dynstr(point);
+			}
 		} else if (ds->token == '#')
 			state = stringify;
-		else if (ds->token == ID &&
+		else if (ds->token == CPP_CONCAT) {
+			if (prevtok)
+				state = concat;
+		} else if (ds->token == ID &&
 			 (nested = findmacro(ds->text)) &&
 			 !nested->noexpand) {
 			struct dynstr *newfirst, *newlast;
@@ -297,10 +356,14 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 				newlast = last_dynstr(&raw_contents);
 				detach_text(newfirst, newlast);
 				insert_text_list(pointds, newfirst, newlast);
-			}
+				prevtok = newlast;
+			} else
+				prevtok = NULL;
 		} else {
 			struct dynstr *dupds = dupdynstr(ds);
 			list_add_tail(&dupds->list, point);
+			if (ds->token)
+				prevtok = dupds;
 		}
 
 		if (ds == hm->last)
