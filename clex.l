@@ -627,11 +627,11 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 	node_t *param;
 
 	if (hm->hasparam) {
-		int ret;
+		int res;
 		BEGIN(cpp_arg);
-		ret = yyparse_macro_args(loc, hm);
+		res = yyparse_macro_args(loc, hm);
 		BEGIN(INITIAL);
-		if (ret)
+		if (res)
 			return NULL;
 
 		set_params_hide(hm, 1);
