@@ -339,6 +339,19 @@ yylex_cpp_arg(union YYSTYPE *val, YYLTYPE *loc)
 	return res;
 }
 
+void
+lex_push_state(void)
+{
+	YY_BUFFER_STATE state = yy_create_buffer(NULL, YY_BUF_SIZE);
+	yypush_buffer_state(state);
+}
+
+void
+lex_pop_state(void)
+{
+	yypop_buffer_state();
+}
+
 int tabsize = 8;
 
 static void init_vars(void)

@@ -239,6 +239,9 @@ int yylex(union YYSTYPE *val, YYLTYPE *loc);
 int yylex_cpp_arg(union YYSTYPE *val, YYLTYPE *loc);
 int yylex_destroy(void);
 
+void lex_push_state(void);
+void lex_pop_state(void);
+
 void yyerror(YYLTYPE *loc, const char *);
 
 struct dynstr *expand_macro(YYLTYPE *loc, struct hashed_macro *hm);
