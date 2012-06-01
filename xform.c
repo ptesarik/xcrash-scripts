@@ -734,7 +734,6 @@ subst_target_expr(node_t *expr, ind_t *ind)
 	case STRING_CONST:
 	case SIZEOF_TYPE:
 	case SIZEOF:
-	case OFFSETOF:
 	case '!':
 		return 0;
 

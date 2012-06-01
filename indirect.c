@@ -173,7 +173,6 @@ is_host_type(node_t *expr, ind_t *ind)
 
 	case SIZEOF_TYPE:
 	case SIZEOF:
-	case OFFSETOF:
 		return 0;
 
 	case ID:

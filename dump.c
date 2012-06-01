@@ -183,10 +183,6 @@ dump_op(int op)
 	case TYPECAST:	fputs("typecast", fdump); break;
 	case CONCAT:	fputs("concat", fdump); break;
 
-	case OFFSETOF:	fputs("offsetof", fdump); break;
-	case FOR_CPU_INDEXES:	fputs("for_cpu_indexes", fdump); break;
-	case FRAME_REG:	fputs ("FRAME_REG", fdump); break;
-
 	case CPP_IF:	fputs("#if", fdump); break;
 	case CPP_IFDEF:	fputs("#ifdef", fdump); break;
 	case CPP_IFNDEF:	fputs("#ifndef", fdump); break;

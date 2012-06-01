@@ -282,13 +282,6 @@ CPP			("#"|"%:"){WS}*
 "unsigned"		return STORE_BTYPE(TYPE_UNSIGNED);
 "void"			return STORE_BTYPE(TYPE_VOID);
 
-	/* HACKs */
-"FRAME_REG"		return STORE_TOKEN(FRAME_REG);
-"for_cpu_indexes"	return STORE_TOKEN(FOR_CPU_INDEXES);
-"offsetof"		return STORE_TOKEN(OFFSETOF);
-"struct_offset"		return STORE_TOKEN(OFFSETOF);
-"ATTRIBUTE_UNUSED"	return STORE_TOKEN(ATTRIBUTE_UNUSED);
-
 {L}({L}|{D})*		|
 3COM({L}|{D})*		|	/* HACK */
 3DFX({L}|{D})*		|	/* HACK */

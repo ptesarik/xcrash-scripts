@@ -109,9 +109,6 @@ static void hidedecls(struct list_head *);
 /* basic types */
 %token <btype> BASIC_TYPE
 
-/* HACK kludges */
-%token <token> OFFSETOF FOR_CPU_INDEXES FRAME_REG ATTRIBUTE_UNUSED
-
 /* constants */
 %token <str> INT_CONST FLOAT_CONST CHAR_CONST STRING_CONST
 
@@ -383,9 +380,6 @@ opt_attr		: /* empty */
 
 attr_spec		: ATTRIBUTE '(' '(' attr_list ')' ')'
 			{ $$ = $4; }
-			/* HACK */
-			| ATTRIBUTE_UNUSED
-			{ $$ = newexpr(&@$, ATTRIBUTE_UNUSED); }
 			;
 
 attr_list		: attribute
@@ -880,9 +874,6 @@ stat			: ID ':' stat
 			{ $$ = newexpr(&@$, $1); }
 			| RETURN opt_expr ';'
 			{ $$ = newexpr1(&@$, $1, $2); }
-			/* HACK */
-			| FOR_CPU_INDEXES '(' opt_expr ',' opt_expr ')' stat
-			{ $$ = newexpr3(&@$, $1, $3, $5, $7); }
 			| compound_stat
 			| opt_expr ';'
 			;
@@ -1028,12 +1019,6 @@ unary_expr		: postfix_expr
 			{ $$ = newexpr1(&@$, $1, newexprid(&@2, $2)); }
 			| CPP_DEFINED '(' ID ')'
 			{ $$ = newexpr1(&@$, $1, newexprid(&@3, $3)); }
-			/* HACK: defined as a preprocessor macro */
-			| OFFSETOF '(' type_name ',' unary_expr ')'
-			{ $$ = newexpr2(&@$, $1, $3, $5); }
-			/* HACK */
-			| FRAME_REG '(' opt_expr ',' type_name ')'
-			{ $$ = newexpr2(&@$, $1, $5, $3); }
 			;
 unary_op		: '&'
 			{ $$ = ADDR_OF; }
@@ -1081,8 +1066,6 @@ string_const		: STRING_CONST
 				$$ = newexpr2(&@$, CONCAT, $1,
 					      newexprstr(&@2, $2));
 			}
-			| '#' ID
-			{ $$ = newexpr1(&@$, $1, newexprid(&@2, $2)); }
 			/* HACK for concatenation with macros */
 			| string_const ID
 			{
