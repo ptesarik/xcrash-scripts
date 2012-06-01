@@ -282,10 +282,7 @@ CPP			("#"|"%:"){WS}*
 "unsigned"		return STORE_BTYPE(TYPE_UNSIGNED);
 "void"			return STORE_BTYPE(TYPE_VOID);
 
-{L}({L}|{D})*		|
-3COM({L}|{D})*		|	/* HACK */
-3DFX({L}|{D})*		|	/* HACK */
-3DLABS({L}|{D})*	{	/* HACK */
+{L}({L}|{D})*		{
 		if (YY_START == INITIAL) {
 			struct hashed_macro *hm = findmacro(yytext, cpp_cond);
 			if (hm && (macrods = expand_macro(loc, hm)))
@@ -295,6 +292,10 @@ CPP			("#"|"%:"){WS}*
 			return STORE_TOKEN(TYPEID);
 		return STORE_TOKEN(ID);
 	}
+
+<cpp_macro,cpp_arg>\.?{D}({L}|{D}|[_.]|{E})*	{
+		return STORE_TOKEN(FLOAT_CONST);
+	 }
 
 0[xX]{H}+{IS}?		|
 0{D}+{IS}?		|
