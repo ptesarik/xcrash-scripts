@@ -385,12 +385,6 @@ void freedynstr(struct dynstr *ds)
 	free(ds);
 }
 
-static struct dynstr *
-last_dynstr(struct list_head *list)
-{
-	return list_entry(list->prev, struct dynstr, list);
-}
-
 #define ALLOC_INC	256
 
 /* Try to reuse existing dynstr */

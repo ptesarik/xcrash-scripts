@@ -32,6 +32,8 @@ void freedynstr(struct dynstr *ds);
 #define text_dynstr(ptr) ({	\
         const char *__mptr = (ptr);	\
         (struct dynstr *)(__mptr - offsetof(struct dynstr,text) );})
+#define last_dynstr(listptr) \
+	(list_entry((listptr)->prev, struct dynstr, list))
 
 extern struct list_head raw_contents;
 
