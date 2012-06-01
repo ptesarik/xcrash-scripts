@@ -195,6 +195,7 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 	list_for_each_entry(param, &hm->params, list) {
 		int paren = 0;
 		struct hashed_macro *arg = addmacro(param->str->text);
+		arg->hidden = 1;
 		param->user_data = arg;
 
 		while ((token = yylex_cpp_arg(&val, loc)) &&
@@ -382,9 +383,6 @@ static void
 expand_params(YYLTYPE *loc, struct hashed_macro *hm)
 {
 	node_t *param;
-
-	list_for_each_entry(param, &hm->params, list)
-		((struct hashed_macro *)param->user_data)->hidden = 1;
 
 	list_for_each_entry(param, &hm->params, list) {
 		struct hashed_macro *arg = param->user_data;
