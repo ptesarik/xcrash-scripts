@@ -26,6 +26,7 @@ struct hashed_macro {
 	int hasparam:1;		/* a macro that has parameters */
 	int isparam:1;		/* is a macro parameter? */
 	int noexpand:1;		/* should not expand (prevent recursion) */
+	int variadic:1;		/* this a variadic parameter */
 };
 
 static struct hashed_macro *macros[HASH_SIZE];
@@ -98,6 +99,7 @@ addmacro(const char *name)
 	hm->hasparam = 0;
 	hm->isparam = 0;
 	hm->noexpand = 0;
+	hm->variadic = 0;
 	macros[hash] = hm;
 	return hm;
 }
@@ -169,12 +171,22 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 				return 1;
 			}
 
-			var = newvar(loc, val.str);
+			if (token == ELLIPSIS) {
+				struct dynstr *ds;
+				hm->variadic = 1;
+				ds = newdynstr("__VA_ARGS__", 11);
+				ds->fake = 1;
+				list_add_tail(&ds->list, &raw_contents);
+				var = newvar(loc, ds);
+			} else
+				var = newvar(loc, val.str);
 			list_add_tail(&var->list, &hm->params);
 
 			ntoken = yylex(&val, loc);
-			if (token == ID && ntoken == ELLIPSIS)
+			if (token == ID && ntoken == ELLIPSIS) {
+				hm->variadic = 1;
 				ntoken = yylex(&val, loc);
+			}
 			token = ntoken;
 		} while (token == ',');
 		if (token != ',' && token != ')') {
@@ -211,7 +223,8 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 		arg->hidden = 1;
 
 		while ((token = yylex_cpp_arg(&val, loc)) &&
-		       (paren || (token != ',' && token != ')')) ) {
+		       (paren || ((token != ',' || hm->variadic) &&
+				  token != ')')) ) {
 			if (token == '(')
 				++paren;
 			else if (token == ')')
