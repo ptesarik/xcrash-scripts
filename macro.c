@@ -230,6 +230,7 @@ dupmerge(struct dynstr *first, struct dynstr *last)
 		memcpy(p, ds->text, ds->len);
 		p += ds->len;
 	}
+	ret->fake = 1;
 	return ret;
 }
 
