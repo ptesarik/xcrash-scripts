@@ -486,7 +486,7 @@ static void store_yytext(YYLTYPE *loc, const char *s)
 static int
 store_token(YYSTYPE *val, YYLTYPE *loc, int token)
 {
-	if (token == ID || token == TYPEID || token == CPP_IDARG ||
+	if (token == ID || token == TYPEID ||
 	    token == INT_CONST || token == FLOAT_CONST ||
 	    token == CHAR_CONST || token == STRING_CONST)
 		val->str = loc->first_text;

@@ -116,11 +116,9 @@ static void hidedecls(struct list_head *);
 %token <str> ID TYPEID
 
 /* CPP tokens */
-%token <token> CPP_DEFINE
 %token <token> CPP_IF CPP_IFDEF CPP_IFNDEF CPP_ELIF CPP_ELSE CPP_ENDIF
 %token <token> CPP_DEFINED
 %token <token> CPP_CONCAT	"##"
-%token <str> CPP_IDARG
 %type <token> '#'
 
 /* start symbol pseudo-tokens */
@@ -180,7 +178,7 @@ static void hidedecls(struct list_head *);
 %type <node> struct_body struct_decl_list struct_decl
 
 /* CPP types */
-%type <node> directive macro_def macro_declarator macro_param
+%type <node> directive
 %type <token> cpp_cond
 
 %destructor { if ($$) freenodelist($$); }	<node>
@@ -220,9 +218,7 @@ translation_unit	: /* empty */
 			}
 			;
 
-directive		: CPP_DEFINE macro_def
-			{ $$ = $2; }
-			| cpp_cond expr
+directive		: cpp_cond expr
 			{ $$ = newexpr1(&@$, $1, $2); }
 			| CPP_ELSE
 			{ $$ = newexpr(&@$, $1); }
@@ -236,37 +232,6 @@ cpp_cond		: CPP_IF
 			| CPP_IFDEF
 			| CPP_IFNDEF
 			| CPP_ELIF
-			;
-
-macro_def		: macro_declarator compound_body
-			{
-				YYLTYPE *loc = empty_loc(&@$);
-				node_t *body = newexpr1(loc, RETURN, $2);
-				$$ = newdecl(&@$, NULL, NULL);
-				set_node_child($$, chd_var, $1);
-				set_node_child($$, chd_body, body);
-			}
-			;
-
-macro_declarator	: CPP_IDARG macro_param
-			{
-				node_t *type = newtype_macro(&@$);
-				set_node_child(type, cht_param, $2);
-				$$ = newvar(&@1, $1);
-				set_node_child($$, chv_type, type);
-			}
-			| ID
-			{
-				node_t *type = newtype_macro(&@$);
-				$$ = newvar(&@1, $1);
-				set_node_child($$, chv_type, type);
-			}
-			;
-
-macro_param		: '(' id_list ')'
-			{ $$ = $2; }
-			| '(' ')'
-			{ $$ = NULL; }
 			;
 
 external_decl		: func_def
