@@ -608,20 +608,27 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 static void
 expand_params(YYLTYPE *loc, struct hashed_macro *hm)
 {
-	node_t *param, *exp;
+	node_t *param;
 
 	list_for_each_entry(param, &hm->params, list)
 		((struct hashed_macro *)param->user_data)->hidden = 1;
 
 	list_for_each_entry(param, &hm->params, list) {
 		struct hashed_macro *arg = param->user_data;
-		exp = expand_body(loc, arg, &arg->first->list);
-		arg->last = exp ? prev_dynstr(arg->first) : NULL;
-		arg->first = exp;
+		struct hashed_macro *newarg = addmacro(arg->name);
+
+		newarg->hidden = 1;
+		newarg->first = expand_body(loc, arg, &arg->first->list);
+		newarg->last = newarg->first ? prev_dynstr(arg->first) : NULL;
+
+		param->user_data = newarg;
 	}
 
-	list_for_each_entry(param, &hm->params, list)
-		((struct hashed_macro *)param->user_data)->hidden = 0;
+	list_for_each_entry(param, &hm->params, list) {
+		struct hashed_macro *arg = param->user_data;
+		arg->hidden = 0;
+		arg->next->hidden = 0;
+	}
 }
 
 static void
@@ -629,6 +636,7 @@ delete_params(struct hashed_macro *hm)
 {
 	node_t *param;
 	list_for_each_entry(param, &hm->params, list) {
+		delmacro(param->str->text);
 		delmacro(param->str->text);
 	}
 }
