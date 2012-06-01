@@ -234,6 +234,21 @@ dupmerge(struct dynstr *first, struct dynstr *last)
 }
 
 static struct dynstr *
+duplist(struct dynstr *first, struct dynstr *last)
+{
+	if (!first)
+		return NULL;
+	
+	struct dynstr *ret = dupdynstr(first);
+	while (first != last) {
+		first = next_dynstr(first);
+		struct dynstr *ds = dupdynstr(first);
+		list_add_tail(&ds->list, &ret->list);
+	}
+	return ret;
+}
+
+static struct dynstr *
 expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 {
 	struct dynstr *ds, *ret;
@@ -343,9 +358,18 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 		expand_params(loc, hm);
 	}
 
-	hm->noexpand = 1;
-	ret = expand_body(loc, hm, &raw_contents);
-	hm->noexpand = 0;
+	if (hm->isparam) {
+		ret = duplist(hm->first, hm->last);
+		if (ret) {
+			struct dynstr *pointds =
+				list_entry(&raw_contents, struct dynstr, list);
+			insert_text_list(pointds, ret, prev_dynstr(ret));
+		}
+	} else {
+		hm->noexpand = 1;
+		ret = expand_body(loc, hm, &raw_contents);
+		hm->noexpand = 0;
+	}
 
 	delete_params(hm);
 
