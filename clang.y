@@ -19,8 +19,6 @@
 
 #define HASH_SIZE	512
 
-static void yyerror(YYLTYPE *loc, const char *);
-
 static YYLTYPE *empty_loc(const YYLTYPE *);
 
 static void type_merge(node_t *, node_t *);

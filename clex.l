@@ -26,6 +26,7 @@ int start_symbol;
 
 struct list_head raw_contents;
 struct dynstr *lex_input_first, *lex_input_last;
+struct dynstr *macrods;
 
 static struct dynstr *lex_input;
 static char *lex_input_ptr;
@@ -49,7 +50,6 @@ static size_t dynstr_read(void *, size_t);
 static int parse_cpp(void);
 
 static struct dynstr *expand_macro(YYLTYPE *, struct hashed_macro *);
-static struct dynstr *macrods;
 
 #define YY_INPUT(buf,result,max_size) \
 	if (lex_input) { \
@@ -358,7 +358,7 @@ struct dynstr *newdynstr(const char *s, size_t len)
 	return ds;
 }
 
-static struct dynstr *
+struct dynstr *
 dupdynstr(struct dynstr *ds)
 {
 	struct dynstr *ret = malloc(sizeof(struct dynstr) + ds->len + 1);

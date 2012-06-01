@@ -23,6 +23,7 @@ struct dynstr {
 };
 
 struct dynstr *newdynstr(const char *, size_t);
+struct dynstr *dupdynstr(struct dynstr *);
 void freedynstr(struct dynstr *ds);
 
 #define next_dynstr(ds)	\
@@ -47,6 +48,13 @@ extern int start_symbol;
  * strings instead of an input stream.
  */
 extern struct dynstr *lex_input_first, *lex_input_last;
+
+/* If @macrods is non-NULL, then we're reading in the result of
+ * macro expansion. This is different from setting @lex_input_first:
+ *   1. we don't create any new dynstr objects, and
+ *   2. there's no tokenization - the existing tokens are returned
+ */
+extern struct dynstr *macrods;
 
 typedef struct {
 	int first_line;
@@ -241,6 +249,8 @@ int yyparse_macro_args(YYLTYPE *, struct hashed_macro *);
 
 int yylex(union YYSTYPE *val, YYLTYPE *loc);
 int yylex_destroy(void);
+
+void yyerror(YYLTYPE *loc, const char *);
 
 /* Parse tree */
 node_t *newnode(const YYLTYPE *, enum node_type, int);
