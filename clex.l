@@ -28,7 +28,6 @@ struct list_head raw_contents;
 struct dynstr *lex_input_first, *lex_input_last;
 struct dynstr *macrods;
 
-static struct dynstr *lex_input;
 static char *lex_input_ptr;
 
 static struct cpp_cond_state cond_state;
@@ -56,7 +55,7 @@ static YYLTYPE fileloc = {
 };
 
 #define YY_INPUT(buf,result,max_size) \
-	if (lex_input) { \
+	if (lex_input_first) { \
 		result = dynstr_read(buf, max_size); \
 	} else { \
 		errno=0; \
@@ -356,12 +355,7 @@ int tabsize = 8;
 
 static void init_vars(void)
 {
-	if (lex_input_first) {
-		lex_input = lex_input_first;
-		lex_input_ptr = lex_input->text;
-	} else
-		lex_input = NULL;
-
+	lex_input_ptr = NULL;
 	macrods = NULL;
 
 	memset(&cond_state, 0, sizeof cond_state);
@@ -516,22 +510,34 @@ store_btype(YYSTYPE *val, YYLTYPE *loc, int btype)
 	return store_token(val, loc, BASIC_TYPE);
 }
 
+static inline size_t
+dynstr_remain(struct dynstr *ds, char *ptr)
+{
+	return ds->len - (ptr - ds->text);
+}
+
 static size_t
 dynstr_read(void *buf, size_t max_size)
 {
 	size_t n;
 
-	while (! (n = lex_input->len - (lex_input_ptr - lex_input->text)) &&
-	       lex_input != lex_input_last) {
-		lex_input = list_entry(lex_input->list.next,
-				       struct dynstr, list);
-		lex_input_ptr = lex_input->text;
+	if (!lex_input_ptr)
+		lex_input_ptr = lex_input_first->text;
+
+	while (! (n = dynstr_remain(lex_input_first, lex_input_ptr)) &&
+	       lex_input_first != lex_input_last) {
+		lex_input_first = next_dynstr(lex_input_first);
+		lex_input_ptr = lex_input_first->text;
 	}
 
 	if (n > max_size)
 		n = max_size;
 	memcpy(buf, lex_input_ptr, n);
 	lex_input_ptr += n;
+	if (!n) {
+		lex_input_first = lex_input_last = NULL;
+		lex_input_ptr = NULL;
+	}
 	return n;
 }
 
