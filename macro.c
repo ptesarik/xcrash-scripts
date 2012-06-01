@@ -6,6 +6,7 @@
 
 #include "parser.h"
 #include "clang.tab.h"
+#include "tools.h"
 
 /************************************************************
  * Macro hash
@@ -18,6 +19,7 @@ struct hashed_macro {
 	struct hashed_macro *next;
 	char *name;
 	struct list_head params;
+	struct node *cpp_cond;
 	struct dynstr *first, *last;
 	int hidden:1;		/* macro should be ignored in searches */
 	int hasparam:1;		/* a macro that has parameters */
@@ -54,12 +56,13 @@ clearmacros(void)
 }
 
 struct hashed_macro *
-findmacro(const char *name)
+findmacro(const char *name, node_t *cpp_cond)
 {
 	unsigned hash = mkhash(name);
 	struct hashed_macro *hm;
 	for (hm = macros[hash]; hm; hm = hm->next) {
-		if (!hm->hidden && !strcmp(name, hm->name))
+		if (!hm->hidden && !strcmp(name, hm->name) &&
+		    !cond_is_disjunct(cpp_cond, hm->cpp_cond))
 			return hm;
 	}
 	return NULL;
@@ -76,6 +79,7 @@ addmacro(const char *name)
 	hm->name = (char*)(hm + 1);
 	strcpy(hm->name, name);
 	INIT_LIST_HEAD(&hm->params);
+	hm->cpp_cond = NULL;
 	hm->first = hm->last = NULL;
 	hm->hidden = 0;
 	hm->hasparam = 0;
@@ -122,7 +126,7 @@ delmacro(const char *name)
  */
 
 int
-yyparse_macro(YYLTYPE *loc, const char *name, int hasparam)
+yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 {
 	struct hashed_macro *hm;
 	YYSTYPE val;
@@ -130,6 +134,7 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam)
 
 	if (! (hm = addmacro(name)) )
 		return -1;
+	hm->cpp_cond = cpp_cond;
 
 	if (hasparam) {
 		hm->hasparam = 1;
@@ -267,7 +272,7 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
 	struct dynstr *dupds, *merged;
 
 	if (ds->token == ID &&
-	    (nested = findmacro(ds->text)) &&
+	    (nested = findmacro(ds->text, ds->cpp_cond)) &&
 	    nested->isparam) {
 		nested = nested->next;
 		dupds = duplist(nested->first, nested->last);
@@ -320,7 +325,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			if (ds->token)
 				state = normal;
 			if (ds->token == ID &&
-			    (nested = findmacro(ds->text)) &&
+			    (nested = findmacro(ds->text, ds->cpp_cond)) &&
 			    nested->isparam) {
 				nested = nested->next;
 				dupds = dupmerge(nested->first, nested->last);
@@ -340,8 +345,8 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			if (prevtok)
 				state = concat;
 		} else if (ds->token == ID &&
-			 (nested = findmacro(ds->text)) &&
-			 !nested->noexpand) {
+			   (nested = findmacro(ds->text, ds->cpp_cond)) &&
+			   !nested->noexpand) {
 			struct dynstr *newfirst, *newlast;
 			struct dynstr *oldmacrods = macrods;
 

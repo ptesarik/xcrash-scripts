@@ -226,14 +226,14 @@ void init_predef_types(void);
 /* Macro hash */
 struct hashed_macro;
 void clearmacros(void);
-struct hashed_macro *findmacro(const char *name);
+struct hashed_macro *findmacro(const char *name, node_t *cpp_cond);
 
 /* Parser/lexer interface */
 extern FILE *yyin;
 union YYSTYPE;
 
 int yyparse(void);
-int yyparse_macro(YYLTYPE *, const char *, int);
+int yyparse_macro(YYLTYPE *, const char *, int, node_t *);
 
 int yylex(union YYSTYPE *val, YYLTYPE *loc);
 int yylex_cpp_arg(union YYSTYPE *val, YYLTYPE *loc);

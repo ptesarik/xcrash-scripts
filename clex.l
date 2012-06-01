@@ -177,13 +177,13 @@ CPP			("#"|"%:"){WS}*
   /* CPP define name */
 <cpp_def>{L}({L}|{D})*/\(	{
 		BEGIN(cpp_macro);
-		if (yyparse_macro(loc, yytext, 1))
+		if (yyparse_macro(loc, yytext, 1, cpp_cond))
 			YY_FATAL_ERROR("yyparse_macro failed");
 		yyterminate();
 	}
 <cpp_def>{L}({L}|{D})*		{
 		BEGIN(cpp_macro);
-		if (yyparse_macro(loc, yytext, 0))
+		if (yyparse_macro(loc, yytext, 0, cpp_cond))
 			YY_FATAL_ERROR("yyparse_macro failed");
 		yyterminate();
 	}
@@ -294,7 +294,7 @@ CPP			("#"|"%:"){WS}*
 3DFX({L}|{D})*		|	/* HACK */
 3DLABS({L}|{D})*	{	/* HACK */
 		if (YY_START == INITIAL) {
-			struct hashed_macro *hm = findmacro(yytext);
+			struct hashed_macro *hm = findmacro(yytext, cpp_cond);
 			if (hm && (macrods = expand_macro(loc, hm)))
 				return yylex(val, loc);
 		}
