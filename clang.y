@@ -1697,7 +1697,8 @@ delmacro(const char *name)
 	while ( (hm = *pprev) ) {
 		if (!strcmp(name, hm->name)) {
 			*pprev = hm->next;
-			delmacro_text(hm);
+			if (hm->first)
+				delmacro_text(hm);
 			free(hm);
 			break;
 		}
