@@ -58,6 +58,8 @@ is_always_false(const struct truth_table *tbl)
 	return 1;
 }
 
+int cond_is_disjunct(node_t *a, node_t *b);
+
 /* Related to raw contents */
 int dynstr_isspace(struct dynstr *ds);
 struct dynstr *dynstr_delspace(struct list_head *list, struct dynstr *ds);

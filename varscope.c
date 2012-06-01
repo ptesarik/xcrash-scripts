@@ -326,27 +326,10 @@ varscope_find_expr(node_t *expr)
 	node_t *expr_cond = expr->first_text->cpp_cond;
 	while (ret) {
 		node_t *ret_cond = ret->first_text->cpp_cond;
-		if (expr_cond && ret_cond &&
-		    expr_cond != ret_cond) {
-			node_t *op = dupnode_nochild(expr_cond);
-			op->type = nt_expr;
-			op->e.op = AND_OP;
-			set_node_child(op, che_arg1, expr_cond);
-			set_node_child(op, che_arg2, ret_cond);
-
-			struct truth_table *ttbl = cpp_truth_table(op);
-			int cont = is_always_false(ttbl);
-
-			free_truth_table(ttbl);
-			list_del_init(&expr_cond->list);
-			list_del_init(&ret_cond->list);
-			freenode(op);
-			if (!cont)
-				break;
-
-			ret = varscope_find_next_var(ret);
-		} else
+		if (!cond_is_disjunct(expr_cond, ret_cond))
 			break;
+
+		ret = varscope_find_next_var(ret);
 	}
 
 	return ret;

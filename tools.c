@@ -448,6 +448,28 @@ cpp_truth_table(node_t *node)
 	}
 }
 
+int
+cond_is_disjunct(node_t *a, node_t *b)
+{
+	if (!a || !b || a == b)
+		return 0;
+
+	node_t *op = dupnode_nochild(a);
+	op->type = nt_expr;
+	op->e.op = AND_OP;
+	set_node_child(op, che_arg1, a);
+	set_node_child(op, che_arg2, b);
+
+	struct truth_table *ttbl = cpp_truth_table(op);
+	int ret = is_always_false(ttbl);
+
+	free_truth_table(ttbl);
+	list_del_init(&a->list);
+	list_del_init(&b->list);
+	freenode(op);
+	return ret;
+}
+
 void
 dump_truth_table(const struct truth_table *tbl)
 {
