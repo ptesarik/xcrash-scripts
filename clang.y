@@ -1663,13 +1663,14 @@ addmacro(const char *name)
 	struct hashed_macro *hm;
 
 	hm = malloc(sizeof(struct hashed_macro) + strlen(name) + 1);
-	hm->name = (char*)(hm + 1);
 	hm->next = macros[hash];
+	hm->name = (char*)(hm + 1);
+	strcpy(hm->name, name);
+	INIT_LIST_HEAD(&hm->params);
+	hm->first = hm->last = NULL;
 	hm->hidden = 0;
 	hm->hasparam = 0;
 	hm->noexpand = 0;
-	strcpy(hm->name, name);
-	INIT_LIST_HEAD(&hm->params);
 	macros[hash] = hm;
 	return hm;
 }
@@ -1734,11 +1735,10 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam)
 		}
 	}
 
-	token = yylex(&val, loc);
-	hm->last = hm->first = loc->first_text;
-	while (token) {
+	while ( (token = yylex(&val, loc)) ) {
+		if (!hm->first)
+			hm->first = loc->first_text;
 		hm->last = loc->last_text;
-		token = yylex(&val, loc);
 	}
 
 	return 0;
@@ -1761,16 +1761,16 @@ yyparse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 		int paren = 0;
 		struct hashed_macro *arg = addmacro(param->str->text);
 		param->user_data = arg;
-		token = yylex(&val, loc);
-		arg->first = loc->first_text;
 
-		while (token && (paren || (token != ',' && token != ')')) ) {
+		while ((token = yylex(&val, loc)) &&
+		       (paren || (token != ',' && token != ')')) ) {
 			if (token == '(')
 				++paren;
 			else if (token == ')')
 				--paren;
+			if (!arg->first)
+				arg->first = loc->first_text;
 			arg->last = loc->last_text;
-			token = yylex(&val, loc);
 		}
 	}
 

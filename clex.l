@@ -569,6 +569,9 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, int dup)
 {
 	struct dynstr *ds, *dupds;
 
+	if (!hm->first)
+		return 0;
+
 	for (ds = hm->first; ; ds = next_dynstr(ds)) {
 		struct hashed_macro *nested;
 		if (ds->token == ID &&
