@@ -49,8 +49,6 @@ static int store_btype(YYSTYPE *, YYLTYPE *, int);
 static size_t dynstr_read(void *, size_t);
 static int parse_cpp(void);
 
-static struct dynstr *expand_macro(YYLTYPE *, struct hashed_macro *);
-
 #define YY_INPUT(buf,result,max_size) \
 	if (lex_input) { \
 		result = dynstr_read(buf, max_size); \
@@ -323,6 +321,18 @@ int yywrap(void)
 	return 1;
 }
 
+int
+yylex_cpp_arg(union YYSTYPE *val, YYLTYPE *loc)
+{
+	int saved = YY_START;
+	int res;
+
+	BEGIN(cpp_arg);
+	res = yylex(val, loc);
+	BEGIN(saved);
+	return res;
+}
+
 int tabsize = 8;
 
 static void init_vars(void)
@@ -554,108 +564,6 @@ parse_cpp(void)
 		discard_parsing();
 
 	list_splice(&savedparsed, &parsed_tree);
-
-	return ret;
-}
-
-static struct dynstr *
-expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
-{
-	struct dynstr *ds, *ret;
-
-	if (!hm->first)
-		return NULL;
-
-	ret = last_dynstr(point);
-	for (ds = hm->first; ; ds = next_dynstr(ds)) {
-		struct hashed_macro *nested;
-		if (ds->token == ID &&
-		    (nested = findmacro(ds->text)) &&
-		    !nested->noexpand) {
-			struct dynstr *newfirst, *newlast;
-			struct dynstr *oldmacrods = macrods;
-
-			macrods = next_dynstr(ds);
-			newfirst = expand_macro(loc, nested);
-			ds = macrods ? prev_dynstr(macrods) : hm->last;
-			macrods = oldmacrods;
-
-			if (newfirst) {
-				struct dynstr *pointds = 
-					list_entry(point, struct dynstr, list);
-				newlast = last_dynstr(&raw_contents);
-				detach_text(newfirst, newlast);
-				insert_text_list(pointds, newfirst, newlast);
-			}
-		} else {
-			struct dynstr *dupds = dupdynstr(ds);
-			list_add_tail(&dupds->list, point);
-		}
-
-		if (ds == hm->last)
-			break;
-	}
-	ret = next_dynstr(ret);
-	return &ret->list != point ? ret : NULL;
-}
-
-static void
-expand_params(YYLTYPE *loc, struct hashed_macro *hm)
-{
-	node_t *param;
-
-	list_for_each_entry(param, &hm->params, list)
-		((struct hashed_macro *)param->user_data)->hidden = 1;
-
-	list_for_each_entry(param, &hm->params, list) {
-		struct hashed_macro *arg = param->user_data;
-		struct hashed_macro *newarg = addmacro(arg->name);
-
-		newarg->hidden = 1;
-		newarg->first = expand_body(loc, arg, &arg->first->list);
-		newarg->last = newarg->first ? prev_dynstr(arg->first) : NULL;
-
-		param->user_data = newarg;
-	}
-
-	list_for_each_entry(param, &hm->params, list) {
-		struct hashed_macro *arg = param->user_data;
-		arg->hidden = 0;
-		arg->next->hidden = 0;
-	}
-}
-
-static void
-delete_params(struct hashed_macro *hm)
-{
-	node_t *param;
-	list_for_each_entry(param, &hm->params, list) {
-		delmacro(param->str->text);
-		delmacro(param->str->text);
-	}
-}
-
-static struct dynstr *
-expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
-{
-	struct dynstr *ret;
-
-	if (hm->hasparam) {
-		int res;
-		BEGIN(cpp_arg);
-		res = yyparse_macro_args(loc, hm);
-		BEGIN(INITIAL);
-		if (res)
-			return NULL;
-
-		expand_params(loc, hm);
-	}
-
-	hm->noexpand = 1;
-	ret = expand_body(loc, hm, &raw_contents);
-	hm->noexpand = 0;
-
-	delete_params(hm);
 
 	return ret;
 }

@@ -10,6 +10,7 @@ OBJS = \
 	clex.yy.o \
 	clang.tab.o \
 	parser.o \
+	macro.o \
 	dump.o \
 	tools.o \
 	varscope.o \

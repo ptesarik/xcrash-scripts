@@ -224,20 +224,9 @@ int istypedef(const char *name);
 void init_predef_types(void);
 
 /* Macro hash */
-struct hashed_macro {
-	struct hashed_macro *next;
-	char *name;
-	struct list_head params;
-	struct dynstr *first, *last;
-	int hidden:1;		/* macro should be ignored in searches */
-	int hasparam:1;		/* a macro that has parameters */
-	int noexpand:1;		/* should not expand (prevent recursion) */
-};
-
+struct hashed_macro;
 void clearmacros(void);
-struct hashed_macro *addmacro(const char *name);
 struct hashed_macro *findmacro(const char *name);
-void delmacro(const char *name);
 
 /* Parser/lexer interface */
 extern FILE *yyin;
@@ -248,9 +237,12 @@ int yyparse_macro(YYLTYPE *, const char *, int);
 int yyparse_macro_args(YYLTYPE *, struct hashed_macro *);
 
 int yylex(union YYSTYPE *val, YYLTYPE *loc);
+int yylex_cpp_arg(union YYSTYPE *val, YYLTYPE *loc);
 int yylex_destroy(void);
 
 void yyerror(YYLTYPE *loc, const char *);
+
+struct dynstr *expand_macro(YYLTYPE *loc, struct hashed_macro *hm);
 
 /* Parse tree */
 node_t *newnode(const YYLTYPE *, enum node_type, int);
