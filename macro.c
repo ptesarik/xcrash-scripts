@@ -22,6 +22,7 @@ struct hashed_macro {
 	struct list_head params;
 	struct node *cpp_cond;
 	struct dynstr *first, *last;
+	int undef:1;		/* #undefined macro */
 	int hidden:1;		/* macro should be ignored in searches */
 	int hasparam:1;		/* a macro that has parameters */
 	int isparam:1;		/* is a macro parameter? */
@@ -65,7 +66,7 @@ findmacro(const char *name, node_t *cpp_cond)
 	for (hm = macros[hash]; hm; hm = hm->next) {
 		if (!hm->hidden && !strcmp(name, hm->name) &&
 		    !cond_is_disjunct(cpp_cond, hm->cpp_cond))
-			return hm;
+			return hm->undef ? NULL : hm;
 	}
 	return NULL;
 }
@@ -95,6 +96,7 @@ addmacro(const char *name)
 	INIT_LIST_HEAD(&hm->params);
 	hm->cpp_cond = NULL;
 	hm->first = hm->last = NULL;
+	hm->undef = 0;
 	hm->hidden = 0;
 	hm->hasparam = 0;
 	hm->isparam = 0;
@@ -102,6 +104,13 @@ addmacro(const char *name)
 	hm->variadic = 0;
 	macros[hash] = hm;
 	return hm;
+}
+
+void
+undefmacro(const char *name)
+{
+	struct hashed_macro *hm = addmacro(name);
+	hm->undef = 1;
 }
 
 static void

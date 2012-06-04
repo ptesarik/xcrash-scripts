@@ -84,6 +84,7 @@ CPP			("#"|"%:"){WS}*
 
 %x cpp
 %x cpp_def
+%x cpp_undef
 %x cpp_ign
 %x cpp_recover
 %s cpp_macro
@@ -131,9 +132,9 @@ CPP			("#"|"%:"){WS}*
 			BEGIN(INITIAL);
 		}
   /* skip whitespace except newline */
-<cpp_macro,cpp_condition,cpp,cpp_def>{WS}+
+<cpp_macro,cpp_condition,cpp,cpp_def,cpp_undef>{WS}+
   /* A newline terminates the directive */
-<cpp_macro,cpp_condition,cpp,cpp_def,cpp_ign>\n	{
+<cpp_macro,cpp_condition,cpp,cpp_def,cpp_undef,cpp_ign>\n	{
 			loc->last_text->reuse = 0;
 			BEGIN(INITIAL);
 			yyterminate();
@@ -143,6 +144,9 @@ CPP			("#"|"%:"){WS}*
 <cpp>{
 "define"		{
 			BEGIN(cpp_def);
+			}
+"undef"			{
+			BEGIN(cpp_undef);
 			}
 "if"			{
 			BEGIN(cpp_condition);
@@ -186,6 +190,11 @@ CPP			("#"|"%:"){WS}*
 		if (yyparse_macro(loc, yytext, 0, cpp_cond))
 			YY_FATAL_ERROR("yyparse_macro failed");
 		yyterminate();
+	}
+
+<cpp_undef>{L}({L}|{D})*	{
+		undefmacro(yytext);
+		BEGIN(cpp_ign);
 	}
 
   /* CPP directive (during define) */

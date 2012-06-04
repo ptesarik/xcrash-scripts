@@ -228,6 +228,7 @@ void init_predef_types(void);
 struct hashed_macro;
 void clearmacros(void);
 struct hashed_macro *findmacro(const char *name, node_t *cpp_cond);
+void undefmacro(const char *name);
 
 /* Parser/lexer interface */
 extern FILE *yyin;
