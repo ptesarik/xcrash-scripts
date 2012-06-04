@@ -4,6 +4,7 @@
 #define PARSER_H
 
 #include <stdio.h>		/* for FILE */
+#include <string.h>		/* for strrchr */
 #include "lists.h"
 
 /* Stored file contents */
@@ -352,5 +353,19 @@ struct parsed_file {
 int parse_file(struct parsed_file *);
 node_t *reparse_node(node_t *, int);
 int xform_files(struct arguments *, struct list_head *);
+
+/* Returns non-zero iff:
+ *   a. the file name of @pf ends with a ".h", or
+ *   b. it is the built-in pseudo-file
+ */
+static inline int
+is_header_file(struct parsed_file *pf)
+{
+	if (pf->name) {
+		char *suffix = strrchr(pf->name, '.');
+		return suffix && suffix[1] == 'h' && !suffix[2];
+	} else
+		return 1;
+}
 
 #endif	/* PARSER_H */

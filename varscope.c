@@ -27,20 +27,6 @@ mkhash(const char *name, void *scope)
 	return ret % HASH_SIZE;
 }
 
-/* Returns non-zero iff:
- *   a. the file name of @pf ends with a ".h", or
- *   b. it is the built-in pseudo-file
- */
-static int
-is_header_file(struct parsed_file *pf)
-{
-	if (pf->name) {
-		char *suffix = strrchr(pf->name, '.');
-		return suffix && !strcmp(suffix, ".h");
-	} else
-		return 1;
-}
-
 struct list_head *
 find_var_scope(node_t *node)
 {
