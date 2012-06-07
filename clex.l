@@ -392,7 +392,7 @@ dupdynstr(struct dynstr *ds)
 	INIT_LIST_HEAD(&ret->list);
 	INIT_LIST_HEAD(&ret->node_first);
 	INIT_LIST_HEAD(&ret->node_last);
-	ret->cpp_cond = ds->cpp_cond;
+	ret->cpp_cond = cpp_cond;
 	ret->token = ds->token;
 	ret->refcount = 0;
 	ret->len = ds->len;
