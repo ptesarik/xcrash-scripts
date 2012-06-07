@@ -276,7 +276,7 @@ CPP			("#"|"%:"){WS}*
 "struct"		return STORE_TOKEN(STRUCT);
 "switch"		return STORE_TOKEN(SWITCH);
 "typedef"		return STORE_TOKEN(TYPEDEF);
-"__typeof__"		return STORE_TOKEN(TYPEOF);
+"typeof"|"__typeof__"	return STORE_TOKEN(TYPEOF);
 "union"			return STORE_TOKEN(UNION);
 "volatile"		return STORE_TOKEN(VOLATILE);
 "while"			return STORE_TOKEN(WHILE);
