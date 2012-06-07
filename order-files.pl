@@ -4,9 +4,9 @@
 # The following has proved productive:
 #   1. Move *.h to begin
 #   2. Move defs.h to begin
-#   3. Move lkcd* to end
-#   4. Move unwind* to end
-#   5. Move unwind_i.h to end
+#   3. Move unwind* to end
+#   4. Move unwind_i.h to end
+#   5. Move lkcd* to end
 
 undef $/;
 my $list = <>;
@@ -40,19 +40,7 @@ foreach my $file (@list) {
 undef @begin;
 undef @end;
 
-# 3. Move lkcd* to end
-foreach my $file (@list) {
-    if ($file =~ /^lkcd/) {
-	push @end, $file;
-    } else {
-	push @begin, $file;
-    }
-}
-@list = ( @begin, @end );
-undef @begin;
-undef @end;
-
-# 4. Move unwind* to end
+# 3. Move unwind* to end
 foreach my $file (@list) {
     if ($file =~ /^unwind/) {
 	push @end, $file;
@@ -64,9 +52,21 @@ foreach my $file (@list) {
 undef @begin;
 undef @end;
 
-# 5. Move unwind_i.h to end
+# 4. Move unwind_i.h to end
 foreach my $file (@list) {
     if ($file eq "unwind_i.h") {
+	push @end, $file;
+    } else {
+	push @begin, $file;
+    }
+}
+@list = ( @begin, @end );
+undef @begin;
+undef @end;
+
+# 5. Move lkcd* to end
+foreach my $file (@list) {
+    if ($file =~ /^lkcd/) {
 	push @end, $file;
     } else {
 	push @begin, $file;
