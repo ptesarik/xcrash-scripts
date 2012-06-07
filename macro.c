@@ -330,7 +330,11 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
 
 	struct dynstr *first = next_dynstr(last);
 	if (&first->list != &raw_contents) {
-		last = last_dynstr(&raw_contents);
+		for (last = first; &last->list != &raw_contents;
+		     last = next_dynstr(last))
+			last->fake = 1;
+		last = prev_dynstr(last);
+
 		detach_text(first, last);
 		replace_text_list(prevtok, dupds, first, last);
 	}
