@@ -297,8 +297,6 @@ CPP			("#"|"%:"){WS}*
 			if (hm && (macrods = expand_macro(loc, hm)))
 				return yylex(val, loc);
 		}
-		if (istypedef(yytext))
-			return STORE_TOKEN(TYPEID);
 		return STORE_TOKEN(ID);
 	}
 
@@ -496,13 +494,16 @@ static void store_yytext(YYLTYPE *loc, const char *s)
 static int
 store_token(YYSTYPE *val, YYLTYPE *loc, int token)
 {
-	if (token == ID || token == TYPEID ||
+	if (token == ID ||
 	    token == INT_CONST || token == FLOAT_CONST ||
 	    token == CHAR_CONST || token == STRING_CONST)
 		val->str = loc->first_text;
 	else if (token != BASIC_TYPE)
 		val->token = token;
 	loc->last_text->token = token;
+
+	if (token == ID && istypedef(val->str->text))
+		return TYPEID;
 	return token;
 }
 
