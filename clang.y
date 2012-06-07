@@ -985,6 +985,8 @@ unary_expr		: postfix_expr
 			{ $$ = newexpr1(&@$, $1, newexprid(&@2, $2)); }
 			| CPP_DEFINED '(' ID ')'
 			{ $$ = newexpr1(&@$, $1, newexprid(&@3, $3)); }
+			| '(' compound_stat ')'
+			{ $$ = newexpr1(&@$, BLOCK, $2); }
 			;
 unary_op		: '&'
 			{ $$ = ADDR_OF; }
