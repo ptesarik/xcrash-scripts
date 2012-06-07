@@ -413,6 +413,12 @@ typedef_name		: TYPEID
 				$$ = newtype_name(&@$, $1);
 				$$->t.category = type_typedef;
 			}
+			| TYPEOF '(' expr ')'
+			{
+				$$ = newtype(&@$);
+				$$->t.category = type_typeof;
+				set_node_child($$, cht_expr, $3);
+			}
 			;
 
 struct_or_union_spec	: struct_or_union opt_attr struct_desc
@@ -749,12 +755,6 @@ type_name		: spec_qualifier_list
 				$$ = $2->abstract.tree;
 				$$->t.flags = $1->t.flags;
 				free($2);
-			}
-			| TYPEOF '(' expr ')'
-			{
-				$$ = newtype(&@$);
-				$$->t.category = type_typeof;
-				set_node_child($$, cht_expr, $3);
 			}
 			;
 
