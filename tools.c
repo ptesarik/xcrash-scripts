@@ -653,6 +653,11 @@ node_scope(node_t *node)
 	case nt_decl:
 		return &node->child[chd_body];
 
+	case nt_expr:
+		if (node->e.op == BLOCK)
+			return &node->child[che_arg1];
+		break;
+
 	default:
 		break;
 	}
@@ -681,6 +686,10 @@ find_scope(node_t *node, node_t **pparent)
 			   (is_child(node, parent, chd_body) ||
 			    is_child(node, parent, chd_decl)) ) {
 			ret = &parent->child[chd_body];
+			break;
+		} else if (parent->type == nt_expr &&
+			   parent->e.op == BLOCK) {
+			ret = &parent->child[che_arg1];
 			break;
 		}
 

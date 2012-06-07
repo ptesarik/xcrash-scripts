@@ -182,6 +182,7 @@ dump_op(int op)
 	case ELLIPSIS:	fputs("...", fdump); break;
 	case TYPECAST:	fputs("typecast", fdump); break;
 	case CONCAT:	fputs("concat", fdump); break;
+	case BLOCK:	fputs("block", fdump); break;
 
 	case CPP_IF:	fputs("#if", fdump); break;
 	case CPP_IFDEF:	fputs("#ifdef", fdump); break;

@@ -128,7 +128,7 @@ static void hidedecls(struct list_head *);
 %token START_DIRECTIVE
 
 /* other pseudo-tokens */
-%token ARRAY CONCAT FUNC LABEL RANGE SIZEOF_TYPE TYPECAST
+%token ARRAY BLOCK CONCAT FUNC LABEL RANGE SIZEOF_TYPE TYPECAST
 
 /* precedence */
 %left TYPEID ID
@@ -840,6 +840,7 @@ stat			: ID ':' stat
 			| RETURN opt_expr ';'
 			{ $$ = newexpr1(&@$, $1, $2); }
 			| compound_stat
+			{ $$ = newexpr1(&@$, BLOCK, $1); }
 			| opt_expr ';'
 			;
 
