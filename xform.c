@@ -1798,7 +1798,10 @@ static struct xform_desc xforms[] = {
 // Give each architecture its own name for machspec
 { "arch-machspec-split-use.patch", simple, arch_machspec },
 
-// Fix host/target type confusion
+// Fix write paths in ia64 unwind access functions
+{ "fix-unw_access.patch", import },
+
+// Fix other host/target type confusion
 { "fix-host-types.patch", import },
 
 // Target types in calls to (try_)get_symbol_data

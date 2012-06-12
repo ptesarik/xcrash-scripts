@@ -1,0 +1,128 @@
+From: Petr Tesarik <ptesarik@suse.cz>
+Subject: Fix the unwind functions
+
+The adaptation of the unwind functions has not been completed, resulting
+in a mix of local accesses with dumpfile accesses. This is not a big deal
+for the resulting crash binary, since these code paths are never hit anyway,
+but it does confuse variable tracking, resulting in fatal errors like this:
+
+unw_access_gr_v1: conflicting type change for 'unsigned long addr':
+  first 'tptr', now 'tulong'
+
+Signed-off-by: Petr Tesarik <ptesarik@suse.cz>
+
+---
+ unwind.c |   42 +++++++++++++++++++++++++++---------------
+ 1 file changed, 27 insertions(+), 15 deletions(-)
+
+--- a/unwind.c
++++ b/unwind.c
+@@ -171,6 +171,16 @@ free_labeled_state(struct unw_labeled_st
+ 	FREEBUF(ls);
+ }
+ 
++static int
++set_ulong (ulong *addr, ulong val)
++{
++	ulong tmp = val;
++	if (INSTACK(addr, bt))
++		*((ulong*)&bt->stackbuf[STACK_OFFSET_TYPE(addr)]) = val;
++	return writemem(addr, KVADDR, &tmp, sizeof tmp,
++			"set_ulong", FAULT_ON_ERROR);
++}
++
+ typedef unsigned long unw_word;
+ 
+ /* Unwind accessors.  */
+@@ -297,13 +307,14 @@ unw_access_gr_v3 (struct unw_frame_info
+ 					if (write) {
+ 						if (*nat) {
+ 							/* write NaTVal and be done with it */
+-							addr[0] = 0;
+-							addr[1] = 0x1fffe;
++							set_ulong(addr+0, 0);
++							set_ulong(addr+1, 0x1fffe);
+ 							return 0;
+ 						}
+-						addr[1] = 0x1003e;
++						set_ulong(addr+1, 0x1003e);
+ 					} else {
+-						if (addr[0] == 0 && addr[1] == 0x1ffe) {
++						if (IA64_GET_STACK_ULONG(addr+0) == 0 &&
++						    IA64_GET_STACK_ULONG(addr+1) == 0x1fffe) {
+ 							/* return NaT and be done with it */
+ 							*val = 0;
+ 							*nat = 1;
+@@ -312,8 +323,7 @@ unw_access_gr_v3 (struct unw_frame_info
+ 					}
+ 					/* fall through */
+ 				      case UNW_NAT_NONE:
+-					dummy_nat = 0;
+-					nat_addr = &dummy_nat;
++					nat_addr = NULL;
+ 					break;
+ 
+ 				      case UNW_NAT_MEMSTK:
+@@ -377,11 +387,13 @@ unw_access_gr_v3 (struct unw_frame_info
+ 	}
+ 
+ 	if (write) {
+-		*addr = *val;
+-		if (*nat)
+-			*nat_addr |= nat_mask;
++		set_ulong(addr, *val);
++		if (!nat_addr)
++			/* do nothing */;
++		else if (*nat)
++			set_ulong(nat_addr, IA64_GET_STACK_ULONG(nat_addr) | nat_mask);
+ 		else
+-			*nat_addr &= ~nat_mask;
++			set_ulong(nat_addr, IA64_GET_STACK_ULONG(nat_addr) & ~nat_mask);
+ 	} else {
+ 		if ((IA64_GET_STACK_ULONG(nat_addr) & nat_mask) == 0) {
+ 			*val = IA64_GET_STACK_ULONG(addr);
+@@ -432,7 +444,7 @@ unw_access_br_v3 (struct unw_frame_info
+ 		return -1;
+ 	}
+ 	if (write)
+-		*addr = *val;
++		set_ulong(addr, *val);
+ 	else
+ 		*val = IA64_GET_STACK_ULONG(addr);
+ 	return 0;
+@@ -479,7 +491,7 @@ unw_access_fr_v1 (struct unw_frame_info
+ 	}
+ 
+ 	if (write)
+-		*addr = *val;
++		set_ulong(addr, *val);
+ 	else
+ 		GET_STACK_DATA(addr, val, sizeof(struct ia64_fpreg));
+ 	return 0;
+@@ -524,7 +536,7 @@ unw_access_fr_v2 (struct unw_frame_info
+         }
+ 
+         if (write)
+-                *addr = *val;
++                set_ulong(addr, *val);
+         else
+ 		GET_STACK_DATA(addr, val, sizeof(struct ia64_fpreg));
+ 
+@@ -570,7 +582,7 @@ unw_access_fr_v3 (struct unw_frame_info
+         }
+ 
+         if (write)
+-                *addr = *val;
++                set_ulong(addr, *val);
+         else
+ 		GET_STACK_DATA(addr, val, sizeof(struct ia64_fpreg));
+ 
+@@ -684,7 +696,7 @@ unw_access_ar_v3 (struct unw_frame_info
+ 	}
+ 
+ 	if (write)
+-		*addr = *val;
++		set_ulong(addr, *val);
+ 	else
+ 		*val = IA64_GET_STACK_ULONG(addr);
+ 	return 0;
