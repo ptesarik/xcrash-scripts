@@ -184,8 +184,10 @@ is_host_type(node_t *expr, ind_t *ind)
 		break;
 
 	case TYPECAST:
-		type = first_node(&expr->child[che_arg1]);
-		break;
+		child = nth_node(&expr->child[che_arg2], 1);
+		if (child && is_host_type(child, ind))
+			return 1;
+		return 0;
 
 	case FUNC:
 		child = first_node(&expr->child[che_arg1]);
