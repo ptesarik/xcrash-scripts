@@ -1651,6 +1651,7 @@ update_parsed_files(struct list_head *filelist)
 		if (res)
 			return res;
 	}
+	clearmacros();
 
 	uptodate = 1;
 	return 0;
