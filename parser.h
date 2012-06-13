@@ -69,7 +69,6 @@ typedef struct {
 /* Parsed types */
 
 enum type_category {
-	type_none = 0,
 	type_basic,
 	type_typedef,
 	type_struct,

@@ -88,10 +88,6 @@ dump_type(node_t *node, int showflags)
 	}
 
 	switch(type->category) {
-	case type_none:
-		fputs("none", fdump);
-		break;
-
 	case type_basic:
 		dump_basic_type(type);
 		break;
