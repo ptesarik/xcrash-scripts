@@ -8,7 +8,7 @@
 
 extern FILE *fdump;
 
-void dump_text(struct dynstr *first, struct dynstr *last);
+void dump_text(struct dynstr *first, struct dynstr *last, int markup);
 void dump_tree(struct list_head *tree);
 
 void shortdump_type(node_t *type);
@@ -20,9 +20,9 @@ void dump_ind(const ind_t *ind);
 void shortdump_varind(node_t *var, ind_t *ind);
 
 static inline void
-dump_node_text(node_t *node)
+dump_node_text(node_t *node, int markup)
 {
-	dump_text(node->first_text, node->last_text);
+	dump_text(node->first_text, node->last_text, markup);
 }
 
 static inline const char *

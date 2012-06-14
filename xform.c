@@ -728,7 +728,7 @@ subst_target_expr(node_t *expr, ind_t *ind)
 		}
 
 		fputs("    variable not found: ", fdump);
-		dump_node_text(expr);
+		dump_node_text(expr, 0);
 		putc('\n', fdump);
 		/* fall through */
 	case INT_CONST:
@@ -788,10 +788,10 @@ subst_target_call_arg(node_t *call, ind_t *ind)
 	fprintf(fdump, "  %s:", node_file_name(call));
 	shortdump_scope(call);
 	fprintf(fdump, ": convert argument #%d of ", *ind);
-	dump_node_text(fn);
+	dump_node_text(fn, 0);
 	if (arg) {
 		fputs(" (", fdump);
-		dump_node_text(arg);
+		dump_node_text(arg, 0);
 		fputs(") as ", fdump);
 		dump_ind(ind + 1);
 		putc('\n', fdump);

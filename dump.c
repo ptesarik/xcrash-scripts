@@ -15,12 +15,34 @@ static void dump_type(node_t *node, int showflags);
 static void dump_expr(node_t *node);
 static void dump_var(node_t *node);
 
+/* Mark fake text with reverse video */
+#define FAKE_START	"\e[7m"
+#define FAKE_END	"\e[27m"
+
+/* Mark expanded macros with underline */
+#define EXPANDED_START	"\e[4m"
+#define EXPANDED_END	"\e[24m"
+
 void
-dump_text(struct dynstr *first, struct dynstr *last)
+dump_text(struct dynstr *first, struct dynstr *last, int markup)
 {
 	struct dynstr *cur = first;
 	for (;;) {
+		if (markup) {
+			if (cur->flags.fake)
+				fputs(FAKE_START, fdump);
+			if (cur->flags.expanded)
+				fputs(EXPANDED_START, fdump);
+		}
+
 		fwrite(cur->text, 1, cur->len, fdump);
+
+		if (markup) {
+			if (cur->flags.fake)
+				fputs(FAKE_END, fdump);
+			if (cur->flags.expanded)
+				fputs(EXPANDED_END, fdump);
+		}
 
 		if (cur == last)
 			break;
@@ -289,7 +311,7 @@ dump_node(node_t *node)
 	++depth;
 
 	fprintf(fdump, "%*s(>>>", depth*indent, "");
-	dump_text(node->first_text, node->last_text);
+	dump_node_text(node, 1);
 	fprintf(fdump, "<<<\n%*s", depth*indent, "");
 	switch (node->type) {
 	case nt_type: dump_type(node, 1); break;
@@ -338,7 +360,7 @@ shortdump_type(node_t *type)
 			node_t *size = first_node(&type->child[cht_size]);
 			if (&size->list != &type->child[cht_size]) {
 				putc('[', fdump);
-				dump_text(size->first_text, size->last_text);
+				dump_node_text(size, 0);
 				putc(']', fdump);
 			}
 			fputs(" of ", fdump);
