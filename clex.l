@@ -294,8 +294,11 @@ CPP			("#"|"%:"){WS}*
 {L}({L}|{D})*		{
 		if (YY_START == INITIAL) {
 			struct hashed_macro *hm = findmacro(yytext, cpp_cond);
-			if (hm && (macrods = expand_macro(loc, hm)))
-				return yylex(val, loc);
+			if (hm) {
+				last_dynstr(&raw_contents)->expanded = 1;
+				if ( (macrods = expand_macro(loc, hm)) )
+					return yylex(val, loc);
+			}
 		}
 		return STORE_TOKEN(ID);
 	}
@@ -379,6 +382,7 @@ struct dynstr *newdynstr(const char *s, size_t len)
 	ds->alloc = len + 1;
 	ds->reuse = 0;
 	ds->fake = 0;
+	ds->expanded = 0;
 	if (s)
 		memcpy(ds->text, s, len);
 	ds->text[ds->len] = '\0';
@@ -399,6 +403,7 @@ dupdynstr(struct dynstr *ds)
 	ret->alloc = ds->len + 1;
 	ret->reuse = 0;
 	ret->fake = 1;
+	ret->expanded = 0;
 	memcpy(ret->text, ds->text, ds->len + 1);
 	return ret;
 }
@@ -528,7 +533,8 @@ dynstr_read(void *buf, size_t max_size)
 	if (!lex_input_ptr)
 		lex_input_ptr = lex_input_first->text;
 
-	while (! (n = dynstr_remain(lex_input_first, lex_input_ptr)) &&
+	while ((lex_input_first->expanded ||
+		! (n = dynstr_remain(lex_input_first, lex_input_ptr))) &&
 	       lex_input_first != lex_input_last) {
 		lex_input_first = next_dynstr(lex_input_first);
 		lex_input_ptr = lex_input_first->text;

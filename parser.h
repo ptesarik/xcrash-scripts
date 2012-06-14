@@ -18,6 +18,7 @@ struct dynstr {
 
 	int reuse:1;
 	int fake:1;
+	int expanded:1;
 
 	size_t len, alloc;
 	char text[];
