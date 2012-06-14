@@ -889,39 +889,6 @@ target_types_readmem(node_t *node, void *data)
 	return walk_continue;
 }
 
-static enum walk_action
-target_facilitators(node_t *node, void *data)
-{
-	static const char * const namelist[] = {
-		"INT", "UINT", "LONG", "ULONG",
-		"ULONGLONG", "ULONG_PTR", "USHORT", "SHORT",
-		NULL
-	};
-	const char *const *name;
-	struct list_head *filelist = data;
-	struct parsed_file *pf = node->pf;
-
-	/* Ignore everything except the built-in file */
-	if (pf->name)
-		return walk_terminate;
-
-	for (name = namelist; *name; ++name) {
-		node_t *var = varscope_symbol(filelist, *name);
-		if (!var) {
-			fprintf(stderr, "ERROR: Cannot find %s\n", *name);
-			continue;
-		}
-		node_t *type = nth_node(&var->child[chv_type], 1);
-		if (!type) {
-			fprintf(stderr, "ERROR: %s has no type?!\n", *name);
-			continue;
-		}
-		list_add_tail(&type->user_list, &replacedlist);
-	}
-
-	return walk_terminate;
-}
-
 /************************************************************
  * Translate calls to mkstring()
  *
@@ -1813,9 +1780,6 @@ static struct xform_desc xforms[] = {
 
 // Target types in calls to readmem
 { "target-types-readmem.patch", type_subst, target_types_readmem },
-
-// Target facilitator macros
-{ "target-facilitators.patch", type_subst, target_facilitators },
 
 // Introduce target timeval
 { "target-timeval.patch", import },
