@@ -25,6 +25,7 @@ replace_text(node_t *node, const char *text)
 {
 	nullify_str(node);
 	struct dynstr *ds = newdynstr(text, strlen(text));
+	ds->flags = node->first_text->flags;
 	replace_text_list(node->first_text, node->last_text, ds, ds);
 	return ds;
 }
@@ -287,6 +288,7 @@ replace_type(node_t *node, const char *newtext)
 	split = find_split(base, ind, newtext);
 	if (!split) {
 		struct dynstr *newds = newdynstr(newtext, strlen(newtext));
+		newds->flags = base->str->flags;
 		if (base->str->refcount == 1) {
 			node = flatten_type(node, base);
 			node = replace_single_type(node, newds);
@@ -350,6 +352,7 @@ type_split(struct list_head *raw, struct split_node *split)
 	point = olddecl->first_text;
 
 	/* Create a new dynstr chain */
+	lex_dynstr_flags = point->flags;
 	insert_text_list(point, split->newds, split->newds);
 	ds = newdynstr(" ", 1);
 	list_for_each_entry_safe(type, ntype, &flat_list, user_list) {
