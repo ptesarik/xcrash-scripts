@@ -357,8 +357,6 @@ lex_pop_state(void)
 	yypop_buffer_state();
 }
 
-int tabsize = 8;
-
 static void init_vars(void)
 {
 	lex_input_ptr = NULL;
@@ -461,6 +459,8 @@ reuse_last_content(const char *s, size_t len)
 	ds->text[ds->len] = '\0';
 	return ds;
 }
+
+int tabsize = 8;
 
 static void
 update_loc(YYLTYPE *loc, char c)
