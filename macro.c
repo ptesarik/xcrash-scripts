@@ -267,7 +267,6 @@ dupconcat(struct dynstr *a, struct dynstr *b)
 	char *p = ret->text;
 	memcpy(p, a->text, a->len);
 	memcpy(p + a->len, b->text, b->len);
-	ret->flags.fake = 1;
 	return ret;
 }
 
@@ -287,7 +286,6 @@ dupmerge(struct dynstr *first, struct dynstr *last)
 		memcpy(p, ds->text, ds->len);
 		p += ds->len;
 	}
-	ret->flags.fake = 1;
 	return ret;
 }
 
@@ -324,7 +322,7 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
 		list_add_tail(&dupds->list, point);
 	}
 
-	struct dynstr *last = last_dynstr(&raw_contents);
+	struct dynstr *first = last_dynstr(&raw_contents);
 
 	merged = dupconcat(prevtok, dupds);
 	lex_push_state();
@@ -334,12 +332,9 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
 	lex_pop_state();
 	freedynstr(merged);
 
-	struct dynstr *first = next_dynstr(last);
+	first = next_dynstr(first);
 	if (&first->list != &raw_contents) {
-		for (last = first; &last->list != &raw_contents;
-		     last = next_dynstr(last))
-			last->flags.fake = 1;
-		last = prev_dynstr(last);
+		struct dynstr *last = last_dynstr(&raw_contents);
 
 		detach_text(first, last);
 		replace_text_list(prevtok, dupds, first, last);
@@ -462,14 +457,19 @@ delete_params(struct hashed_macro *hm)
 struct dynstr *
 expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 {
+	dynstr_flags_t saved_dynstr_flags = lex_dynstr_flags;
 	struct dynstr *ret;
 
 	if (hm->hasparam) {
-		if (parse_macro_args(loc, hm))
+		if (parse_macro_args(loc, hm)) {
+			lex_dynstr_flags = saved_dynstr_flags;
 			return NULL;
+		}
 
+		lex_dynstr_flags.fake = 1;
 		expand_params(loc, hm);
 	}
+	lex_dynstr_flags.fake = 1;
 
 	if (hm->isparam) {
 		ret = duplist(hm->first, hm->last);
@@ -485,6 +485,7 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 	}
 
 	delete_params(hm);
+	lex_dynstr_flags = saved_dynstr_flags;
 
 	return ret;
 }

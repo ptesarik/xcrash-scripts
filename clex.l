@@ -400,7 +400,6 @@ dupdynstr(struct dynstr *ds)
 	ret->token = ds->token;
 	ret->refcount = 0;
 	ret->flags = lex_dynstr_flags;
-	ret->flags.fake = 1;
 	ret->len = ds->len;
 	ret->alloc = ds->len + 1;
 	memcpy(ret->text, ds->text, ds->len + 1);
