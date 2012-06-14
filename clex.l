@@ -32,6 +32,9 @@ dynstr_flags_t lex_dynstr_flags;
 
 static char *lex_input_ptr;
 
+static int input_off;		/* absolute byte offset */
+static int output_off;		/* output offset */
+
 static struct cpp_cond_state cond_state;
 static node_t *cpp_cond;
 
@@ -55,6 +58,7 @@ struct lexer_state {
 	YY_BUFFER_STATE buffer;
 	struct dynstr *lex_input_first, *lex_input_last;
 	struct dynstr *macrods;
+	int input_off, output_off;
 };
 static LIST_HEAD(state_stack);
 
@@ -77,6 +81,7 @@ static YYLTYPE fileloc = {
 			errno=0; \
 			clearerr(yyin); \
 		} \
+		input_off += result; \
 	}
 
 #define YY_DECL	int yylex(YYSTYPE *val, YYLTYPE *loc)
@@ -360,11 +365,14 @@ lex_push_state(void)
 	state->lex_input_first = lex_input_first;
 	state->lex_input_last = lex_input_last;
 	state->macrods = macrods;
+	state->input_off = input_off;
+	state->output_off = output_off;
 	list_add(&state->list, &state_stack);
 
 	yy_switch_to_buffer(yy_create_buffer(NULL, YY_BUF_SIZE));
 	lex_input_first = lex_input_last = NULL;
 	macrods = NULL;
+	input_off = output_off = 0;
 }
 
 void
@@ -381,6 +389,8 @@ lex_pop_state(void)
 		lex_input_first = state->lex_input_first;
 		lex_input_last = state->lex_input_last;
 		macrods = state->macrods;
+		input_off = state->input_off;
+		output_off = state->output_off;
 
 		list_del(&state->list);
 		free(state);
@@ -398,6 +408,8 @@ static void init_vars(void)
 	fileloc.last_line = 1;
 	fileloc.last_column = 0;
 	fileloc.last_vcolumn = 0;
+
+	input_off = output_off = 0;
 }
 
 struct dynstr *newdynstr(const char *s, size_t len)
@@ -524,6 +536,7 @@ static void store_yytext(YYLTYPE *loc, const char *s)
 		ds = newdynstr(s, yyleng);
 		list_add_tail(&ds->list, &raw_contents);
 	}
+	output_off += yyleng;
 	ds->cpp_cond = cpp_cond;
 	loc->first_text = loc->last_text = ds;
 }
@@ -578,6 +591,7 @@ dynstr_read(void *buf, size_t max_size)
 		n = max_size;
 	memcpy(buf, lex_input_ptr, n);
 	lex_input_ptr += n;
+	input_off += n;
 	if (!n) {
 		lex_input_first = lex_input_last = NULL;
 		lex_input_ptr = NULL;
