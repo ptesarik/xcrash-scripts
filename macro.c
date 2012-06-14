@@ -225,7 +225,6 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 		yyerror(loc, "expecting '('");
 		return 1;
 	}
-	loc->last_text->flags.expanded = 1;
 
 	list_for_each_entry(param, &hm->params, list) {
 		int paren = 0;
@@ -235,7 +234,6 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 		while ((token = yylex_cpp_arg(&val, loc)) &&
 		       (paren || ((token != ',' || hm->variadic) &&
 				  token != ')')) ) {
-			loc->last_text->flags.expanded = 1;
 			if (token == '(')
 				++paren;
 			else if (token == ')')
@@ -244,12 +242,10 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 				arg->first = loc->first_text;
 			arg->last = loc->last_text;
 		}
-		loc->last_text->flags.expanded = 1;
 	}
 
 	if (list_empty(&hm->params)) {
 		token = yylex_cpp_arg(&val, loc);
-		loc->last_text->flags.expanded = 1;
 	}
 
 	if (token != ')') {
@@ -390,7 +386,6 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			struct dynstr *newfirst, *newlast;
 			struct dynstr *oldmacrods = macrods;
 
-			ds->flags.expanded = 1;
 			macrods = next_dynstr(ds);
 			newfirst = expand_macro(loc, nested);
 			ds = macrods ? prev_dynstr(macrods) : hm->last;
@@ -461,10 +456,12 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 	struct dynstr *ret;
 
 	if (hm->hasparam) {
+		lex_dynstr_flags.expanded = 1;
 		if (parse_macro_args(loc, hm)) {
 			lex_dynstr_flags = saved_dynstr_flags;
 			return NULL;
 		}
+		lex_dynstr_flags.expanded = 0;
 
 		lex_dynstr_flags.fake = 1;
 		expand_params(loc, hm);
