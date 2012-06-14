@@ -431,6 +431,9 @@ reuse_last_content(const char *s, size_t len)
 	if (!ds->flags.reuse)
 		return NULL;
 
+	if (!dynstr_flags_equal(ds->flags, lex_dynstr_flags))
+		return NULL;
+
 	if (ds->len + len + 1 > ds->alloc) {
 		struct dynstr tmp;
 		list_add_tail(&tmp.list, &ds->list);

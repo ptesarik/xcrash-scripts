@@ -13,6 +13,12 @@ typedef struct {
 	int expanded:1;		/* macro that was expanded */
 } dynstr_flags_t;
 
+static inline int
+dynstr_flags_equal(dynstr_flags_t a, dynstr_flags_t b)
+{
+	return a.fake == b.fake && a.expanded == b.expanded;
+}
+
 /* Stored file contents */
 struct dynstr {
 	struct list_head list;
