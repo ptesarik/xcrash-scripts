@@ -28,7 +28,7 @@ struct list_head raw_contents;
 struct dynstr *lex_input_first, *lex_input_last;
 struct dynstr *macrods;
 
-dynstr_flags_t lex_dynstr_flags = { 0, 0, 0 };
+dynstr_flags_t lex_dynstr_flags;
 
 static char *lex_input_ptr;
 
@@ -364,6 +364,7 @@ static void init_vars(void)
 	lex_input_ptr = NULL;
 	macrods = NULL;
 
+	memset(&lex_dynstr_flags, 0, sizeof lex_dynstr_flags);
 	memset(&cond_state, 0, sizeof cond_state);
 	cpp_cond = NULL;
 	fileloc.last_line = 1;
@@ -537,6 +538,8 @@ dynstr_read(void *buf, size_t max_size)
 		lex_input_first = next_dynstr(lex_input_first);
 		lex_input_ptr = lex_input_first->text;
 	}
+
+	lex_dynstr_flags = lex_input_first->flags;
 
 	if (n > max_size)
 		n = max_size;
