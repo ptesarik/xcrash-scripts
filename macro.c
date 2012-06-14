@@ -135,7 +135,7 @@ delmacro(const char *name)
 	while ( (hm = *pprev) ) {
 		if (!strcmp(name, hm->name)) {
 			*pprev = hm->next;
-			if (hm->first && hm->first->fake)
+			if (hm->first && hm->first->flags.fake)
 				delmacro_text(hm);
 			free(hm);
 			break;
@@ -184,7 +184,7 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 				struct dynstr *ds;
 				hm->variadic = 1;
 				ds = newdynstr("__VA_ARGS__", 11);
-				ds->fake = 1;
+				ds->flags.fake = 1;
 				list_add_tail(&ds->list, &raw_contents);
 				var = newvar(loc, ds);
 			} else
@@ -225,7 +225,7 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 		yyerror(loc, "expecting '('");
 		return 1;
 	}
-	loc->last_text->expanded = 1;
+	loc->last_text->flags.expanded = 1;
 
 	list_for_each_entry(param, &hm->params, list) {
 		int paren = 0;
@@ -235,7 +235,7 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 		while ((token = yylex_cpp_arg(&val, loc)) &&
 		       (paren || ((token != ',' || hm->variadic) &&
 				  token != ')')) ) {
-			loc->last_text->expanded = 1;
+			loc->last_text->flags.expanded = 1;
 			if (token == '(')
 				++paren;
 			else if (token == ')')
@@ -244,12 +244,12 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 				arg->first = loc->first_text;
 			arg->last = loc->last_text;
 		}
-		loc->last_text->expanded = 1;
+		loc->last_text->flags.expanded = 1;
 	}
 
 	if (list_empty(&hm->params)) {
 		token = yylex_cpp_arg(&val, loc);
-		loc->last_text->expanded = 1;
+		loc->last_text->flags.expanded = 1;
 	}
 
 	if (token != ')') {
@@ -267,7 +267,7 @@ dupconcat(struct dynstr *a, struct dynstr *b)
 	char *p = ret->text;
 	memcpy(p, a->text, a->len);
 	memcpy(p + a->len, b->text, b->len);
-	ret->fake = 1;
+	ret->flags.fake = 1;
 	return ret;
 }
 
@@ -287,7 +287,7 @@ dupmerge(struct dynstr *first, struct dynstr *last)
 		memcpy(p, ds->text, ds->len);
 		p += ds->len;
 	}
-	ret->fake = 1;
+	ret->flags.fake = 1;
 	return ret;
 }
 
@@ -338,7 +338,7 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
 	if (&first->list != &raw_contents) {
 		for (last = first; &last->list != &raw_contents;
 		     last = next_dynstr(last))
-			last->fake = 1;
+			last->flags.fake = 1;
 		last = prev_dynstr(last);
 
 		detach_text(first, last);
@@ -395,7 +395,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			struct dynstr *newfirst, *newlast;
 			struct dynstr *oldmacrods = macrods;
 
-			ds->expanded = 1;
+			ds->flags.expanded = 1;
 			macrods = next_dynstr(ds);
 			newfirst = expand_macro(loc, nested);
 			ds = macrods ? prev_dynstr(macrods) : hm->last;

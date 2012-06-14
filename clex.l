@@ -28,6 +28,8 @@ struct list_head raw_contents;
 struct dynstr *lex_input_first, *lex_input_last;
 struct dynstr *macrods;
 
+dynstr_flags_t lex_dynstr_flags = { 0, 0, 0 };
+
 static char *lex_input_ptr;
 
 static struct cpp_cond_state cond_state;
@@ -123,19 +125,19 @@ CPP			("#"|"%:"){WS}*
 ^{WS}*{CPP}	{
 			BEGIN(cpp);
 			if (parse_cpp(loc) && YY_START != INITIAL) {
-				loc->last_text->reuse = 1;
+				loc->last_text->flags.reuse = 1;
 				BEGIN(cpp_recover);
 			}
 		}
 <cpp_recover>\n	{
-			loc->last_text->reuse = 0;
+			loc->last_text->flags.reuse = 0;
 			BEGIN(INITIAL);
 		}
   /* skip whitespace except newline */
 <cpp_macro,cpp_condition,cpp,cpp_def,cpp_undef>{WS}+
   /* A newline terminates the directive */
 <cpp_macro,cpp_condition,cpp,cpp_def,cpp_undef,cpp_ign>\n	{
-			loc->last_text->reuse = 0;
+			loc->last_text->flags.reuse = 0;
 			BEGIN(INITIAL);
 			yyterminate();
 		}
@@ -173,7 +175,7 @@ CPP			("#"|"%:"){WS}*
 			return STORE_TOKEN(CPP_ENDIF);
 			}
 (?s:.)			{
-			loc->last_text->reuse = 1;
+			loc->last_text->flags.reuse = 1;
 			BEGIN(cpp_ign);
 			}
 }
@@ -295,7 +297,7 @@ CPP			("#"|"%:"){WS}*
 		if (YY_START == INITIAL) {
 			struct hashed_macro *hm = findmacro(yytext, cpp_cond);
 			if (hm) {
-				last_dynstr(&raw_contents)->expanded = 1;
+				last_dynstr(&raw_contents)->flags.expanded = 1;
 				if ( (macrods = expand_macro(loc, hm)) )
 					return yylex(val, loc);
 			}
@@ -378,11 +380,9 @@ struct dynstr *newdynstr(const char *s, size_t len)
 	ds->cpp_cond = NULL;
 	ds->token = 0;
 	ds->refcount = 0;
+	ds->flags = lex_dynstr_flags;
 	ds->len = len;
 	ds->alloc = len + 1;
-	ds->reuse = 0;
-	ds->fake = 0;
-	ds->expanded = 0;
 	if (s)
 		memcpy(ds->text, s, len);
 	ds->text[ds->len] = '\0';
@@ -399,11 +399,10 @@ dupdynstr(struct dynstr *ds)
 	ret->cpp_cond = cpp_cond;
 	ret->token = ds->token;
 	ret->refcount = 0;
+	ret->flags = lex_dynstr_flags;
+	ret->flags.fake = 1;
 	ret->len = ds->len;
 	ret->alloc = ds->len + 1;
-	ret->reuse = 0;
-	ret->fake = 1;
-	ret->expanded = 0;
 	memcpy(ret->text, ds->text, ds->len + 1);
 	return ret;
 }
@@ -429,7 +428,7 @@ reuse_last_content(const char *s, size_t len)
 		return NULL;
 
 	ds = last_dynstr(&raw_contents);
-	if (!ds->reuse)
+	if (!ds->flags.reuse)
 		return NULL;
 
 	if (ds->len + len + 1 > ds->alloc) {
@@ -533,7 +532,7 @@ dynstr_read(void *buf, size_t max_size)
 	if (!lex_input_ptr)
 		lex_input_ptr = lex_input_first->text;
 
-	while ((lex_input_first->expanded ||
+	while ((lex_input_first->flags.expanded ||
 		! (n = dynstr_remain(lex_input_first, lex_input_ptr))) &&
 	       lex_input_first != lex_input_last) {
 		lex_input_first = next_dynstr(lex_input_first);
@@ -597,7 +596,7 @@ parse_cpp(YYLTYPE *loc)
 	list_del_init(&parsed_tree);
 
 	ds = newdynstr(NULL, 0);
-	ds->reuse = 1;
+	ds->flags.reuse = 1;
 	list_add_tail(&ds->list, &raw_contents);
 
 	start_symbol = START_DIRECTIVE;

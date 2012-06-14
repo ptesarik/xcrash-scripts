@@ -1050,13 +1050,13 @@ print_last_line(const YYLTYPE *loc)
 	int column = loc->last_column;
 	struct dynstr *ds = loc->last_text;
 
-	while (ds->fake || column > ds->len) {
-		if (!ds->fake)
+	while (ds->flags.fake || column > ds->len) {
+		if (!ds->flags.fake)
 			column -= ds->len;
 		ds = prev_dynstr(ds);
 	}
 	for (;;) {
-		if (!ds->fake)
+		if (!ds->flags.fake)
 			fwrite(ds->text + ds->len - column,
 			       sizeof(char), column, stderr);
 		if (ds == loc->last_text)

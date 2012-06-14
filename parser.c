@@ -249,7 +249,7 @@ int dump_contents(struct list_head *contents, FILE *f)
 {
 	struct dynstr *ds;
 	list_for_each_entry(ds, contents, list) {
-		if (ds->fake)
+		if (ds->flags.fake)
 			continue;
 		if (fwrite(ds->text, 1, ds->len, f) != ds->len)
 			return -1;

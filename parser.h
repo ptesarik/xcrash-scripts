@@ -7,6 +7,12 @@
 #include <string.h>		/* for strrchr */
 #include "lists.h"
 
+typedef struct {
+	int reuse:1;		/* can be reused for following text */
+	int fake:1;		/* not found in input file */
+	int expanded:1;		/* macro that was expanded */
+} dynstr_flags_t;
+
 /* Stored file contents */
 struct dynstr {
 	struct list_head list;
@@ -16,9 +22,7 @@ struct dynstr {
 	int token;
 	int refcount;		/* external references (with node->str) */
 
-	int reuse:1;
-	int fake:1;
-	int expanded:1;
+	dynstr_flags_t flags;
 
 	size_t len, alloc;
 	char text[];
@@ -57,6 +61,9 @@ extern struct dynstr *lex_input_first, *lex_input_last;
  *   2. there's no tokenization - the existing tokens are returned
  */
 extern struct dynstr *macrods;
+
+/* Default flags for newly created dynstr objects. */
+extern dynstr_flags_t lex_dynstr_flags;
 
 typedef struct {
 	int first_line;
