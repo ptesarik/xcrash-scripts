@@ -50,6 +50,14 @@ static int store_btype(YYSTYPE *, YYLTYPE *, int);
 static size_t dynstr_read(void *, size_t);
 static int parse_cpp(YYLTYPE *loc);
 
+struct lexer_state {
+	struct list_head list;
+	YY_BUFFER_STATE buffer;
+	struct dynstr *lex_input_first, *lex_input_last;
+	struct dynstr *macrods;
+};
+static LIST_HEAD(state_stack);
+
 static YYLTYPE fileloc = {
 	1, 0, 0,		/* first_line, first_column, first_vcolumn */
 	1, 0, 0,		/* last_line, last_column, last_vcolumn */
@@ -347,14 +355,36 @@ yylex_cpp_arg(union YYSTYPE *val, YYLTYPE *loc)
 void
 lex_push_state(void)
 {
-	YY_BUFFER_STATE state = yy_create_buffer(NULL, YY_BUF_SIZE);
-	yypush_buffer_state(state);
+	struct lexer_state *state = malloc(sizeof(struct lexer_state));
+	state->buffer = YY_CURRENT_BUFFER;
+	state->lex_input_first = lex_input_first;
+	state->lex_input_last = lex_input_last;
+	state->macrods = macrods;
+	list_add(&state->list, &state_stack);
+
+	yy_switch_to_buffer(yy_create_buffer(NULL, YY_BUF_SIZE));
+	lex_input_first = lex_input_last = NULL;
+	macrods = NULL;
 }
 
 void
 lex_pop_state(void)
 {
-	yypop_buffer_state();
+        if (!YY_CURRENT_BUFFER)
+                return;
+	yy_delete_buffer(YY_CURRENT_BUFFER);
+
+	if (!list_empty(&state_stack)) {
+		struct lexer_state *state =
+			list_entry(state_stack.next, struct lexer_state, list);
+		yy_switch_to_buffer(state->buffer);
+		lex_input_first = state->lex_input_first;
+		lex_input_last = state->lex_input_last;
+		macrods = state->macrods;
+
+		list_del(&state->list);
+		free(state);
+	}
 }
 
 static void init_vars(void)
