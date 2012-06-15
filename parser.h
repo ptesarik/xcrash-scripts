@@ -80,6 +80,9 @@ typedef struct {
 } loc_t;
 #define YYLTYPE	loc_t
 
+/* Initialize @loc */
+void init_loc(YYLTYPE *loc);
+
 /* Update @loc with @len characters starting at @p */
 void update_loc(YYLTYPE *loc, const char *p, size_t len);
 

@@ -71,11 +71,7 @@ struct stored_meta {
 };
 static LIST_HEAD(stored_meta);
 
-static YYLTYPE fileloc = {
-	1, 0, 0,		/* first_line, first_column, first_vcolumn */
-	1, 0, 0,		/* last_line, last_column, last_vcolumn */
-	NULL, NULL		/* first_text, last_text */
-};
+static YYLTYPE fileloc;
 
 #define YY_INPUT(buf,result,max_size) \
 	if (lex_input_first) { \
@@ -447,9 +443,7 @@ static void init_vars(void)
 	memset(&lex_dynstr_flags, 0, sizeof lex_dynstr_flags);
 	memset(&cond_state, 0, sizeof cond_state);
 	cpp_cond = NULL;
-	fileloc.last_line = 1;
-	fileloc.last_column = 0;
-	fileloc.last_vcolumn = 0;
+	init_loc(&fileloc);
 
 	input_off = output_off = 0;
 
@@ -550,6 +544,14 @@ reuse_last_content(const char *s, size_t len)
 }
 
 int tabsize = 8;
+
+void
+init_loc(YYLTYPE *loc)
+{
+	loc->first_line    = loc->last_line    = 1;
+	loc->first_column  = loc->last_column  = 0;
+	loc->first_vcolumn = loc->last_vcolumn = 0;
+}
 
 void
 update_loc(YYLTYPE *loc, const char *p, size_t len)

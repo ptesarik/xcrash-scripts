@@ -194,10 +194,8 @@ static void hidedecls(struct list_head *);
 {
 	struct dynstr *ds = newdynstr(NULL, 0);
 	list_add_tail(&ds->list, &raw_contents);
-	@$.first_line    = @$.last_line    = 1;
-	@$.first_column  = @$.last_column  = 0;
-	@$.first_vcolumn = @$.last_vcolumn = 0;
-	@$.first_text    = @$.last_text    = ds;
+	init_loc(&@$);
+	@$.first_text = @$.last_text = ds;
 }
 %%
 
