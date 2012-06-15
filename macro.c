@@ -538,6 +538,24 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 
 	ret = do_expand(loc, hm);
 
+	if (ret) {
+		struct macro_exp *exp = malloc(sizeof(struct macro_exp));
+
+		exp->hm = hm;
+		exp->first = loc->first_text;
+		exp->last = loc->last_text;
+		exp->exp_first = next_dynstr(exp->last);
+		exp->exp_last = last_dynstr(&raw_contents);
+		exp->refcount = 0;
+
+		ds = exp->first;
+		while (&ds->list != &raw_contents) {
+			put_macro_exp(ds->exp);
+			ds->exp = get_macro_exp(exp);
+			ds = next_dynstr(ds);
+		}
+	}
+
 	lex_dynstr_flags = saved_dynstr_flags;
 	return ret;
 }

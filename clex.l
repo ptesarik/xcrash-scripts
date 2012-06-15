@@ -461,6 +461,7 @@ struct dynstr *newdynstr(const char *s, size_t len)
 	INIT_LIST_HEAD(&ds->node_first);
 	INIT_LIST_HEAD(&ds->node_last);
 	ds->cpp_cond = NULL;
+	ds->exp = NULL;
 	ds->token = 0;
 	ds->refcount = 0;
 	ds->flags = lex_dynstr_flags;
@@ -480,6 +481,7 @@ dupdynstr(struct dynstr *ds)
 	INIT_LIST_HEAD(&ret->node_first);
 	INIT_LIST_HEAD(&ret->node_last);
 	ret->cpp_cond = cpp_cond;
+	ret->exp = NULL;
 	ret->token = ds->token;
 	ret->refcount = 0;
 	ret->flags = lex_dynstr_flags;
@@ -495,6 +497,7 @@ void freedynstr(struct dynstr *ds)
 		fputs("Attempt to free an in-use dynstr!\n", stderr);
 		abort();
 	}
+	put_macro_exp(ds->exp);
 	free(ds);
 }
 

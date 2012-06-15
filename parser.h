@@ -5,6 +5,7 @@
 
 #include <stdio.h>		/* for FILE */
 #include <string.h>		/* for strrchr */
+#include <stdlib.h>		/* for free */
 #include "lists.h"
 
 typedef struct {
@@ -20,10 +21,12 @@ dynstr_flags_equal(dynstr_flags_t a, dynstr_flags_t b)
 }
 
 /* Stored file contents */
+struct macro_exp;
 struct dynstr {
 	struct list_head list;
 	struct list_head node_first, node_last;
 	struct node *cpp_cond;
+	struct macro_exp *exp;
 
 	int token;
 	int refcount;		/* external references (with node->str) */
@@ -249,6 +252,28 @@ struct hashed_macro;
 void clearmacros(void);
 struct hashed_macro *findmacro(const char *name, node_t *cpp_cond);
 void undefmacro(const char *name);
+
+/* Macro expansion */
+struct macro_exp {
+	struct hashed_macro *hm;
+	struct dynstr *first, *last;	     /* Unexpanded macro text */
+	struct dynstr *exp_first, *exp_last; /* Macro expansion */
+	int refcount;			     /* Reference count */
+};
+
+static inline struct macro_exp *
+get_macro_exp(struct macro_exp *exp)
+{
+	++exp->refcount;
+	return exp;
+}
+
+static inline void
+put_macro_exp(struct macro_exp *exp)
+{
+	if (exp && !--exp->refcount)
+		free(exp);
+}
 
 /* Parser/lexer interface */
 extern FILE *yyin;
