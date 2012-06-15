@@ -80,6 +80,16 @@ remove_text_list_rev(struct dynstr *ds, struct dynstr *keep)
 		}
 }
 
+/* Remove special flags from a list of dynstr objects */
+static void
+unflag_text_list(struct dynstr *first, struct dynstr *last)
+{
+	while (&first->list != last->list.next) {
+		first->flags.fake = first->flags.macro = 0;
+		first = next_dynstr(first);
+	}
+}
+
 static void
 replace_node_str(node_t *node, const char *newtext)
 {
@@ -927,10 +937,15 @@ mkstring_variadic(node_t *node, void *data)
 
 	/* Remove MKSTR if necessary */
 	node_t *opt = nth_node(&node->child[che_arg2], 4);
+	struct dynstr *arg4 = opt->first_text;
 	struct macro_exp *exp = opt->first_text->exp;
 	if (exp && !strcmp(exp->hm->name, "MKSTR")) {
+		nullify_str(opt);
+		freenode(opt);
 		remove_text_list(exp->first, exp->params[0].first);
-		remove_text_list_rev(exp->last, exp->params[0].last);
+		remove_text_list_rev(exp->exp_last, exp->params[0].last);
+		unflag_text_list(exp->params[0].first, exp->params[0].last);
+		arg4 = exp->params[0].first;
 	}
 
 	/* Get the right typecast if necessary */
@@ -939,7 +954,7 @@ mkstring_variadic(node_t *node, void *data)
 	walk_tree_single(flags, mkstring_typecast, &typecast);
 	if (typecast) {
 		struct dynstr *ds = newdynstr(typecast, strlen(typecast));
-		list_add_tail(&ds->list, &opt->first_text->list);
+		list_add_tail(&ds->list, &arg4->list);
 	}
 
 	reparse_node(node, START_EXPR);
