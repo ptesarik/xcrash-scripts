@@ -924,13 +924,12 @@ mkstring_variadic(node_t *node, void *data)
 	if (!is_direct_call(node, "mkstring"))
 		return 0;
 
-	/* Remove MKSTRING if necessary */
+	/* Remove MKSTR if necessary */
 	node_t *opt = nth_node(&node->child[che_arg2], 4);
-	if (is_direct_call(opt, "MKSTR")) {
-		node_t *arg = nth_node(&opt->child[che_arg2], 1);
-		nullify_str(opt);
-		remove_text_list(opt->first_text, arg->first_text);
-		remove_text_list_rev(opt->last_text, arg->last_text);
+	struct macro_exp *exp = opt->first_text->exp;
+	if (exp && !strcmp(exp->hm->name, "MKSTR")) {
+		remove_text_list(exp->first, exp->params[0].first);
+		remove_text_list_rev(exp->last, exp->params[0].last);
 	}
 
 	/* Get the right typecast if necessary */
