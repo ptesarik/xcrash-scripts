@@ -248,7 +248,24 @@ int istypedef(const char *name);
 void init_predef_types(void);
 
 /* Macro hash */
-struct hashed_macro;
+struct hashed_macro {
+	struct hashed_macro *next;
+	char *name;
+
+	struct list_head params;
+	int nparams;		/* number of parameters */
+
+	struct node *cpp_cond;
+	struct dynstr *first, *last;
+
+	int undef:1;		/* #undefined macro */
+	int hidden:1;		/* macro should be ignored in searches */
+	int hasparam:1;		/* a macro that has parameters */
+	int isparam:1;		/* is a macro parameter? */
+	int noexpand:1;		/* should not expand (prevent recursion) */
+	int variadic:1;		/* this a variadic parameter */
+};
+
 void clearmacros(void);
 struct hashed_macro *findmacro(const char *name, node_t *cpp_cond);
 void undefmacro(const char *name);
