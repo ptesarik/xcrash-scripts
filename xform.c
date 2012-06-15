@@ -898,11 +898,12 @@ static enum walk_action
 mkstring_typecast(node_t *node, void *data)
 {
 	const char **typecast = data;
+	struct macro_exp *exp = node->first_text->exp;
 
-	if (!is_id(node))
+	if (!exp)
 		return walk_continue;
 
-	const char *id = node->str->text;
+	const char *id = exp->hm->name;
 	if (!strcmp(id, "LONG_DEC") ||
 	    !strcmp(id, "LONG_HEX")) {
 		*typecast = "(ulong)";
