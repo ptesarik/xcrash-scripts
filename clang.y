@@ -194,7 +194,7 @@ static void hidedecls(struct list_head *);
 {
 	struct dynstr *ds = newdynstr(NULL, 0);
 	list_add_tail(&ds->list, &raw_contents);
-	init_loc(&@$);
+	init_loc(&@$, NULL);
 	@$.first_text = @$.last_text = ds;
 }
 %%
@@ -1082,6 +1082,9 @@ yyerror(YYLTYPE *loc, const char *s)
 		putc('^', stderr);
 	fprintf(stderr, "\n%*s on line %d\n",
 		first_vcolumn + 1, s, loc->last_line);
+
+	if (loc->parent)
+		yyerror(loc->parent, "...expanded from the above macro");
 }
 
 struct parsed_file *parsed_file;

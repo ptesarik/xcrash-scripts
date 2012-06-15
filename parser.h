@@ -71,17 +71,18 @@ extern struct dynstr *macrods;
 /* Default flags for newly created dynstr objects. */
 extern dynstr_flags_t lex_dynstr_flags;
 
-typedef struct {
+typedef struct loc {
 	int first_line;
 	int first_column, first_vcolumn;
 	int last_line;
 	int last_column, last_vcolumn;
 	struct dynstr *first_text, *last_text;
+	struct loc *parent;
 } loc_t;
 #define YYLTYPE	loc_t
 
 /* Initialize @loc */
-void init_loc(YYLTYPE *loc);
+void init_loc(YYLTYPE *loc, YYLTYPE *parent);
 
 /* Update @loc with @len characters starting at @p */
 void update_loc(YYLTYPE *loc, const char *p, size_t len);

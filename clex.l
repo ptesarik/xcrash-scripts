@@ -443,7 +443,7 @@ static void init_vars(void)
 	memset(&lex_dynstr_flags, 0, sizeof lex_dynstr_flags);
 	memset(&cond_state, 0, sizeof cond_state);
 	cpp_cond = NULL;
-	init_loc(&fileloc);
+	init_loc(&fileloc, NULL);
 
 	input_off = output_off = 0;
 
@@ -546,11 +546,12 @@ reuse_last_content(const char *s, size_t len)
 int tabsize = 8;
 
 void
-init_loc(YYLTYPE *loc)
+init_loc(YYLTYPE *loc, YYLTYPE *parent)
 {
 	loc->first_line    = loc->last_line    = 1;
 	loc->first_column  = loc->last_column  = 0;
 	loc->first_vcolumn = loc->last_vcolumn = 0;
+	loc->parent = parent;
 }
 
 void
