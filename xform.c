@@ -1631,10 +1631,12 @@ update_parsed_files(struct list_head *filelist)
 
 	clearmacros();
 	init_predef_types();
+	filenum = 0;
 	list_for_each_entry(pf, filelist, list) {
 		int res = parse_file(pf);
 		if (res)
 			return res;
+		++filenum;
 	}
 
 	uptodate = 1;

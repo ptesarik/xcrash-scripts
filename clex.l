@@ -22,6 +22,8 @@
 #include "clang.tab.h"
 #include "tools.h"
 
+int filenum;
+
 int start_symbol;
 
 struct list_head raw_contents;

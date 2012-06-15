@@ -296,6 +296,7 @@ put_macro_exp(struct macro_exp *exp)
 }
 
 /* Parser/lexer interface */
+extern int filenum;
 extern FILE *yyin;
 union YYSTYPE;
 
