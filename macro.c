@@ -303,6 +303,19 @@ duplist(struct dynstr *first, struct dynstr *last)
 }
 
 static void
+remove_macros(struct dynstr *first, struct dynstr *last)
+{
+	while (&first->list != last->list.next) {
+		struct dynstr *next = next_dynstr(first);
+		if (first->flags.macro) {
+			list_del(&first->list);
+			freedynstr(first);
+		}
+		first = next;
+	}
+}
+
+static void
 cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
 {
 	struct hashed_macro *nested;
@@ -336,6 +349,7 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
 
 		detach_text(first, last);
 		replace_text_list(prevtok, dupds, first, last);
+		remove_macros(first, last);
 	}
 }
 
