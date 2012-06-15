@@ -319,8 +319,8 @@ CPP			("#"|"%:"){WS}*
 		if (YY_START == INITIAL) {
 			struct hashed_macro *hm = findmacro(yytext, cpp_cond);
 			if (hm) {
-				last_dynstr(&raw_contents)->flags.macro = 1;
-				if ( (macrods = expand_macro(loc, hm)) )
+				macrods = expand_macro(loc, hm);
+				if (macrods)
 					return yylex(val, loc);
 			}
 		}

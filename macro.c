@@ -32,6 +32,8 @@ struct hashed_macro {
 
 static struct hashed_macro *macros[HASH_SIZE];
 
+static struct dynstr *do_expand(YYLTYPE *, struct hashed_macro *);
+
 static unsigned
 mkhash(const char *s)
 {
@@ -387,7 +389,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			struct dynstr *oldmacrods = macrods;
 
 			macrods = next_dynstr(ds);
-			newfirst = expand_macro(loc, nested);
+			newfirst = do_expand(loc, nested);
 			ds = macrods ? prev_dynstr(macrods) : hm->last;
 			macrods = oldmacrods;
 
@@ -449,18 +451,15 @@ delete_params(struct hashed_macro *hm)
 	}
 }
 
-struct dynstr *
-expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
+static struct dynstr *
+do_expand(YYLTYPE *loc, struct hashed_macro *hm)
 {
-	dynstr_flags_t saved_dynstr_flags = lex_dynstr_flags;
 	struct dynstr *ret;
 
 	if (hm->hasparam) {
 		lex_dynstr_flags.macro = 1;
-		if (parse_macro_args(loc, hm)) {
-			lex_dynstr_flags = saved_dynstr_flags;
+		if (parse_macro_args(loc, hm))
 			return NULL;
-		}
 		lex_dynstr_flags.macro = 0;
 
 		lex_dynstr_flags.fake = 1;
@@ -482,7 +481,24 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 	}
 
 	delete_params(hm);
-	lex_dynstr_flags = saved_dynstr_flags;
 
+	return ret;
+}
+
+struct dynstr *
+expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
+{
+	dynstr_flags_t saved_dynstr_flags = lex_dynstr_flags;
+	struct dynstr *ds, *ret;
+
+	ds = loc->first_text;
+	do {
+		ds->flags.macro = 1;
+		ds = next_dynstr(ds);
+	} while (&ds->list != loc->last_text->list.next);
+
+	ret = do_expand(loc, hm);
+
+	lex_dynstr_flags = saved_dynstr_flags;
 	return ret;
 }
