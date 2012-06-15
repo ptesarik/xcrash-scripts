@@ -316,6 +316,22 @@ remove_macros(struct dynstr *first, struct dynstr *last)
 }
 
 static void
+cpp_stringify(struct hashed_macro *hm, struct list_head *point)
+{
+	struct dynstr *ds;
+
+	ds = newdynstr("\"", 1);
+	list_add_tail(&ds->list, point);
+
+	ds = dupmerge(hm->first, hm->last);
+	ds->token = STRING_CONST;
+	list_add_tail(&ds->list, point);
+
+	ds = newdynstr("\"", 1);
+	list_add_tail(&ds->list, point);
+}
+
+static void
 cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
 {
 	struct hashed_macro *nested;
@@ -373,17 +389,13 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 		struct hashed_macro *nested;
 
 		if (state == stringify) {
-			struct dynstr *dupds;
 			if (ds->token)
 				state = normal;
 			if (ds->token == ID &&
 			    (nested = findmacro(ds->text, ds->cpp_cond)) &&
-			    nested->isparam) {
-				nested = nested->next;
-				dupds = dupmerge(nested->first, nested->last);
-				dupds->token = STRING_CONST;
-				list_add_tail(&dupds->list, point);
-			} else
+			    nested->isparam)
+				cpp_stringify(nested->next, point);
+			else
 				yyerror(loc, "Invalid use of '#'");
 		} else if (state == concat) {
 			if (ds->token) {
