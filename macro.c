@@ -48,13 +48,13 @@ clearmacros(void)
 }
 
 struct hashed_macro *
-findmacro(const char *name, node_t *cpp_cond)
+findmacro(const struct dynstr *ds)
 {
-	unsigned hash = mkhash(name);
+	unsigned hash = mkhash(ds->text);
 	struct hashed_macro *hm;
 	for (hm = macros[hash]; hm; hm = hm->next) {
-		if (!hm->hidden && !strcmp(name, hm->name) &&
-		    !cond_is_disjunct(cpp_cond, hm->cpp_cond))
+		if (!hm->hidden && !strcmp(ds->text, hm->name) &&
+		    !cond_is_disjunct(ds->cpp_cond, hm->cpp_cond))
 			return hm->undef ? NULL : hm;
 	}
 	return NULL;
@@ -331,7 +331,7 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
 	struct dynstr *dupds, *merged;
 
 	if (ds->token == ID &&
-	    (nested = findmacro(ds->text, ds->cpp_cond)) &&
+	    (nested = findmacro(ds)) &&
 	    nested->isparam) {
 		nested = nested->next;
 		dupds = duplist(nested->first, nested->last);
@@ -394,7 +394,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			if (ds->token)
 				state = normal;
 			if (ds->token == ID &&
-			    (nested = findmacro(ds->text, ds->cpp_cond)) &&
+			    (nested = findmacro(ds)) &&
 			    nested->isparam)
 				cpp_stringify(nested->next, point);
 			else
@@ -411,7 +411,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			if (prevtok)
 				state = concat;
 		} else if (ds->token == ID &&
-			   (nested = findmacro(ds->text, ds->cpp_cond)) &&
+			   (nested = findmacro(ds)) &&
 			   !nested->noexpand) {
 			struct dynstr *newfirst, *newlast;
 			struct dynstr *oldmacrods = macrods;

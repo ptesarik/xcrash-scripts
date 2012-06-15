@@ -316,7 +316,7 @@ CPP			("#"|"%:"){WS}*
 
 {L}({L}|{D})*		{
 		if (YY_START == INITIAL) {
-			struct hashed_macro *hm = findmacro(yytext, cpp_cond);
+			struct hashed_macro *hm = findmacro(loc->last_text);
 			if (hm) {
 				macrods = expand_macro(loc, hm);
 				if (macrods)

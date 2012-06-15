@@ -267,7 +267,7 @@ struct hashed_macro {
 };
 
 void clearmacros(void);
-struct hashed_macro *findmacro(const char *name, node_t *cpp_cond);
+struct hashed_macro *findmacro(const struct dynstr *ds);
 void undefmacro(const char *name);
 
 /* Macro expansion */
