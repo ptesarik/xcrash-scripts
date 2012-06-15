@@ -10,13 +10,13 @@
 typedef struct {
 	int reuse:1;		/* can be reused for following text */
 	int fake:1;		/* not found in input file */
-	int expanded:1;		/* macro that was expanded */
+	int macro:1;		/* verbatim macro text (before expansion) */
 } dynstr_flags_t;
 
 static inline int
 dynstr_flags_equal(dynstr_flags_t a, dynstr_flags_t b)
 {
-	return a.fake == b.fake && a.expanded == b.expanded;
+	return a.fake == b.fake && a.macro == b.macro;
 }
 
 /* Stored file contents */

@@ -319,7 +319,7 @@ CPP			("#"|"%:"){WS}*
 		if (YY_START == INITIAL) {
 			struct hashed_macro *hm = findmacro(yytext, cpp_cond);
 			if (hm) {
-				last_dynstr(&raw_contents)->flags.expanded = 1;
+				last_dynstr(&raw_contents)->flags.macro = 1;
 				if ( (macrods = expand_macro(loc, hm)) )
 					return yylex(val, loc);
 			}
@@ -664,10 +664,10 @@ dynstr_read(void *buf, size_t max_size)
 	if (!lex_input_ptr)
 		lex_input_ptr = lex_input_first->text;
 
-	while ((lex_input_first->flags.expanded ||
+	while ((lex_input_first->flags.macro ||
 		! (n = dynstr_remain(lex_input_first, lex_input_ptr))) &&
 	       lex_input_first != lex_input_last) {
-		if (lex_input_first->flags.expanded) {
+		if (lex_input_first->flags.macro) {
 			struct dynstr *ds = dupdynstr(lex_input_first);
 			ds->flags = lex_input_first->flags;
 			add_stored_meta(input_off, ds->flags, ds);

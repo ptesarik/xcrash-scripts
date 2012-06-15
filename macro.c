@@ -456,12 +456,12 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 	struct dynstr *ret;
 
 	if (hm->hasparam) {
-		lex_dynstr_flags.expanded = 1;
+		lex_dynstr_flags.macro = 1;
 		if (parse_macro_args(loc, hm)) {
 			lex_dynstr_flags = saved_dynstr_flags;
 			return NULL;
 		}
-		lex_dynstr_flags.expanded = 0;
+		lex_dynstr_flags.macro = 0;
 
 		lex_dynstr_flags.fake = 1;
 		expand_params(loc, hm);

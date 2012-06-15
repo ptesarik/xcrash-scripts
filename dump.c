@@ -19,9 +19,9 @@ static void dump_var(node_t *node);
 #define FAKE_START	"\e[7m"
 #define FAKE_END	"\e[27m"
 
-/* Mark expanded macros with underline */
-#define EXPANDED_START	"\e[4m"
-#define EXPANDED_END	"\e[24m"
+/* Mark macros with underline */
+#define MACRO_START	"\e[4m"
+#define MACRO_END	"\e[24m"
 
 void
 dump_text(struct dynstr *first, struct dynstr *last, int markup)
@@ -31,8 +31,8 @@ dump_text(struct dynstr *first, struct dynstr *last, int markup)
 		if (markup) {
 			if (cur->flags.fake)
 				fputs(FAKE_START, fdump);
-			if (cur->flags.expanded)
-				fputs(EXPANDED_START, fdump);
+			if (cur->flags.macro)
+				fputs(MACRO_START, fdump);
 		}
 
 		fwrite(cur->text, 1, cur->len, fdump);
@@ -40,8 +40,8 @@ dump_text(struct dynstr *first, struct dynstr *last, int markup)
 		if (markup) {
 			if (cur->flags.fake)
 				fputs(FAKE_END, fdump);
-			if (cur->flags.expanded)
-				fputs(EXPANDED_END, fdump);
+			if (cur->flags.macro)
+				fputs(MACRO_END, fdump);
 		}
 
 		if (cur == last)
