@@ -551,19 +551,23 @@ reuse_last_content(const char *s, size_t len)
 
 int tabsize = 8;
 
-static void
-update_loc(YYLTYPE *loc, char c)
+void
+update_loc(YYLTYPE *loc, const char *p, size_t len)
 {
-	if (c == '\n') {
-		loc->last_line++;
-		loc->last_column = loc->last_vcolumn = 0;
-	} else {
-		loc->last_column++;
-		if (c == '\t')
-			loc->last_vcolumn += tabsize -
-				(loc->last_vcolumn % tabsize);
-		else
-			loc->last_vcolumn++;
+	while (len) {
+		if (*p == '\n') {
+			loc->last_line++;
+			loc->last_column = loc->last_vcolumn = 0;
+		} else {
+			loc->last_column++;
+			if (*p == '\t')
+				loc->last_vcolumn += tabsize -
+					(loc->last_vcolumn % tabsize);
+			else
+				loc->last_vcolumn++;
+		}
+		++p;
+		--len;
 	}
 }
 
@@ -605,15 +609,12 @@ static void
 store_yytext(YYLTYPE *loc, const char *s)
 {
 	int len;
-	int i;
 
 	loc->first_line = loc->last_line;
 	loc->first_column = loc->last_column;
 	loc->first_vcolumn = loc->last_vcolumn;
-	for (i = 0; i < yyleng; ++i) {
-		update_loc(loc, yytext[i]);
-		update_loc(&fileloc, yytext[i]);
-	}
+	update_loc(loc, yytext, yyleng);
+	update_loc(&fileloc, yytext, yyleng);
 
 	loc->first_text = NULL;
 
