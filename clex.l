@@ -120,6 +120,7 @@ CPP			("#"|"%:"){WS}*
 	}
 
 	while (macrods) {
+		update_loc(loc, macrods->text, macrods->len);
 		if (&macrods->list == &raw_contents) {
 			macrods = NULL;
 		} else if (!macrods->token)
