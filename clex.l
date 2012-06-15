@@ -59,8 +59,17 @@ struct lexer_state {
 	struct dynstr *lex_input_first, *lex_input_last;
 	struct dynstr *macrods;
 	int input_off, output_off;
+	struct list_head stored_meta;
 };
 static LIST_HEAD(state_stack);
+
+struct stored_meta {
+	struct list_head list;
+	int off;
+	dynstr_flags_t flags;
+	struct dynstr *ds;
+};
+static LIST_HEAD(stored_meta);
 
 static YYLTYPE fileloc = {
 	1, 0, 0,		/* first_line, first_column, first_vcolumn */
@@ -367,6 +376,8 @@ lex_push_state(void)
 	state->macrods = macrods;
 	state->input_off = input_off;
 	state->output_off = output_off;
+	list_add(&state->stored_meta, &stored_meta);
+	list_del_init(&stored_meta);
 	list_add(&state->list, &state_stack);
 
 	yy_switch_to_buffer(yy_create_buffer(NULL, YY_BUF_SIZE));
@@ -391,14 +402,45 @@ lex_pop_state(void)
 		macrods = state->macrods;
 		input_off = state->input_off;
 		output_off = state->output_off;
+		list_add(&stored_meta, &state->stored_meta);
+		list_del_init(&state->stored_meta);
 
 		list_del(&state->list);
 		free(state);
 	}
 }
 
+static struct stored_meta *
+add_stored_meta(int off, dynstr_flags_t flags, struct dynstr *ds)
+{
+	struct stored_meta *ret = malloc(sizeof(struct stored_meta));
+	ret->off = off;
+	ret->flags = flags;
+	ret->ds = ds;
+	list_add_tail(&ret->list, &stored_meta);
+	return ret;
+}
+
+static struct stored_meta *
+next_stored_meta(void)
+{
+	return list_empty(&stored_meta)
+		? NULL
+		: list_entry(stored_meta.next, struct stored_meta, list);
+}
+
+static struct stored_meta *
+last_stored_meta(void)
+{
+	return list_empty(&stored_meta)
+		? NULL
+		: list_entry(stored_meta.prev, struct stored_meta, list);
+}
+
 static void init_vars(void)
 {
+	struct stored_meta *sm;
+
 	lex_input_ptr = NULL;
 	macrods = NULL;
 
@@ -410,6 +452,11 @@ static void init_vars(void)
 	fileloc.last_vcolumn = 0;
 
 	input_off = output_off = 0;
+
+	while ( (sm = next_stored_meta()) ) {
+		list_del(&sm->list);
+		free(sm);
+	}	
 }
 
 struct dynstr *newdynstr(const char *s, size_t len)
@@ -520,10 +567,46 @@ update_loc(YYLTYPE *loc, char c)
 	}
 }
 
-static void store_yytext(YYLTYPE *loc, const char *s)
+static int
+store_segment(YYLTYPE *loc, const char *s, int len)
 {
+	struct stored_meta *sm;
 	struct dynstr *ds;
+
+	sm = next_stored_meta();
+	if (sm && len > sm->off - output_off)
+		len = sm->off - output_off;
+
+	if (len) {
+		if ( ! (ds = reuse_last_content(s, len)) ) {
+			ds = newdynstr(s, len);
+			list_add_tail(&ds->list, &raw_contents);
+		}
+
+		loc->last_text = ds;
+		if (!loc->first_text)
+			loc->first_text = ds;
+		ds->cpp_cond = cpp_cond;
+	}
+
+	if (sm) {
+		lex_dynstr_flags = sm->flags;
+		if (sm->ds)
+			list_add_tail(&sm->ds->list, &raw_contents);
+
+		list_del(&sm->list);
+		free(sm);
+	}
+
+	return len;
+}
+
+static void
+store_yytext(YYLTYPE *loc, const char *s)
+{
+	int len;
 	int i;
+
 	loc->first_line = loc->last_line;
 	loc->first_column = loc->last_column;
 	loc->first_vcolumn = loc->last_vcolumn;
@@ -532,13 +615,15 @@ static void store_yytext(YYLTYPE *loc, const char *s)
 		update_loc(&fileloc, yytext[i]);
 	}
 
-	if (! (ds = reuse_last_content(s, yyleng)) ) {
-		ds = newdynstr(s, yyleng);
-		list_add_tail(&ds->list, &raw_contents);
+	loc->first_text = NULL;
+
+	len = yyleng;
+	while (len) {
+		int seglen = store_segment(loc, s, len);
+		s += seglen;
+		len -= seglen;
+		output_off += seglen;
 	}
-	output_off += yyleng;
-	ds->cpp_cond = cpp_cond;
-	loc->first_text = loc->last_text = ds;
 }
 
 static int
@@ -574,6 +659,7 @@ static size_t
 dynstr_read(void *buf, size_t max_size)
 {
 	size_t n;
+	struct stored_meta *sm;
 
 	if (!lex_input_ptr)
 		lex_input_ptr = lex_input_first->text;
@@ -581,11 +667,18 @@ dynstr_read(void *buf, size_t max_size)
 	while ((lex_input_first->flags.expanded ||
 		! (n = dynstr_remain(lex_input_first, lex_input_ptr))) &&
 	       lex_input_first != lex_input_last) {
+		if (lex_input_first->flags.expanded) {
+			struct dynstr *ds = dupdynstr(lex_input_first);
+			ds->flags = lex_input_first->flags;
+			add_stored_meta(input_off, ds->flags, ds);
+		}
 		lex_input_first = next_dynstr(lex_input_first);
 		lex_input_ptr = lex_input_first->text;
 	}
 
-	lex_dynstr_flags = lex_input_first->flags;
+	sm = last_stored_meta();
+	if (!sm || !dynstr_flags_equal(sm->flags, lex_input_first->flags))
+		add_stored_meta(input_off, lex_input_first->flags, NULL);
 
 	if (n > max_size)
 		n = max_size;
