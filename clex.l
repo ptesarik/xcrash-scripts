@@ -73,8 +73,6 @@ struct stored_meta {
 };
 static LIST_HEAD(stored_meta);
 
-static YYLTYPE fileloc;
-
 #define YY_INPUT(buf,result,max_size) \
 	if (lex_input_first) { \
 		result = dynstr_read(buf, max_size); \
@@ -446,7 +444,6 @@ static void init_vars(void)
 	memset(&lex_dynstr_flags, 0, sizeof lex_dynstr_flags);
 	memset(&cond_state, 0, sizeof cond_state);
 	cpp_cond = NULL;
-	init_loc(&fileloc, NULL);
 
 	input_off = output_off = 0;
 
@@ -623,7 +620,6 @@ store_yytext(YYLTYPE *loc, const char *s)
 	loc->first_column = loc->last_column;
 	loc->first_vcolumn = loc->last_vcolumn;
 	update_loc(loc, yytext, yyleng);
-	update_loc(&fileloc, yytext, yyleng);
 
 	loc->first_text = NULL;
 
@@ -752,13 +748,7 @@ parse_cpp(YYLTYPE *loc)
 	list_add_tail(&ds->list, &raw_contents);
 
 	start_symbol = START_DIRECTIVE;
-	fileloc.last_line = loc->last_line;
-	fileloc.last_column = loc->last_column;
-	fileloc.last_vcolumn = loc->last_vcolumn;
-	ret = yyparse();
-	loc->last_line = fileloc.last_line;
-	loc->last_column = fileloc.last_column;
-	loc->last_vcolumn = fileloc.last_vcolumn;
+	ret = yyparse(loc);
 
 	if (!ret && is_cpp_cond(&parsed_tree))
 		cpp_cond = get_cpp_cond(&cond_state, &parsed_tree);

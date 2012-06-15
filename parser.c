@@ -269,7 +269,7 @@ node_t *reparse_node(node_t *node, int type)
 	lex_input_first = node->first_text;
 	lex_input_last = node->last_text;
 	start_symbol = type;
-	res = yyparse();
+	res = yyparse(NULL);
 	yylex_destroy();
 
 	if (res != 0) {
@@ -340,7 +340,7 @@ int parse_file(struct parsed_file *pf)
 		lex_input_last = list_entry(oldraw.prev, struct dynstr, list);
 	}
 	start_symbol = 0;
-	ret = yyparse();
+	ret = yyparse(NULL);
 	if (yyin && yyin != stdin && fclose(yyin)) {
 		fprintf(stderr, "Cannot close %s: %s\n",
 			pf->name, strerror(errno));

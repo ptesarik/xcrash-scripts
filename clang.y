@@ -74,6 +74,9 @@ static void hidedecls(struct list_head *);
 	node_t *node;
 }
 
+/* standard $end */
+%token END 0 "end of file"
+
 /* operators */
 %token <token> ELLIPSIS		"..."
 %token <token> SHR_ASSIGN	">>="
@@ -189,15 +192,36 @@ static void hidedecls(struct list_head *);
 %error-verbose
 %locations
 %glr-parser
-%start translation_unit
+%parse-param {YYLTYPE *parentloc}
+%start input
 %initial-action
 {
-	struct dynstr *ds = newdynstr(NULL, 0);
+	struct dynstr *ds;
+	if (parentloc)
+		@$ = *parentloc;
+	else
+		init_loc(&@$, NULL);
+	ds = newdynstr(NULL, 0);
 	list_add_tail(&ds->list, &raw_contents);
-	init_loc(&@$, NULL);
 	@$.first_text = @$.last_text = ds;
 }
 %%
+
+input			: translation_unit END
+			{
+				if (parentloc) {
+					parentloc->last_line    =
+						@2.last_line;
+					parentloc->last_column  =
+						@2.last_column;
+					parentloc->last_vcolumn =
+						@2.last_vcolumn;
+					parentloc->last_text    =
+						@2.last_text;
+				}
+				YYACCEPT;
+			}
+			;
 
 translation_unit	: /* empty */
 			| translation_unit external_decl
@@ -1066,7 +1090,7 @@ print_last_line(const YYLTYPE *loc)
 }
 
 void
-yyerror(YYLTYPE *loc, const char *s)
+yyerror(YYLTYPE *loc, YYLTYPE *parserloc, const char *s)
 {
 	int first_vcolumn;
 	int i;
@@ -1084,7 +1108,8 @@ yyerror(YYLTYPE *loc, const char *s)
 		first_vcolumn + 1, s, loc->last_line);
 
 	if (loc->parent)
-		yyerror(loc->parent, "...expanded from the above macro");
+		yyerror(loc->parent, parserloc,
+			"...expanded from the above macro");
 }
 
 struct parsed_file *parsed_file;

@@ -300,7 +300,7 @@ extern int filenum;
 extern FILE *yyin;
 union YYSTYPE;
 
-int yyparse(void);
+int yyparse(YYLTYPE *);
 int yyparse_macro(YYLTYPE *, const char *, int, node_t *);
 
 int yylex(union YYSTYPE *val, YYLTYPE *loc);
@@ -310,7 +310,7 @@ int yylex_destroy(void);
 void lex_push_state(void);
 void lex_pop_state(void);
 
-void yyerror(YYLTYPE *loc, const char *);
+void yyerror(YYLTYPE *loc, YYLTYPE *parserloc, const char *);
 
 struct dynstr *expand_macro(YYLTYPE *loc, struct hashed_macro *hm);
 

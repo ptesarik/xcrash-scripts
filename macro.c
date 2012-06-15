@@ -155,7 +155,7 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 
 		token = yylex(&val, loc);
 		if (token != '(') {
-			yyerror(loc, "expecting '('");
+			yyerror(loc, NULL, "expecting '('");
 			return 1;
 		}
 
@@ -166,7 +166,8 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 			if (token == ')')
 				break;
 			if (token != ID && token != ELLIPSIS) {
-				yyerror(loc, "expecting ')', ID or '...'");
+				yyerror(loc, NULL,
+					"expecting ')', ID or '...'");
 				return 1;
 			}
 
@@ -190,7 +191,7 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 			token = ntoken;
 		} while (token == ',');
 		if (token != ',' && token != ')') {
-			yyerror(loc, "expecting ',' or ')'");
+			yyerror(loc, NULL, "expecting ',' or ')'");
 			return 1;
 		}
 	}
@@ -214,7 +215,7 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 
 	token = yylex_cpp_arg(&val, &lloc);
 	if (token != '(') {
-		yyerror(&lloc, "expecting '('");
+		yyerror(&lloc, NULL, "expecting '('");
 		return 1;
 	}
 
@@ -240,7 +241,7 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 		token = yylex_cpp_arg(&val, &lloc);
 
 	if (token != ')') {
-		yyerror(&lloc, "expecting ')'");
+		yyerror(&lloc, NULL, "expecting ')'");
 		return 1;
 	}
 
@@ -398,7 +399,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			    nested->isparam)
 				cpp_stringify(nested->next, point);
 			else
-				yyerror(&lloc, "Invalid use of '#'");
+				yyerror(&lloc, NULL, "Invalid use of '#'");
 		} else if (state == concat) {
 			if (ds->token) {
 				state = normal;
