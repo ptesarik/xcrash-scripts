@@ -220,11 +220,12 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 {
 	node_t *param;
 	YYSTYPE val;
+	YYLTYPE lloc = *loc;
 	int token;
 
-	token = yylex_cpp_arg(&val, loc);
+	token = yylex_cpp_arg(&val, &lloc);
 	if (token != '(') {
-		yyerror(loc, "expecting '('");
+		yyerror(&lloc, "expecting '('");
 		return 1;
 	}
 
@@ -233,7 +234,7 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 		struct hashed_macro *arg = addmacro(param->str->text);
 		arg->hidden = 1;
 
-		while ((token = yylex_cpp_arg(&val, loc)) &&
+		while ((token = yylex_cpp_arg(&val, &lloc)) &&
 		       (paren || ((token != ',' || hm->variadic) &&
 				  token != ')')) ) {
 			if (token == '(')
@@ -241,20 +242,23 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 			else if (token == ')')
 				--paren;
 			if (!arg->first)
-				arg->first = loc->first_text;
-			arg->last = loc->last_text;
+				arg->first = lloc.first_text;
+			arg->last = lloc.last_text;
 		}
 	}
 
-	if (list_empty(&hm->params)) {
-		token = yylex_cpp_arg(&val, loc);
-	}
+	if (list_empty(&hm->params))
+		token = yylex_cpp_arg(&val, &lloc);
 
 	if (token != ')') {
-		yyerror(loc, "expecting ')'");
+		yyerror(&lloc, "expecting ')'");
 		return 1;
 	}
 
+	loc->last_line    = lloc.last_line;
+	loc->last_column  = lloc.last_column;
+	loc->last_vcolumn = lloc.last_vcolumn;
+	loc->last_text    = lloc.last_text;
 	return 0;
 }
 
@@ -378,15 +382,24 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 		stringify,	/* After the '#' token was seen */
 		concat,		/* After the '##' token was seen */
 	} state;
+	YYLTYPE lloc;
 
 	if (!hm->first)
 		return NULL;
+
+	init_loc(&lloc);
 
 	state = normal;
 	prevtok = NULL;
 	ret = last_dynstr(point);
 	for (ds = hm->first; ; ds = next_dynstr(ds)) {
 		struct hashed_macro *nested;
+
+		lloc.first_line    = lloc.last_line;
+		lloc.first_column  = lloc.last_column;
+		lloc.first_vcolumn = lloc.last_vcolumn;
+		update_loc(&lloc, ds->text, ds->len);
+		lloc.first_text = lloc.last_text = ds;
 
 		if (state == stringify) {
 			if (ds->token)
@@ -396,7 +409,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			    nested->isparam)
 				cpp_stringify(nested->next, point);
 			else
-				yyerror(loc, "Invalid use of '#'");
+				yyerror(&lloc, "Invalid use of '#'");
 		} else if (state == concat) {
 			if (ds->token) {
 				state = normal;
@@ -415,7 +428,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			struct dynstr *oldmacrods = macrods;
 
 			macrods = next_dynstr(ds);
-			newfirst = do_expand(loc, nested);
+			newfirst = do_expand(&lloc, nested);
 			ds = macrods ? prev_dynstr(macrods) : hm->last;
 			macrods = oldmacrods;
 
