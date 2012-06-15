@@ -255,10 +255,13 @@ void undefmacro(const char *name);
 
 /* Macro expansion */
 struct macro_exp {
+	int refcount;			     /* Reference count */
 	struct hashed_macro *hm;
 	struct dynstr *first, *last;	     /* Unexpanded macro text */
 	struct dynstr *exp_first, *exp_last; /* Macro expansion */
-	int refcount;			     /* Reference count */
+	struct {
+		struct dynstr *first, *last;
+	} params[];
 };
 
 static inline struct macro_exp *

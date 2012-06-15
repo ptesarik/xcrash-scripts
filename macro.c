@@ -19,9 +19,13 @@
 struct hashed_macro {
 	struct hashed_macro *next;
 	char *name;
+
 	struct list_head params;
+	int nparams;		/* number of parameters */
+
 	struct node *cpp_cond;
 	struct dynstr *first, *last;
+
 	int undef:1;		/* #undefined macro */
 	int hidden:1;		/* macro should be ignored in searches */
 	int hasparam:1;		/* a macro that has parameters */
@@ -32,7 +36,8 @@ struct hashed_macro {
 
 static struct hashed_macro *macros[HASH_SIZE];
 
-static struct dynstr *do_expand(YYLTYPE *, struct hashed_macro *);
+static struct dynstr *do_expand(YYLTYPE *, struct hashed_macro *,
+				struct macro_exp *exp);
 
 static unsigned
 mkhash(const char *s)
@@ -96,6 +101,7 @@ addmacro(const char *name)
 	hm->name = (char*)(hm + 1);
 	strcpy(hm->name, name);
 	INIT_LIST_HEAD(&hm->params);
+	hm->nparams = 0;
 	hm->cpp_cond = NULL;
 	hm->first = hm->last = NULL;
 	hm->undef = 0;
@@ -192,6 +198,7 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 			} else
 				var = newvar(loc, val.str);
 			list_add_tail(&var->list, &hm->params);
+			++hm->nparams;
 
 			ntoken = yylex(&val, loc);
 			if (token == ID && ntoken == ELLIPSIS) {
@@ -428,7 +435,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			struct dynstr *oldmacrods = macrods;
 
 			macrods = next_dynstr(ds);
-			newfirst = do_expand(&lloc, nested);
+			newfirst = do_expand(&lloc, nested, NULL);
 			ds = macrods ? prev_dynstr(macrods) : hm->last;
 			macrods = oldmacrods;
 
@@ -456,10 +463,12 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 }
 
 static void
-expand_params(YYLTYPE *loc, struct hashed_macro *hm)
+expand_params(YYLTYPE *loc, struct hashed_macro *hm, struct macro_exp *exp)
 {
 	node_t *param;
+	int nparam;
 
+	nparam = 0;
 	list_for_each_entry(param, &hm->params, list) {
 		struct hashed_macro *arg = findhiddenmacro(param->str->text);
 		struct hashed_macro *newarg = addmacro(arg->name);
@@ -468,6 +477,12 @@ expand_params(YYLTYPE *loc, struct hashed_macro *hm)
 
 		newarg->first = expand_body(loc, arg, &arg->first->list);
 		newarg->last = newarg->first ? prev_dynstr(arg->first) : NULL;
+
+		if (exp) {
+			exp->params[nparam].first = arg->first;
+			exp->params[nparam].last = arg->last;
+			++nparam;
+		}
 	}
 
 	list_for_each_entry(param, &hm->params, list) {
@@ -491,7 +506,7 @@ delete_params(struct hashed_macro *hm)
 }
 
 static struct dynstr *
-do_expand(YYLTYPE *loc, struct hashed_macro *hm)
+do_expand(YYLTYPE *loc, struct hashed_macro *hm, struct macro_exp *exp)
 {
 	struct dynstr *ret;
 
@@ -502,7 +517,7 @@ do_expand(YYLTYPE *loc, struct hashed_macro *hm)
 		lex_dynstr_flags.macro = 0;
 
 		lex_dynstr_flags.fake = 1;
-		expand_params(loc, hm);
+		expand_params(loc, hm, exp);
 	}
 	lex_dynstr_flags.fake = 1;
 
@@ -529,6 +544,7 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 {
 	dynstr_flags_t saved_dynstr_flags = lex_dynstr_flags;
 	struct dynstr *ds, *ret;
+	struct macro_exp *exp;
 
 	ds = loc->first_text;
 	do {
@@ -536,25 +552,27 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 		ds = next_dynstr(ds);
 	} while (&ds->list != loc->last_text->list.next);
 
-	ret = do_expand(loc, hm);
+	exp = malloc(sizeof(struct macro_exp) +
+		     hm->nparams * sizeof(exp->params[0]));
+	exp->hm = hm;
 
-	if (ret) {
-		struct macro_exp *exp = malloc(sizeof(struct macro_exp));
+	ret = do_expand(loc, hm, exp);
 
-		exp->hm = hm;
-		exp->first = loc->first_text;
-		exp->last = loc->last_text;
-		exp->exp_first = next_dynstr(exp->last);
-		exp->exp_last = last_dynstr(&raw_contents);
-		exp->refcount = 0;
+	exp->first = loc->first_text;
+	exp->last = loc->last_text;
+	exp->exp_first = next_dynstr(exp->last);
+	exp->exp_last = last_dynstr(&raw_contents);
+	exp->refcount = 0;
 
-		ds = exp->first;
-		while (&ds->list != &raw_contents) {
-			put_macro_exp(ds->exp);
-			ds->exp = get_macro_exp(exp);
-			ds = next_dynstr(ds);
-		}
+	ds = exp->first;
+	while (&ds->list != &raw_contents) {
+		put_macro_exp(ds->exp);
+		ds->exp = get_macro_exp(exp);
+		ds = next_dynstr(ds);
 	}
+
+	if (!exp->refcount)
+		free(exp);
 
 	lex_dynstr_flags = saved_dynstr_flags;
 	return ret;
