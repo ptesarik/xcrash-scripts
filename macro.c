@@ -206,16 +206,15 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 }
 
 static int
-parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
+do_parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 {
 	node_t *param;
 	YYSTYPE val;
-	YYLTYPE lloc = *loc;
 	int token;
 
-	token = yylex_cpp_arg(&val, &lloc);
+	token = yylex_cpp_arg(&val, loc);
 	if (token != '(') {
-		yyerror(&lloc, NULL, "expecting '('");
+		yyerror(loc, NULL, "expecting '('");
 		return 1;
 	}
 
@@ -224,7 +223,7 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 		struct hashed_macro *arg = addmacro(param->str->text);
 		arg->hidden = 1;
 
-		while ((token = yylex_cpp_arg(&val, &lloc)) &&
+		while ((token = yylex_cpp_arg(&val, loc)) &&
 		       (paren || ((token != ',' || hm->variadic) &&
 				  token != ')')) ) {
 			if (token == '(')
@@ -232,24 +231,33 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 			else if (token == ')')
 				--paren;
 			if (!arg->first)
-				arg->first = lloc.first_text;
-			arg->last = lloc.last_text;
+				arg->first = loc->first_text;
+			arg->last = loc->last_text;
 		}
 	}
 
 	if (list_empty(&hm->params))
-		token = yylex_cpp_arg(&val, &lloc);
+		token = yylex_cpp_arg(&val, loc);
 
 	if (token != ')') {
-		yyerror(&lloc, NULL, "expecting ')'");
+		yyerror(loc, NULL, "expecting ')'");
 		return 1;
 	}
+
+	return 0;
+}
+
+static int
+parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
+{
+	YYLTYPE lloc = *loc;
+	int ret = do_parse_macro_args(&lloc, hm);
 
 	loc->last_line    = lloc.last_line;
 	loc->last_column  = lloc.last_column;
 	loc->last_vcolumn = lloc.last_vcolumn;
 	loc->last_text    = lloc.last_text;
-	return 0;
+	return ret;
 }
 
 static struct dynstr *
