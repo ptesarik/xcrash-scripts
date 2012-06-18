@@ -195,15 +195,12 @@ static void hidedecls(struct list_head *);
 %error-verbose
 %locations
 %glr-parser
-%parse-param {YYLTYPE *parentloc}
+%parse-param {YYLTYPE *fileloc}
 %start input
 %initial-action
 {
 	struct dynstr *ds;
-	if (parentloc)
-		@$ = *parentloc;
-	else
-		init_loc(&@$, NULL);
+	@$ = *fileloc;
 	ds = newdynstr(NULL, 0);
 	list_add_tail(&ds->list, &raw_contents);
 	@$.first_text = @$.last_text = ds;
@@ -212,16 +209,10 @@ static void hidedecls(struct list_head *);
 
 input			: translation_unit END
 			{
-				if (parentloc) {
-					parentloc->last_line    =
-						@2.last_line;
-					parentloc->last_column  =
-						@2.last_column;
-					parentloc->last_vcolumn =
-						@2.last_vcolumn;
-					parentloc->last_text    =
-						@2.last_text;
-				}
+				fileloc->last_line    = @2.last_line;
+				fileloc->last_column  = @2.last_column;
+				fileloc->last_vcolumn = @2.last_vcolumn;
+				fileloc->last_text    = @2.last_text;
 				YYACCEPT;
 			}
 			;
@@ -1093,7 +1084,7 @@ print_last_line(const YYLTYPE *loc)
 }
 
 void
-yyerror(YYLTYPE *loc, YYLTYPE *parserloc, const char *s)
+yyerror(YYLTYPE *loc, YYLTYPE *fileloc, const char *s)
 {
 	int first_vcolumn;
 	int i;
@@ -1111,7 +1102,7 @@ yyerror(YYLTYPE *loc, YYLTYPE *parserloc, const char *s)
 		first_vcolumn + 1, s, loc->last_line);
 
 	if (loc->parent)
-		yyerror(loc->parent, parserloc,
+		yyerror(loc->parent, fileloc,
 			"...expanded from the above macro");
 }
 

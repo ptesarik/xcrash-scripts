@@ -260,6 +260,8 @@ int dump_contents(struct list_head *contents, FILE *f)
 /* Re-parse a node from the current raw contents */
 node_t *reparse_node(node_t *node, int type)
 {
+	struct dynstr *oldfirst = node->loc.first_text,
+		*oldlast = node->loc.last_text;
 	node_t *newnode;
 	int res;
 
@@ -269,7 +271,7 @@ node_t *reparse_node(node_t *node, int type)
 	lex_input_first = node->loc.first_text;
 	lex_input_last = node->loc.last_text;
 	start_symbol = type;
-	res = yyparse(NULL);
+	res = yyparse(&node->loc);
 	yylex_destroy();
 
 	if (res != 0) {
@@ -283,8 +285,6 @@ node_t *reparse_node(node_t *node, int type)
 	newnode->parent = node->parent;
 	list_add(&newnode->list, &node->list);
 
-	struct dynstr *oldfirst = node->loc.first_text,
-		*oldlast = node->loc.last_text;
 	freenode(node);
 	replace_text_list(oldfirst, oldlast,
 			  newnode->loc.first_text, newnode->loc.last_text);
@@ -338,7 +338,8 @@ int parse_file(struct parsed_file *pf)
 		lex_input_last = list_entry(oldraw.prev, struct dynstr, list);
 	}
 	start_symbol = 0;
-	ret = yyparse(NULL);
+	init_loc(&pf->loc, NULL);
+	ret = yyparse(&pf->loc);
 	if (yyin && yyin != stdin && fclose(yyin)) {
 		fprintf(stderr, "Cannot close %s: %s\n",
 			pf->name, strerror(errno));

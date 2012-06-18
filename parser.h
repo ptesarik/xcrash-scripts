@@ -315,7 +315,7 @@ int yylex_destroy(void);
 void lex_push_state(void);
 void lex_pop_state(void);
 
-void yyerror(YYLTYPE *loc, YYLTYPE *parserloc, const char *);
+void yyerror(YYLTYPE *loc, YYLTYPE *fileloc, const char *);
 
 struct dynstr *expand_macro(YYLTYPE *loc, struct hashed_macro *hm);
 
@@ -419,6 +419,7 @@ struct parsed_file {
 	const char *name;
 	struct list_head parsed;
 	struct list_head raw;
+	YYLTYPE loc;
 	int clean;
 };
 
