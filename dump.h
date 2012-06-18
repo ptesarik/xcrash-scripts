@@ -22,7 +22,7 @@ void shortdump_varind(node_t *var, ind_t *ind);
 static inline void
 dump_node_text(node_t *node, int markup)
 {
-	dump_text(node->loc.first_text, node->loc.last_text, markup);
+	dump_text(node->loc.first.text, node->loc.last.text, markup);
 }
 
 static inline const char *

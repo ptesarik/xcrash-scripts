@@ -40,28 +40,14 @@ static void hidedecls(struct list_head *);
     do									\
       if (N)								\
 	{								\
-	  (Current).first_line    = YYRHSLOC(Rhs, 1).first_line;	\
-	  (Current).first_column  = YYRHSLOC(Rhs, 1).first_column;	\
-	  (Current).first_vcolumn = YYRHSLOC(Rhs, 1).first_vcolumn;	\
-	  (Current).first_text    = YYRHSLOC(Rhs, 1).first_text;	\
-	  (Current).last_line     = YYRHSLOC(Rhs, N).last_line;		\
-	  (Current).last_column   = YYRHSLOC(Rhs, N).last_column;	\
-	  (Current).last_vcolumn  = YYRHSLOC(Rhs, N).last_vcolumn;	\
-	  (Current).last_text     = YYRHSLOC(Rhs, N).last_text;		\
-	  (Current).parent        = YYRHSLOC(Rhs, N).parent;		\
+	  (Current).first  = YYRHSLOC(Rhs, 1).first;			\
+	  (Current).last   = YYRHSLOC(Rhs, N).last;			\
+	  (Current).parent = YYRHSLOC(Rhs, N).parent;			\
 	}								\
       else								\
 	{								\
-	  (Current).first_line    = (Current).last_line    =		\
-	    YYRHSLOC(Rhs, 0).last_line;					\
-	  (Current).first_column  = (Current).last_column  =		\
-	    YYRHSLOC(Rhs, 0).last_column;				\
-	  (Current).first_vcolumn = (Current).last_vcolumn =		\
-	    YYRHSLOC(Rhs, 0).last_vcolumn;				\
-	  (Current).first_text    = (Current).last_text    =		\
-	    YYRHSLOC(Rhs, 0).last_text;					\
-	  (Current).parent        =					\
-	    YYRHSLOC(Rhs, 0).parent;					\
+	  (Current).first  = (Current).last = YYRHSLOC(Rhs, 0).last;	\
+	  (Current).parent                  = YYRHSLOC(Rhs, 0).parent;	\
 	}								\
     while (0)
 
@@ -203,16 +189,13 @@ static void hidedecls(struct list_head *);
 	@$ = *fileloc;
 	ds = newdynstr(NULL, 0);
 	list_add_tail(&ds->list, &raw_contents);
-	@$.first_text = @$.last_text = ds;
+	@$.first.text = @$.last.text = ds;
 }
 %%
 
 input			: translation_unit END
 			{
-				fileloc->last_line    = @2.last_line;
-				fileloc->last_column  = @2.last_column;
-				fileloc->last_vcolumn = @2.last_vcolumn;
-				fileloc->last_text    = @2.last_text;
+				fileloc->last = @2.last;
 				YYACCEPT;
 			}
 			;
@@ -379,7 +362,7 @@ attribute		: /* empty */
 			{ $$ = newexprid(&@$, $1); }
 			/* HACK: should change context in lexer... */
 			| CONST
-			{ $$ = newexprid(&@$, @$.first_text); }
+			{ $$ = newexprid(&@$, @$.first.text); }
 			;
 
 attr_param_list		: /* empty */
@@ -408,7 +391,7 @@ type_spec		: basic_type_list
 
 basic_type_list		: BASIC_TYPE
 			{
-				$$ = newtype_name(&@$, @1.first_text);
+				$$ = newtype_name(&@$, @1.first.text);
 				$$->t.category = type_basic;
 				$$->t.btype = $1;
 			}
@@ -420,7 +403,7 @@ basic_type_list		: BASIC_TYPE
 				    $$->t.btype & TYPE_LONG)
 					$$->t.btype |= TYPE_LONGLONG;
 				$$->t.btype |= $2;
-				set_node_last($$, @2.last_text);
+				set_node_last($$, @2.last.text);
 			}
 			;
 
@@ -442,7 +425,7 @@ struct_or_union_spec	: struct_or_union opt_attr struct_desc
 				$$ = $3;
 				$$->t.category = $1;
 				set_node_child($$, cht_attr, $2);
-				set_node_first($$, @$.first_text);
+				set_node_first($$, @$.first.text);
 			}
 			;
 
@@ -508,7 +491,7 @@ enum_spec		: ENUM opt_attr enum_desc
 				$$ = $3;
 				$$->t.category = type_enum;
 				set_node_child($$, cht_attr, $2);
-				set_node_first($$, @$.first_text);
+				set_node_first($$, @$.first.text);
 			}
 			;
 
@@ -572,7 +555,7 @@ init_declarator		: declarator '=' initializer
 			{
 				$$ = $1;
 				set_node_child($$->var, chv_init, $3);
-				set_node_last($$->var, @$.last_text);
+				set_node_last($$->var, @$.last.text);
 			}
 			| declarator
 			;
@@ -587,15 +570,15 @@ declarator		: pointer direct_declarator opt_attr
 				link_abstract(&$$->abstract, &$1);
 				if ($3)
 					set_node_child($$->var, chv_attr, $3);
-				set_node_first($$->var, @$.first_text);
-				set_node_last($$->var, @$.last_text);
+				set_node_first($$->var, @$.first.text);
+				set_node_last($$->var, @$.last.text);
 			}
 			|         direct_declarator opt_attr
 			{
 				$$ = $1;
 				if ($2)
 					set_node_child($$->var, chv_attr, $2);
-				set_node_last($$->var, @$.last_text);
+				set_node_last($$->var, @$.last.text);
 			}
 			;
 
@@ -615,8 +598,8 @@ non_suffix_declarator	: id_or_typeid
 			| '(' declarator ')'
 			{
 				$$ = $2;
-				set_node_first($$->var, @$.first_text);
-				set_node_last($$->var, @$.last_text);
+				set_node_first($$->var, @$.first.text);
+				set_node_last($$->var, @$.last.text);
 			}
 			;
 
@@ -686,14 +669,14 @@ param_type_or_idlist	: param_type_list
 pointer			: '*'
 			{
 				node_t *ptr =
-					newtype_name(&@$, @1.first_text);
+					newtype_name(&@$, @1.first.text);
 				ptr->t.category = type_pointer;
 				$$.tree = $$.stub = ptr;
 			}
 			| pointer '*'
 			{
 				node_t *ptr =
-					newtype_name(&@$, @2.first_text);
+					newtype_name(&@$, @2.first.text);
 				ptr->t.category = type_pointer;
 				set_node_child(ptr, cht_type, $1.tree);
 				$$.tree = ptr;
@@ -782,7 +765,7 @@ abstract_declarator	: pointer
 				$$ = $2;
 				link_abstract(&$$->abstract, &$1);
 				set_node_first($$->abstract.tree,
-					       @$.first_text);
+					       @$.first.text);
 			}
 			;
 
@@ -1063,8 +1046,8 @@ string_const		: STRING_CONST
 static void
 print_last_line(const YYLTYPE *loc)
 {
-	int column = loc->last_column;
-	struct dynstr *ds = loc->last_text;
+	int column = loc->last.column;
+	struct dynstr *ds = loc->last.text;
 
 	while (ds->flags.fake || column > ds->len) {
 		if (!ds->flags.fake)
@@ -1075,7 +1058,7 @@ print_last_line(const YYLTYPE *loc)
 		if (!ds->flags.fake)
 			fwrite(ds->text + ds->len - column,
 			       sizeof(char), column, stderr);
-		if (ds == loc->last_text)
+		if (ds == loc->last.text)
 			break;
 		ds = next_dynstr(ds);
 		column = ds->len;
@@ -1089,17 +1072,17 @@ yyerror(YYLTYPE *loc, YYLTYPE *fileloc, const char *s)
 	int first_vcolumn;
 	int i;
 
-	first_vcolumn = (loc->first_line == loc->last_line)
-		? loc->first_vcolumn
+	first_vcolumn = (loc->first.line == loc->last.line)
+		? loc->first.vcolumn
 		: 0;
 
 	fflush(stdout);
 	print_last_line(loc);
 	fprintf(stderr, "%*s", first_vcolumn + 1, "^");
-	for (i = 1; i < loc->last_vcolumn - first_vcolumn; ++i)
+	for (i = 1; i < loc->last.vcolumn - first_vcolumn; ++i)
 		putc('^', stderr);
 	fprintf(stderr, "\n%*s on line %d\n",
-		first_vcolumn + 1, s, loc->last_line);
+		first_vcolumn + 1, s, loc->last.line);
 
 	if (loc->parent)
 		yyerror(loc->parent, fileloc,
@@ -1115,11 +1098,8 @@ empty_loc(const YYLTYPE *point)
 	static YYLTYPE loc;
 	struct dynstr *str = newdynstr(NULL, 0);
 
-	list_add_tail(&str->list, &point->first_text->list);
-	loc.first_line    = loc.last_line    = point->first_line;
-	loc.first_column  = loc.last_column  = point->first_column;
-	loc.first_vcolumn = loc.last_vcolumn = point->first_vcolumn;
-	loc.first_text    = loc.last_text    = str;
+	list_add_tail(&str->list, &point->first.text->list);
+	loc.first = loc.last = point->first;
 	return &loc;
 }
 
@@ -1142,8 +1122,8 @@ newnode(const YYLTYPE *loc, enum node_type type, int nchild)
 	ret->pf = parsed_file;
 	INIT_LIST_HEAD(&ret->dup_list);
 	ret->loc = *loc;
-	list_add(&ret->first_list, &loc->first_text->node_first);
-	list_add(&ret->last_list, &loc->last_text->node_last);
+	list_add(&ret->first_list, &loc->first.text->node_first);
+	list_add(&ret->last_list, &loc->last.text->node_last);
 
 	return ret;
 }
@@ -1164,8 +1144,8 @@ dupnode_nochild(node_t *node)
 	if (ret->str)
 		++ret->str->refcount;
 
-	list_add(&ret->first_list, &ret->loc.first_text->node_first);
-	list_add(&ret->last_list, &ret->loc.last_text->node_last);
+	list_add(&ret->first_list, &ret->loc.first.text->node_first);
+	list_add(&ret->last_list, &ret->loc.last.text->node_last);
 	list_add(&ret->dup_list, &node->dup_list);
 
 	return ret;
@@ -1218,14 +1198,14 @@ freenodelist(node_t *nodelist)
 void
 set_node_first(node_t *node, struct dynstr *ds)
 {
-	node->loc.first_text = ds;
+	node->loc.first.text = ds;
 	list_move(&node->first_list, &ds->node_first);
 }
 
 void
 set_node_last(node_t *node, struct dynstr *ds)
 {
-	node->loc.last_text = ds;
+	node->loc.last.text = ds;
 	list_move(&node->last_list, &ds->node_last);
 }
 

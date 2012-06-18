@@ -198,8 +198,8 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 
 	while ( (token = yylex(&val, loc)) ) {
 		if (!hm->first)
-			hm->first = loc->first_text;
-		hm->last = loc->last_text;
+			hm->first = loc->first.text;
+		hm->last = loc->last.text;
 	}
 
 	return 0;
@@ -231,8 +231,8 @@ do_parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 			else if (token == ')')
 				--paren;
 			if (!arg->first)
-				arg->first = loc->first_text;
-			arg->last = loc->last_text;
+				arg->first = loc->first.text;
+			arg->last = loc->last.text;
 		}
 	}
 
@@ -252,11 +252,7 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 {
 	YYLTYPE lloc = *loc;
 	int ret = do_parse_macro_args(&lloc, hm);
-
-	loc->last_line    = lloc.last_line;
-	loc->last_column  = lloc.last_column;
-	loc->last_vcolumn = lloc.last_vcolumn;
-	loc->last_text    = lloc.last_text;
+	loc->last = lloc.last;
 	return ret;
 }
 
@@ -393,11 +389,9 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 	for (ds = hm->first; ; ds = next_dynstr(ds)) {
 		struct hashed_macro *nested;
 
-		lloc.first_line    = lloc.last_line;
-		lloc.first_column  = lloc.last_column;
-		lloc.first_vcolumn = lloc.last_vcolumn;
-		update_loc(&lloc, ds->text, ds->len);
-		lloc.first_text = lloc.last_text = ds;
+		lloc.first = lloc.last;
+		update_pos(&lloc.last, ds->text, ds->len);
+		lloc.first.text = lloc.last.text = ds;
 
 		if (state == stringify) {
 			if (ds->token)
@@ -537,11 +531,11 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 	struct dynstr *ds, *ret;
 	struct macro_exp *exp;
 
-	ds = loc->first_text;
+	ds = loc->first.text;
 	do {
 		ds->flags.macro = 1;
 		ds = next_dynstr(ds);
-	} while (&ds->list != loc->last_text->list.next);
+	} while (&ds->list != loc->last.text->list.next);
 
 	exp = malloc(sizeof(struct macro_exp) +
 		     hm->nparams * sizeof(exp->params[0]));
@@ -549,8 +543,8 @@ expand_macro(YYLTYPE *loc, struct hashed_macro *hm)
 
 	ret = do_expand(loc, hm, exp);
 
-	exp->first = loc->first_text;
-	exp->last = loc->last_text;
+	exp->first = loc->first.text;
+	exp->last = loc->last.text;
 	exp->exp_first = next_dynstr(exp->last);
 	exp->exp_last = last_dynstr(&raw_contents);
 	exp->refcount = 0;

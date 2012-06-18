@@ -25,8 +25,8 @@ replace_text(node_t *node, const char *text)
 {
 	nullify_str(node);
 	struct dynstr *ds = newdynstr(text, strlen(text));
-	ds->flags = node->loc.first_text->flags;
-	replace_text_list(node->loc.first_text, node->loc.last_text, ds, ds);
+	ds->flags = node->loc.first.text->flags;
+	replace_text_list(node->loc.first.text, node->loc.last.text, ds, ds);
 	return ds;
 }
 
@@ -49,7 +49,7 @@ remove_text_list(struct dynstr *ds, struct dynstr *keep)
 	}
 
 	list_for_each_entry_safe(node, nnode, &ds->node_first, first_list)
-		if (node->loc.last_text == prev) {
+		if (node->loc.last.text == prev) {
 			set_node_first(node, &dummydynstr);
 			set_node_last(node, &dummydynstr);
 		}
@@ -74,7 +74,7 @@ remove_text_list_rev(struct dynstr *ds, struct dynstr *keep)
 	}
 
 	list_for_each_entry_safe(node, nnode, &ds->node_first, first_list)
-		if (node->loc.first_text == next) {
+		if (node->loc.first.text == next) {
 			set_node_first(node, &dummydynstr);
 			set_node_last(node, &dummydynstr);
 		}
@@ -114,8 +114,8 @@ static void
 delete_node(node_t *node)
 {
 	nullify_str(node);
-	remove_text_list(node->loc.first_text,
-			 next_dynstr(node->loc.last_text));
+	remove_text_list(node->loc.first.text,
+			 next_dynstr(node->loc.last.text));
 	freenode(node);
 }
 
@@ -171,8 +171,8 @@ static void
 squeeze_whitespace(node_t *node)
 {
 	struct list_head *raw = &node->pf->raw;
-	struct dynstr *next = next_dynstr(node->loc.last_text);
-	struct dynstr *prev = prev_dynstr(node->loc.first_text);
+	struct dynstr *next = next_dynstr(node->loc.last.text);
+	struct dynstr *prev = prev_dynstr(node->loc.first.text);
 	if (&next->list == raw || &prev->list == raw)
 		return;
 	if (isalnum(*next->text) || *next->text == '_')
@@ -192,11 +192,11 @@ flatten_type(node_t *type, node_t *base)
 		list_splice_init(&type->child[cht_type], &type->list);
 
 		child->parent = type->parent;
-		if (type->loc.first_text == child->loc.first_text) {
+		if (type->loc.first.text == child->loc.first.text) {
 			struct dynstr *newfirst =
-				next_dynstr(child->loc.last_text);
+				next_dynstr(child->loc.last.text);
 			list_move(&type->first_list, &newfirst->node_first);
-			type->loc.first_text = newfirst;
+			type->loc.first.text = newfirst;
 		}
 		squeeze_whitespace(type);
 		delete_node(type);
@@ -250,7 +250,7 @@ static node_t *
 replace_single_type(node_t *type, struct dynstr *newds)
 {
 	set_node_str(type, NULL);
-	replace_text_list(type->loc.first_text, type->loc.last_text,
+	replace_text_list(type->loc.first.text, type->loc.last.text,
 			  newds, newds);
 
 	type = reparse_node(type, START_TYPE_NAME);
@@ -360,7 +360,7 @@ type_split(struct list_head *raw, struct split_node *split)
 
 	/* Get the insertion point */
 	node_t *olddecl = typed_parent(type, nt_decl);
-	point = olddecl->loc.first_text;
+	point = olddecl->loc.first.text;
 
 	/* Create a new dynstr chain */
 	lex_dynstr_flags = point->flags;
@@ -373,10 +373,10 @@ type_split(struct list_head *raw, struct split_node *split)
 		ds = NULL;
 
 		node_t *var = typed_parent(type, nt_var);
-		struct dynstr *nextds = next_dynstr(var->loc.last_text);
-		detach_text(var->loc.first_text, var->loc.last_text);
+		struct dynstr *nextds = next_dynstr(var->loc.last.text);
+		detach_text(var->loc.first.text, var->loc.last.text);
 		insert_text_list(point,
-				 var->loc.first_text, var->loc.last_text);
+				 var->loc.first.text, var->loc.last.text);
 		remove_comma(raw, nextds);
 
 		freenode(var);
@@ -393,7 +393,7 @@ type_split(struct list_head *raw, struct split_node *split)
 	newdecl = reparse_node(newdecl, START_DECL);
 
 	/* Restore indentation */
-	ds = dynstr_dup_indent(raw, newdecl->loc.first_text, 0);
+	ds = dynstr_dup_indent(raw, newdecl->loc.first.text, 0);
 	insert_text_list(point, ds, ds);
 
 	/* Add it to the list of tracked variables */
@@ -910,7 +910,7 @@ static enum walk_action
 mkstring_typecast(node_t *node, void *data)
 {
 	const char **typecast = data;
-	struct macro_exp *exp = node->loc.first_text->exp;
+	struct macro_exp *exp = node->loc.first.text->exp;
 
 	if (!exp)
 		return walk_continue;
@@ -939,8 +939,8 @@ mkstring_variadic(node_t *node, void *data)
 
 	/* Remove MKSTR if necessary */
 	node_t *opt = nth_node(&node->child[che_arg2], 4);
-	struct dynstr *arg4 = opt->loc.first_text;
-	struct macro_exp *exp = opt->loc.first_text->exp;
+	struct dynstr *arg4 = opt->loc.first.text;
+	struct macro_exp *exp = opt->loc.first.text->exp;
 	if (exp && !strcmp(exp->hm->name, "MKSTR")) {
 		nullify_str(opt);
 		freenode(opt);
@@ -1028,11 +1028,11 @@ convert_readmem(node_t *node, void *data)
 	/* Replace the 4th argument */
 	nullify_str(arg);
 	if (mult) {
-		remove_text_list(arg->loc.first_text, mult->loc.first_text);
-		remove_text_list_rev(arg->loc.last_text, mult->loc.last_text);
+		remove_text_list(arg->loc.first.text, mult->loc.first.text);
+		remove_text_list_rev(arg->loc.last.text, mult->loc.last.text);
 	} else {
 		struct dynstr *ds = newdynstr("1", 1);
-		replace_text_list(arg->loc.first_text, arg->loc.last_text,
+		replace_text_list(arg->loc.first.text, arg->loc.last.text,
 				  ds, ds);
 	}
 
@@ -1051,7 +1051,7 @@ printf_spec_one(node_t *node, void *data)
 	if (node->type != nt_expr || node->e.op != STRING_CONST)
 		return walk_continue;
 
-	char *start = node->loc.first_text->text;
+	char *start = node->loc.first.text->text;
 	char *p = start;
 	LIST_HEAD(ds);
 	while ( (p = strchr(p, '%')) ) {
@@ -1094,7 +1094,7 @@ printf_spec_one(node_t *node, void *data)
 			list_add_tail(&dslast->list, &ds);
 		}
 		nullify_str(node);
-		replace_text_list(node->loc.first_text, node->loc.last_text,
+		replace_text_list(node->loc.first.text, node->loc.last.text,
 				  list_entry(ds.next, struct dynstr, list),
 				  list_entry(ds.prev, struct dynstr, list));
 		reparse_node(node, START_EXPR);
@@ -1144,8 +1144,8 @@ replace_struct(node_t *node, const char *oldname, const char *newname)
 		varscope_remove(type);
 		node->pf->clean = 0;
 		nullify_str(node);
-		remove_text_list(node->loc.first_text,
-				 next_dynstr(node->loc.last_text));
+		remove_text_list(node->loc.first.text,
+				 next_dynstr(node->loc.last.text));
 		freenode(node);
 		return 1;
 	}
@@ -1163,7 +1163,7 @@ static enum walk_action
 use_pt_regs_x86_64(node_t *node, void *data)
 {
 	struct parsed_file *pf = node->pf;
-	int cond = check_cpp_cond(node->loc.first_text->cpp_cond,
+	int cond = check_cpp_cond(node->loc.first.text->cpp_cond,
 			      "X86_64", NULL, NULL);
 	if (!cond && pf->name && strcmp(pf->name, "unwind_x86_64.h"))
 		return walk_continue;
@@ -1176,7 +1176,7 @@ use_pt_regs_x86_64(node_t *node, void *data)
 			struct dynstr *ds =
 				newdynstr(DEF_PT_REGS_X86_64,
 					  strlen(DEF_PT_REGS_X86_64));
-			insert_text_list(node->loc.first_text, ds, ds);
+			insert_text_list(node->loc.first.text, ds, ds);
 		}
 	}
 

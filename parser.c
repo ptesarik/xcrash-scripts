@@ -103,8 +103,8 @@ struct dynstr dummydynstr = {
 	.text = "",
 };
 YYLTYPE dummyloc = {
-	.first_text = &dummydynstr,
-	.last_text = &dummydynstr,
+	.first.text = &dummydynstr,
+	.last.text = &dummydynstr,
 };
 
 void init_predef_types(void)
@@ -260,16 +260,16 @@ int dump_contents(struct list_head *contents, FILE *f)
 /* Re-parse a node from the current raw contents */
 node_t *reparse_node(node_t *node, int type)
 {
-	struct dynstr *oldfirst = node->loc.first_text,
-		*oldlast = node->loc.last_text;
+	struct dynstr *oldfirst = node->loc.first.text,
+		*oldlast = node->loc.last.text;
 	node_t *newnode;
 	int res;
 
 	parsed_file = node->pf;
 	INIT_LIST_HEAD(&parsed_tree);
 	INIT_LIST_HEAD(&raw_contents);
-	lex_input_first = node->loc.first_text;
-	lex_input_last = node->loc.last_text;
+	lex_input_first = node->loc.first.text;
+	lex_input_last = node->loc.last.text;
 	start_symbol = type;
 	res = yyparse(&node->loc);
 	yylex_destroy();
@@ -287,7 +287,7 @@ node_t *reparse_node(node_t *node, int type)
 
 	freenode(node);
 	replace_text_list(oldfirst, oldlast,
-			  newnode->loc.first_text, newnode->loc.last_text);
+			  newnode->loc.first.text, newnode->loc.last.text);
 
 	return newnode;
 }

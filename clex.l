@@ -121,7 +121,7 @@ CPP			("#"|"%:"){WS}*
 
 	while (macrods) {
 		if (!macrods->flags.fake)
-			update_loc(loc, macrods->text, macrods->len);
+			update_pos(&loc->last, macrods->text, macrods->len);
 		if (&macrods->list == &raw_contents) {
 			macrods = NULL;
 		} else if (!macrods->token)
@@ -132,7 +132,7 @@ CPP			("#"|"%:"){WS}*
 
 	if (macrods) {
 		int ret = macrods->token;
-		loc->first_text = loc->last_text = macrods;
+		loc->first.text = loc->last.text = macrods;
 		macrods = next_dynstr(macrods);
 		return STORE_TOKEN(ret);
 	}
@@ -145,19 +145,19 @@ CPP			("#"|"%:"){WS}*
 ^{WS}*{CPP}	{
 			BEGIN(cpp);
 			if (parse_cpp(loc) && YY_START != INITIAL) {
-				loc->last_text->flags.reuse = 1;
+				loc->last.text->flags.reuse = 1;
 				BEGIN(cpp_recover);
 			}
 		}
 <cpp_recover>\n	{
-			loc->last_text->flags.reuse = 0;
+			loc->last.text->flags.reuse = 0;
 			BEGIN(INITIAL);
 		}
   /* skip whitespace except newline */
 <cpp_macro,cpp_condition,cpp,cpp_def,cpp_undef>{WS}+
   /* A newline terminates the directive */
 <cpp_macro,cpp_condition,cpp,cpp_def,cpp_undef,cpp_ign>\n	{
-			loc->last_text->flags.reuse = 0;
+			loc->last.text->flags.reuse = 0;
 			BEGIN(INITIAL);
 			yyterminate();
 		}
@@ -195,7 +195,7 @@ CPP			("#"|"%:"){WS}*
 			return STORE_TOKEN(CPP_ENDIF);
 			}
 (?s:.)			{
-			loc->last_text->flags.reuse = 1;
+			loc->last.text->flags.reuse = 1;
 			BEGIN(cpp_ign);
 			}
 }
@@ -315,7 +315,7 @@ CPP			("#"|"%:"){WS}*
 
 {L}({L}|{D})*		{
 		if (YY_START == INITIAL) {
-			struct hashed_macro *hm = findmacro(loc->last_text);
+			struct hashed_macro *hm = findmacro(loc->last.text);
 			if (hm) {
 				macrods = expand_macro(loc, hm);
 				if (macrods)
@@ -552,26 +552,28 @@ int tabsize = 8;
 void
 init_loc(YYLTYPE *loc, YYLTYPE *parent)
 {
-	loc->first_line    = loc->last_line    = 1;
-	loc->first_column  = loc->last_column  = 0;
-	loc->first_vcolumn = loc->last_vcolumn = 0;
+	static const pos_t begpos = {
+		.line = 1, .column = 0, .vcolumn = 0
+	};
+
+	loc->first = loc->last = begpos;
 	loc->parent = parent;
 }
 
 void
-update_loc(YYLTYPE *loc, const char *p, size_t len)
+update_pos(pos_t *pos, const char *p, size_t len)
 {
 	while (len) {
 		if (*p == '\n') {
-			loc->last_line++;
-			loc->last_column = loc->last_vcolumn = 0;
+			pos->line++;
+			pos->column = pos->vcolumn = 0;
 		} else {
-			loc->last_column++;
+			pos->column++;
 			if (*p == '\t')
-				loc->last_vcolumn += tabsize -
-					(loc->last_vcolumn % tabsize);
+				pos->vcolumn += tabsize -
+					(pos->vcolumn % tabsize);
 			else
-				loc->last_vcolumn++;
+				pos->vcolumn++;
 		}
 		++p;
 		--len;
@@ -594,9 +596,9 @@ store_segment(YYLTYPE *loc, const char *s, int len)
 			list_add_tail(&ds->list, &raw_contents);
 		}
 
-		loc->last_text = ds;
-		if (!loc->first_text)
-			loc->first_text = ds;
+		loc->last.text = ds;
+		if (!loc->first.text)
+			loc->first.text = ds;
 		ds->cpp_cond = cpp_cond;
 	}
 
@@ -617,13 +619,10 @@ store_yytext(YYLTYPE *loc, const char *s)
 {
 	int len;
 
-	loc->first_line = loc->last_line;
-	loc->first_column = loc->last_column;
-	loc->first_vcolumn = loc->last_vcolumn;
-	update_loc(loc, yytext, yyleng);
+	loc->first = loc->last;
+	update_pos(&loc->last, yytext, yyleng);
 
-	loc->first_text = NULL;
-
+	loc->first.text = NULL;
 	len = yyleng;
 	while (len) {
 		int seglen = store_segment(loc, s, len);
@@ -639,10 +638,10 @@ store_token(YYSTYPE *val, YYLTYPE *loc, int token)
 	if (token == ID ||
 	    token == INT_CONST || token == FLOAT_CONST ||
 	    token == CHAR_CONST || token == STRING_CONST)
-		val->str = loc->first_text;
+		val->str = loc->first.text;
 	else if (token != BASIC_TYPE)
 		val->token = token;
-	loc->last_text->token = token;
+	loc->last.text->token = token;
 
 	if (token == ID && istypedef(val->str->text))
 		return TYPEID;

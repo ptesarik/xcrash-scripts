@@ -309,9 +309,9 @@ varscope_find_expr(node_t *expr)
 		return NULL;
 	}
 
-	node_t *expr_cond = expr->loc.first_text->cpp_cond;
+	node_t *expr_cond = expr->loc.first.text->cpp_cond;
 	while (ret) {
-		node_t *ret_cond = ret->loc.first_text->cpp_cond;
+		node_t *ret_cond = ret->loc.first.text->cpp_cond;
 		if (!cond_is_disjunct(expr_cond, ret_cond))
 			break;
 
