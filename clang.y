@@ -48,6 +48,7 @@ static void hidedecls(struct list_head *);
 	  (Current).last_column   = YYRHSLOC(Rhs, N).last_column;	\
 	  (Current).last_vcolumn  = YYRHSLOC(Rhs, N).last_vcolumn;	\
 	  (Current).last_text     = YYRHSLOC(Rhs, N).last_text;		\
+	  (Current).parent        = YYRHSLOC(Rhs, N).parent;		\
 	}								\
       else								\
 	{								\
@@ -59,6 +60,8 @@ static void hidedecls(struct list_head *);
 	    YYRHSLOC(Rhs, 0).last_vcolumn;				\
 	  (Current).first_text    = (Current).last_text    =		\
 	    YYRHSLOC(Rhs, 0).last_text;					\
+	  (Current).parent        =					\
+	    YYRHSLOC(Rhs, 0).parent;					\
 	}								\
     while (0)
 
