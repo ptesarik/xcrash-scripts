@@ -1146,11 +1146,10 @@ newnode(const YYLTYPE *loc, enum node_type type, int nchild)
 		INIT_LIST_HEAD(&ret->child[i]);
 
 	ret->pf = parsed_file;
-	ret->first_text = loc->first_text;
-	list_add(&ret->first_list, &loc->first_text->node_first);
-	ret->last_text = loc->last_text;
-	list_add(&ret->last_list, &loc->last_text->node_last);
 	INIT_LIST_HEAD(&ret->dup_list);
+	ret->loc = *loc;
+	list_add(&ret->first_list, &loc->first_text->node_first);
+	list_add(&ret->last_list, &loc->last_text->node_last);
 
 	return ret;
 }
@@ -1171,8 +1170,8 @@ dupnode_nochild(node_t *node)
 	if (ret->str)
 		++ret->str->refcount;
 
-	list_add(&ret->first_list, &ret->first_text->node_first);
-	list_add(&ret->last_list, &ret->last_text->node_last);
+	list_add(&ret->first_list, &ret->loc.first_text->node_first);
+	list_add(&ret->last_list, &ret->loc.last_text->node_last);
 	list_add(&ret->dup_list, &node->dup_list);
 
 	return ret;
@@ -1225,14 +1224,14 @@ freenodelist(node_t *nodelist)
 void
 set_node_first(node_t *node, struct dynstr *ds)
 {
-	node->first_text = ds;
+	node->loc.first_text = ds;
 	list_move(&node->first_list, &ds->node_first);
 }
 
 void
 set_node_last(node_t *node, struct dynstr *ds)
 {
-	node->last_text = ds;
+	node->loc.last_text = ds;
 	list_move(&node->last_list, &ds->node_last);
 }
 

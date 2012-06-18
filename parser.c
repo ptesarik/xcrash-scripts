@@ -266,8 +266,8 @@ node_t *reparse_node(node_t *node, int type)
 	parsed_file = node->pf;
 	INIT_LIST_HEAD(&parsed_tree);
 	INIT_LIST_HEAD(&raw_contents);
-	lex_input_first = node->first_text;
-	lex_input_last = node->last_text;
+	lex_input_first = node->loc.first_text;
+	lex_input_last = node->loc.last_text;
 	start_symbol = type;
 	res = yyparse(NULL);
 	yylex_destroy();
@@ -283,11 +283,11 @@ node_t *reparse_node(node_t *node, int type)
 	newnode->parent = node->parent;
 	list_add(&newnode->list, &node->list);
 
-	struct dynstr *oldfirst = node->first_text,
-		*oldlast = node->last_text;
+	struct dynstr *oldfirst = node->loc.first_text,
+		*oldlast = node->loc.last_text;
 	freenode(node);
 	replace_text_list(oldfirst, oldlast,
-			  newnode->first_text, newnode->last_text);
+			  newnode->loc.first_text, newnode->loc.last_text);
 
 	return newnode;
 }

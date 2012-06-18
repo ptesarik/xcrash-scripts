@@ -194,19 +194,24 @@ struct parsed_file;
 
 typedef struct node {
 	struct list_head list;
+
 	enum node_type type;
 	union {
 		type_t t;
 		expr_t e;
 	};
+
 	struct dynstr *str;
-	struct dynstr *first_text, *last_text;
-	struct list_head first_list, last_list;
 	struct node *parent;
 	struct parsed_file *pf;
 	struct list_head dup_list;
+
+	loc_t loc;
+	struct list_head first_list, last_list;
+
 	struct list_head user_list;
 	void *user_data;	/* user-specific data */
+
 	int nchild;
 	struct list_head child[];
 } node_t;
