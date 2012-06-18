@@ -316,8 +316,6 @@ int parse_file(struct parsed_file *pf)
 
 	if (!pf->name)
 		yyin = NULL;
-	else if (!strcmp(pf->name, "-"))
-		yyin = stdin;
 	else {
 		yyin = fopen(pf->name, "r");
 		if (!yyin) {
@@ -468,14 +466,9 @@ int main(int argc, char **argv)
 	argp_parse(&argp, argc, argv, 0, &i, &arguments);
 
 	add_builtin_file();
-	if (i >= argc)
-		ret = add_file("-");
-	else {
-		while(i < argc)
-			if ( (ret = add_file(argv[i++])) )
-				break;
-	}
-
+	while(i < argc)
+		if ( (ret = add_file(argv[i++])) )
+			break;
 	if (ret)
 		return ret;
 
