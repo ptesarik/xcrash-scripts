@@ -736,16 +736,11 @@ int
 parse_cpp(YYLTYPE *loc)
 {
 	struct list_head savedparsed;
-	struct dynstr *ds;
 	int ret;
 
 	/* Save the original parsed_tree and start a new one */
 	list_add(&savedparsed, &parsed_tree);
 	list_del_init(&parsed_tree);
-
-	ds = newdynstr(NULL, 0);
-	ds->flags.reuse = 1;
-	list_add_tail(&ds->list, &raw_contents);
 
 	start_symbol = START_DIRECTIVE;
 	ret = yyparse(loc);
