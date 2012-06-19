@@ -501,6 +501,35 @@ void freedynstr(struct dynstr *ds)
 	free(ds);
 }
 
+static struct dynstr*
+realloc_dynstr(struct dynstr *ds, size_t newalloc)
+{
+	struct dynstr tmp, *newds;
+
+	list_add_tail(&tmp.list, &ds->list);
+	list_del(&ds->list);
+	list_add_tail(&tmp.node_first, &ds->node_first);
+	list_del(&ds->node_first);
+	list_add_tail(&tmp.node_last, &ds->node_last);
+	list_del(&ds->node_last);
+
+	newds = realloc(ds, sizeof(struct dynstr) + newalloc);
+	if (newds) {
+		ds = newds;
+		ds->alloc = newalloc;
+	}
+
+	/* Fix up list pointers */
+	list_add(&ds->list, &tmp.list);
+	list_del(&tmp.list);
+	list_add(&ds->node_first, &tmp.node_first);
+	list_del(&tmp.node_first);
+	list_add(&ds->node_last, &tmp.node_last);
+	list_del(&tmp.node_last);
+
+	return newds;
+}
+
 #define ALLOC_INC	256
 
 /* Try to reuse existing dynstr */
@@ -520,26 +549,9 @@ reuse_last_content(const char *s, size_t len)
 		return NULL;
 
 	if (ds->len + len + 1 > ds->alloc) {
-		struct dynstr tmp;
-		list_add_tail(&tmp.list, &ds->list);
-		list_del(&ds->list);
-		list_add_tail(&tmp.node_first, &ds->node_first);
-		list_del(&ds->node_first);
-		list_add_tail(&tmp.node_last, &ds->node_last);
-		list_del(&ds->node_last);
-
 		size_t newalloc = ds->len + len + 1 + ALLOC_INC;
 		newalloc -= newalloc % ALLOC_INC;
-		ds = realloc(ds, sizeof(struct dynstr) + newalloc);
-		ds->alloc = newalloc;
-
-		/* Fix up list pointers */
-		list_add(&ds->list, &tmp.list);
-		list_del(&tmp.list);
-		list_add(&ds->node_first, &tmp.node_first);
-		list_del(&tmp.node_first);
-		list_add(&ds->node_last, &tmp.node_last);
-		list_del(&tmp.node_last);
+		ds = realloc_dynstr(ds, newalloc);
 	}
 	memcpy(ds->text + ds->len, s, len);
 	ds->len += len;
