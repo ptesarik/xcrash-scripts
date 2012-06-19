@@ -314,16 +314,16 @@ CPP			("#"|"%:"){WS}*
 "void"			return STORE_BTYPE(TYPE_VOID);
 
 {L}({L}|{D})*		{
-		store_yytext(loc, yytext, 0);
+		int ret = STORE_TOKEN(ID);
 		if (YY_START == INITIAL) {
-			struct hashed_macro *hm = findmacro(loc->last.text);
+			struct hashed_macro *hm = findmacro(val->str);
 			if (hm) {
 				macrods = expand_macro(loc, hm);
 				if (macrods)
 					return yylex(val, loc);
 			}
 		}
-		return STORE_TOKEN_NOTEXT(ID);
+		return ret;
 	}
 
 <cpp_macro,cpp_arg>\.?{D}({L}|{D}|[_.]|{E})*	{
