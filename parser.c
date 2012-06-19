@@ -94,7 +94,7 @@ static const char builtin_file[] =
 "} symbol_info;\n"
 ;
 
-static LIST_HEAD(files);
+static struct file_array files;
 
 struct dynstr dummydynstr = {
 	.list = LIST_HEAD_INIT(dummydynstr.list),
@@ -365,32 +365,21 @@ int parse_file(struct parsed_file *pf)
 }
 
 static void
-add_builtin_file(void)
+add_builtin_file(struct parsed_file *pf)
 {
-	static struct parsed_file builtin_pf = {
-		.parsed = LIST_HEAD_INIT(builtin_pf.parsed),
-		.raw = LIST_HEAD_INIT(builtin_pf.raw),
-	};
 	struct dynstr *ds = newdynstr(builtin_file, sizeof builtin_file - 1);
 
-	list_add(&ds->list, &builtin_pf.raw);
-	list_add(&builtin_pf.list, &files);
+	INIT_LIST_HEAD(&pf->parsed);
+	list_add(&pf->raw, &ds->list);
 }
 
-static int add_file(const char *name)
+static int
+add_file(struct parsed_file *pf, const char *name)
 {
-	struct parsed_file *pf;
-
-	if (! (pf = malloc(sizeof(struct parsed_file))) ) {
-		perror("Cannot allocate parsed file");
-		return -1;
-	}
-
 	pf->name = name;
 	INIT_LIST_HEAD(&pf->parsed);
 	INIT_LIST_HEAD(&pf->raw);
 	pf->clean = 1;
-	list_add_tail(&pf->list, &files);
 	return 0;
 }
 
@@ -456,6 +445,7 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 int main(int argc, char **argv)
 {
 	struct arguments arguments;
+	struct parsed_file *pf;
 	int i;
 	int ret;
 
@@ -466,9 +456,16 @@ int main(int argc, char **argv)
 	/* Parse arguments */
 	argp_parse(&argp, argc, argv, 0, &i, &arguments);
 
-	add_builtin_file();
+	files.n = argc - i + 1;
+	if (! (files.array = calloc(files.n, sizeof(struct parsed_file))) ) {
+		perror("Cannot allocate file array");
+		return 1;
+	}
+
+	pf = files.array;
+	add_builtin_file(pf++);
 	while(i < argc)
-		if ( (ret = add_file(argv[i++])) )
+		if ( (ret = add_file(pf++, argv[i++])) )
 			break;
 	if (ret)
 		return ret;

@@ -3,7 +3,7 @@
 
 #include "parser.h"
 
-void init_varscope(struct list_head *filelist);
+void init_varscope(const struct file_array *files);
 void free_varscope(void);
 
 node_t *varscope_find(struct list_head *scope,
@@ -20,6 +20,6 @@ node_t *varscope_find_expr(node_t *expr);
 struct list_head *find_var_scope(node_t *node);
 node_t *resolve_typedef(struct list_head *tree, node_t *type);
 
-node_t *varscope_symbol(struct list_head *filelist, const char *name);
+node_t *varscope_symbol(const struct file_array *files, const char *name);
 
 #endif	/* VARSCOPE_H */

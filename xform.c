@@ -13,7 +13,7 @@
 static int uptodate;
 static const char *basedir;
 
-static int update_parsed_files(struct list_head *filelist);
+static int update_parsed_files(const struct file_array *files);
 
 /************************************************************
  * Useful helper functions
@@ -1517,7 +1517,7 @@ subst_other_decls_loop(node_t *firstvar, node_t *var, ind_t *ind, int n)
 
 /* Substitute all other declarations of @firstvar */
 static int
-subst_other_decls(struct list_head *filelist, node_t *firstvar, ind_t *ind)
+subst_other_decls(const struct file_array *files, node_t *firstvar, ind_t *ind)
 {
 	node_t *var = varscope_find_first_var(firstvar);
 	int ret = subst_other_decls_loop(firstvar, var, ind, 0);
@@ -1527,7 +1527,7 @@ subst_other_decls(struct list_head *filelist, node_t *firstvar, ind_t *ind)
 
 	/* Global scope also implies changes in all file scopes */
 	struct parsed_file *pf;
-	list_for_each_entry(pf, filelist, list) {
+	files_for_each(pf, files) {
 		var = varscope_find(&pf->parsed, firstvar->type,
 				    firstvar->str->text);
 		ret = subst_other_decls_loop(firstvar, var, ind, ret);
@@ -1562,7 +1562,7 @@ check_func_arg(node_t *node, ind_t *ind)
  * are tracked appropriately.
  */
 static void
-track_type(struct list_head *filelist, node_t *type)
+track_type(const struct file_array *files, node_t *type)
 {
 	ind_t indvec[MAXIND];
 	ind_t *ind = indvec + MAXIND;
@@ -1577,7 +1577,7 @@ track_type(struct list_head *filelist, node_t *type)
 			fputs("Track ", fdump);
 			shortdump_varind(parent, ind);
 
-			subst_other_decls(filelist, parent, ind);
+			subst_other_decls(files, parent, ind);
 
 			putc('\n', fdump);
 
@@ -1589,11 +1589,11 @@ track_type(struct list_head *filelist, node_t *type)
 }
 
 static void
-track_vars(struct list_head *filelist)
+track_vars(const struct file_array *files)
 {
 	struct parsed_file *pf;
 
-	list_for_each_entry(pf, filelist, list)
+	files_for_each(pf, files)
 		walk_tree(&pf->parsed, build_scopes, NULL);
 
 	/* This initializes @split to an invalid address, but
@@ -1605,12 +1605,12 @@ track_vars(struct list_head *filelist)
 	do {
 		node_t *type;
 		list_for_each_entry(type, &replacedlist, user_list)
-			track_type(filelist, type);
+			track_type(files, type);
 		INIT_LIST_HEAD(&replacedlist);
 
 		list_for_each_entry_continue(split, &splitlist, list) {
 			list_for_each_entry(type, &split->nodes, user_list)
-				track_type(filelist, type);
+				track_type(files, type);
 		}
 		split = list_entry(split->list.prev, struct split_node, list);
 	} while (!list_empty(&replacedlist));
@@ -1622,20 +1622,20 @@ track_vars(struct list_head *filelist)
  */
 
 static int
-update_parsed_files(struct list_head *filelist)
+update_parsed_files(const struct file_array *files)
 {
 	struct parsed_file *pf;
 	int filenum = 0;
 
 	if (uptodate) {
-		list_for_each_entry(pf, filelist, list)
+		files_for_each(pf, files)
 			reset_user_data(&pf->parsed);
 		return 0;
 	}
 
 	clearmacros();
 	init_predef_types();
-	list_for_each_entry(pf, filelist, list) {
+	files_for_each(pf, files) {
 		int res;
 
 		pf->loc.first.filenum = filenum++;
@@ -1652,7 +1652,8 @@ update_parsed_files(struct list_head *filelist)
 	return 0;
 }
 
-static int import(const char *patchname, struct list_head *flist, void *arg)
+static int import(const char *patchname, const struct file_array *files,
+		  void *arg)
 {
 	/* All files must be re-read to reflect the change */
 	uptodate = 0;
@@ -1661,46 +1662,47 @@ static int import(const char *patchname, struct list_head *flist, void *arg)
 }
 
 /* Helper for a simple transformation */
-static int simple(const char *patchname, struct list_head *filelist,
+static int simple(const char *patchname, const struct file_array *files,
 		  void *xform_fn)
 {
 	struct parsed_file *pf;
 	int res;
 
-	if ( (res = update_parsed_files(filelist)) )
+	if ( (res = update_parsed_files(files)) )
 		return res;
 	if ( (res = quilt_new(patchname)) )
 		return res;
 
-	list_for_each_entry(pf, filelist, list) {
+	files_for_each(pf, files) {
 		walk_tree(&pf->parsed, xform_fn, pf);
 	}
 
-	return quilt_refresh(filelist);
+	return quilt_refresh(files);
 }
 
 /* Helper for substituting types */
 static int
-type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
+type_subst(const char *patchname, const struct file_array *files,
+	   void *xform_fn)
 {
 	struct parsed_file *pf;
 	int res;
 
-	if ( (res = update_parsed_files(filelist)) )
+	if ( (res = update_parsed_files(files)) )
 		return res;
 	if ( (res = quilt_new(patchname)) )
 		return res;
 	if (! (fdump = quilt_header()) )
 		return -1;
 
-	init_varscope(filelist);
+	init_varscope(files);
 	INIT_LIST_HEAD(&replacedlist);
-	list_for_each_entry(pf, filelist, list)
-		walk_tree(&pf->parsed, xform_fn, filelist);
+	files_for_each(pf, files)
+		walk_tree(&pf->parsed, xform_fn, (void*)files);
 
-	track_vars(filelist);
+	track_vars(files);
 
-	list_for_each_entry(pf, filelist, list) {
+	files_for_each(pf, files) {
 		struct split_node *split, *nsplit;
 		list_for_each_entry_safe(split, nsplit, &splitlist, list) {
 			type_split(&pf->raw, split);
@@ -1710,7 +1712,7 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
 
 	if ( (res = pclose(fdump)) )
 		return res;
-	return quilt_refresh(filelist);
+	return quilt_refresh(files);
 }
 
 /************************************************************
@@ -1718,7 +1720,7 @@ type_subst(const char *patchname, struct list_head *filelist, void *xform_fn)
  *
  */
 
-typedef int xformfn(const char *, struct list_head *, void *);
+typedef int xformfn(const char *, const struct file_array *, void *);
 
 struct xform_desc {
 	const char *name;
@@ -1859,9 +1861,9 @@ static struct xform_desc xforms[] = {
 };
 
 static int
-run_xform(struct xform_desc *desc, struct list_head *filelist)
+run_xform(struct xform_desc *desc, const struct file_array *files)
 {
-	return desc->fn(desc->name, filelist, desc->arg);
+	return desc->fn(desc->name, files, desc->arg);
 }
 
 static struct xform_desc *
@@ -1875,7 +1877,7 @@ find_xform(const char *name)
 }
 
 int
-xform_files(struct arguments *args, struct list_head *filelist)
+xform_files(struct arguments *args, const struct file_array *files)
 {
 	int ret = 0;
 
@@ -1883,14 +1885,14 @@ xform_files(struct arguments *args, struct list_head *filelist)
 	if (list_empty(&args->xform_names)) {
 		int i;
 		for (i = 0; i < sizeof(xforms)/sizeof(xforms[0]); ++i)
-			if ( (ret = run_xform(&xforms[i], filelist)) )
+			if ( (ret = run_xform(&xforms[i], files)) )
 				break;
 	} else {
 		struct dynstr *ds;
 		list_for_each_entry(ds, &args->xform_names, list) {
 			struct xform_desc *desc = find_xform(ds->text);
 			if (desc) {
-				if ( (ret = run_xform(desc, filelist)) )
+				if ( (ret = run_xform(desc, files)) )
 					break;
 			} else
 				fprintf(stderr, "WARNING: "

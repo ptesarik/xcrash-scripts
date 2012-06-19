@@ -772,15 +772,16 @@ split_search(struct list_head *splitlist, struct dynstr *ds,
  */
 
 struct parsed_file *
-find_file(struct list_head *filelist, const char *name)
+find_file(const struct file_array *files, const char *name)
 {
 	struct parsed_file *pf;
-	list_for_each_entry(pf, filelist, list)
+	files_for_each(pf, files) {
 		if (pf->name == NULL) {
 			if (name == NULL)
 				return pf;
 		} else if (!strcmp(pf->name, name))
 			return pf;
+	}
 	return NULL;
 }
 
@@ -845,11 +846,11 @@ writeout(const char *name, struct list_head *rawlist)
 }
 
 static int
-writeout_files(struct list_head *filelist)
+writeout_files(const struct file_array *files)
 {
 	struct parsed_file *pf;
 	int res;
-	list_for_each_entry(pf, filelist, list) {
+	files_for_each(pf, files) {
 		if (pf->clean || !pf->name)
 			continue;
 		if ( (res = writeout(pf->name, &pf->raw)) )
@@ -875,17 +876,16 @@ static const char *quilt_refresh_argv[] =
 { QUILT, "refresh", "-p", "ab", "--no-timestamp", NULL };
 
 int
-quilt_refresh(struct list_head *filelist)
+quilt_refresh(const struct file_array *files)
 {
-	int n = list_count(filelist);
-	const char **argv = alloca((n+3) * sizeof(char*));
+	const char **argv = alloca((files->n+3) * sizeof(char*));
 	struct parsed_file *pf;
 	int i, res;
 
 	i = 0;
 	argv[i++] = QUILT;
 	argv[i++] = "add";
-	list_for_each_entry(pf, filelist, list) {
+	files_for_each(pf, files) {
 		if (pf->clean || !pf->name)
 			continue;
 		argv[i++] = pf->name;
@@ -894,7 +894,7 @@ quilt_refresh(struct list_head *filelist)
 	if ( (res = run_command(QUILT, argv)) )
 		return res;
 
-	if ( (res = writeout_files(filelist)) )
+	if ( (res = writeout_files(files)) )
 		return res;
 
 	return run_command(QUILT, quilt_refresh_argv);

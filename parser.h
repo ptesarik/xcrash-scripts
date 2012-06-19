@@ -410,7 +410,6 @@ void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		       struct dynstr *newfirst, struct dynstr *newlast);
 
 struct parsed_file {
-	struct list_head list;
 	const char *name;
 	struct list_head parsed;
 	struct list_head raw;
@@ -418,9 +417,19 @@ struct parsed_file {
 	int clean;
 };
 
+struct file_array {
+	int n;			/* number of files in the array */
+	struct parsed_file *array;
+};
+
+/* Iterate over all files in a struct file_array @fa */
+#define files_for_each(pos, fa)	\
+	for ((pos) = (fa)->array; (pos) != &(fa)->array[(fa)->n]; ++(pos))
+
+int file_name(int);
 int parse_file(struct parsed_file *);
 node_t *reparse_node(node_t *, int);
-int xform_files(struct arguments *, struct list_head *);
+int xform_files(struct arguments *, const struct file_array *);
 
 /* Returns non-zero iff:
  *   a. the file name of @pf ends with a ".h", or

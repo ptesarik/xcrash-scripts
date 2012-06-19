@@ -67,11 +67,11 @@ fill_varscope(node_t *node, void *data)
 }
 
 void
-init_varscope(struct list_head *filelist)
+init_varscope(const struct file_array *files)
 {
 	struct parsed_file *pf;
 	free_varscope();
-	list_for_each_entry(pf, filelist, list)
+	files_for_each(pf, files)
 		walk_tree(&pf->parsed, fill_varscope, NULL);
 }
 
@@ -322,7 +322,7 @@ varscope_find_expr(node_t *expr)
 }
 
 static node_t *
-find_global(struct list_head *filelist, struct list_head *scope,
+find_global(const struct file_array *files, struct list_head *scope,
 	    enum node_type type, const char *idname)
 {
 	node_t *ret = varscope_find(scope, type, idname);
@@ -332,7 +332,7 @@ find_global(struct list_head *filelist, struct list_head *scope,
 		return ret;
 
 	struct parsed_file *pf;
-	list_for_each_entry(pf, filelist, list)
+	files_for_each(pf, files)
 		if ( (ret = varscope_find(&pf->parsed, type, idname)) )
 			break;
 	return ret;
@@ -369,7 +369,7 @@ check_prefix(const char *spec, enum node_type *nt, int *extra)
 }
 
 static node_t *
-find_symbol(struct list_head *filelist, struct list_head *scope,
+find_symbol(const struct file_array *files, struct list_head *scope,
 	    const char *spec)
 {
 	enum node_type nodetype;
@@ -377,9 +377,9 @@ find_symbol(struct list_head *filelist, struct list_head *scope,
 	spec += check_prefix(spec, &nodetype, &extra);
 
 	node_t *node = (nodetype != -1)
-		? find_global(filelist, scope, nodetype, spec)
-		: (find_global(filelist, scope, nt_var, spec)
-		   ?: find_global(filelist, scope, nt_type, spec));
+		? find_global(files, scope, nodetype, spec)
+		: (find_global(files, scope, nt_var, spec)
+		   ?: find_global(files, scope, nt_type, spec));
 
 	while (node) {
 		if (extra == -1)
@@ -402,7 +402,7 @@ find_symbol(struct list_head *filelist, struct list_head *scope,
 
 /* varscope_symbol - find a symbol in the varscope database
  *
- * @filelist	list of all parsed_file structures
+ * @files	array of all parsed_file structures
  * @name	name of the symbol
  *
  * The @name is in fact a "path" to the symbol. The general syntax is:
@@ -413,7 +413,7 @@ find_symbol(struct list_head *filelist, struct list_head *scope,
  *   var, typedef, type, struct, union, enum
  */
 node_t *
-varscope_symbol(struct list_head *filelist, const char *name)
+varscope_symbol(const struct file_array *files, const char *name)
 {
 	struct list_head *tree;
 	char localname[strlen(name) + 1];
@@ -426,7 +426,7 @@ varscope_symbol(struct list_head *filelist, const char *name)
 		struct parsed_file *pf;
 
 		*sep = 0;
-		if (! (pf = find_file(filelist, spec)) )
+		if (! (pf = find_file(files, spec)) )
 			return NULL;
 		tree = &pf->parsed;
 	} else {
@@ -444,7 +444,7 @@ varscope_symbol(struct list_head *filelist, const char *name)
 		if (node)
 			scope = node_scope(node);
 
-		if (! (node = find_symbol(filelist, scope, spec)) )
+		if (! (node = find_symbol(files, scope, spec)) )
 			return NULL;
 		if (! (node = resolve_typedef(tree, node)) )
 			return NULL;
