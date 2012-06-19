@@ -542,9 +542,6 @@ reuse_last_content(const char *s, size_t len)
 		return NULL;
 
 	ds = last_dynstr(&raw_contents);
-	if (!ds->flags.reuse)
-		return NULL;
-
 	if (!dynstr_flags_equal(ds->flags, lex_dynstr_flags))
 		return NULL;
 
@@ -593,7 +590,7 @@ update_pos(pos_t *pos, const char *p, size_t len)
 }
 
 static int
-store_segment(YYLTYPE *loc, const char *s, int len)
+store_segment(YYLTYPE *loc, const char *s, int len, int extend)
 {
 	struct stored_meta *sm;
 	struct dynstr *ds;
@@ -603,7 +600,7 @@ store_segment(YYLTYPE *loc, const char *s, int len)
 		len = sm->off - output_off;
 
 	if (len) {
-		if ( ! (ds = reuse_last_content(s, len)) ) {
+		if (!extend || !(ds = reuse_last_content(s, len)) ) {
 			ds = newdynstr(s, len);
 			list_add_tail(&ds->list, &raw_contents);
 		}
@@ -630,6 +627,7 @@ static void
 store_yytext(YYLTYPE *loc, const char *s)
 {
 	int len;
+	int extend = loc->last.text && loc->last.text->flags.reuse;
 
 	loc->first = loc->last;
 	update_pos(&loc->last, yytext, yyleng);
@@ -637,7 +635,7 @@ store_yytext(YYLTYPE *loc, const char *s)
 	loc->first.text = NULL;
 	len = yyleng;
 	while (len) {
-		int seglen = store_segment(loc, s, len);
+		int seglen = store_segment(loc, s, len, extend);
 		s += seglen;
 		len -= seglen;
 		output_off += seglen;
