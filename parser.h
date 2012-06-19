@@ -257,7 +257,7 @@ struct hashed_macro {
 	int nparams;		/* number of parameters */
 
 	struct node *cpp_cond;
-	struct dynstr *first, *last;
+	YYLTYPE loc;
 
 	int undef:1;		/* #undefined macro */
 	int hidden:1;		/* macro should be ignored in searches */
@@ -269,7 +269,7 @@ struct hashed_macro {
 
 void clearmacros(void);
 struct hashed_macro *findmacro(const struct dynstr *ds);
-void undefmacro(const char *name);
+void undefmacro(const char *name, const YYLTYPE *loc);
 
 /* Macro expansion */
 struct macro_exp {

@@ -73,7 +73,7 @@ findhiddenmacro(const char *name)
 }
 
 static struct hashed_macro *
-addmacro(const char *name)
+addmacro(const char *name, const YYLTYPE *loc)
 {
 	unsigned hash = mkhash(name);
 	struct hashed_macro *hm;
@@ -85,7 +85,9 @@ addmacro(const char *name)
 	INIT_LIST_HEAD(&hm->params);
 	hm->nparams = 0;
 	hm->cpp_cond = NULL;
-	hm->first = hm->last = NULL;
+	hm->loc = *loc;
+	hm->loc.first.text = NULL;
+	hm->loc.last.text = NULL;
 	hm->undef = 0;
 	hm->hidden = 0;
 	hm->hasparam = 0;
@@ -97,23 +99,23 @@ addmacro(const char *name)
 }
 
 void
-undefmacro(const char *name)
+undefmacro(const char *name, const YYLTYPE *loc)
 {
-	struct hashed_macro *hm = addmacro(name);
+	struct hashed_macro *hm = addmacro(name, loc);
 	hm->undef = 1;
 }
 
 static void
 delmacro_text(struct hashed_macro *hm)
 {
-	struct dynstr *ds = hm->first;
+	struct dynstr *ds = hm->loc.first.text;
 
-	detach_text(hm->first, hm->last);
+	detach_text(hm->loc.first.text, hm->loc.last.text);
 	do {
 		struct dynstr *next = next_dynstr(ds);
 		freedynstr(ds);
 		ds = next;
-	} while (ds != hm->first);
+	} while (ds != hm->loc.first.text);
 }		
 
 static void
@@ -125,7 +127,8 @@ delmacro(const char *name)
 	while ( (hm = *pprev) ) {
 		if (!strcmp(name, hm->name)) {
 			*pprev = hm->next;
-			if (hm->first && hm->first->flags.fake)
+			if (hm->loc.first.text &&
+			    hm->loc.first.text->flags.fake)
 				delmacro_text(hm);
 			free(hm);
 			break;
@@ -146,7 +149,7 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 	YYSTYPE val;
 	int token, ntoken;
 
-	if (! (hm = addmacro(name)) )
+	if (! (hm = addmacro(name, loc)) )
 		return -1;
 	hm->cpp_cond = cpp_cond;
 
@@ -197,9 +200,9 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 	}
 
 	while ( (token = yylex(&val, loc)) ) {
-		if (!hm->first)
-			hm->first = loc->first.text;
-		hm->last = loc->last.text;
+		if (!hm->loc.first.text)
+			hm->loc.first = loc->first;
+		hm->loc.last = loc->last;
 	}
 
 	return 0;
@@ -220,7 +223,7 @@ do_parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 
 	list_for_each_entry(param, &hm->params, list) {
 		int paren = 0;
-		struct hashed_macro *arg = addmacro(param->str->text);
+		struct hashed_macro *arg = addmacro(param->str->text, loc);
 		arg->hidden = 1;
 
 		while ((token = yylex_cpp_arg(&val, loc)) &&
@@ -230,9 +233,9 @@ do_parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 				++paren;
 			else if (token == ')')
 				--paren;
-			if (!arg->first)
-				arg->first = loc->first.text;
-			arg->last = loc->last.text;
+			if (!arg->loc.first.text)
+				arg->loc.first = loc->first;
+			arg->loc.last = loc->last;
 		}
 	}
 
@@ -321,7 +324,7 @@ cpp_stringify(struct hashed_macro *hm, struct list_head *point)
 	ds = newdynstr("\"", 1);
 	list_add_tail(&ds->list, point);
 
-	ds = dupmerge(hm->first, hm->last);
+	ds = dupmerge(hm->loc.first.text, hm->loc.last.text);
 	ds->token = STRING_CONST;
 	list_add_tail(&ds->list, point);
 
@@ -339,7 +342,7 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
 	    (nested = findmacro(ds)) &&
 	    nested->isparam) {
 		nested = nested->next;
-		dupds = duplist(nested->first, nested->last);
+		dupds = duplist(nested->loc.first.text, nested->loc.last.text);
 		insert_text_list(list_entry(point, struct dynstr, list),
 				 dupds, prev_dynstr(dupds));
 	} else {
@@ -378,7 +381,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 	} state;
 	YYLTYPE lloc;
 
-	if (!hm->first)
+	if (!hm->loc.first.text)
 		return NULL;
 
 	lloc.first.filenum = loc->first.filenum;
@@ -390,7 +393,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 	state = normal;
 	prevtok = NULL;
 	ret = last_dynstr(point);
-	for (ds = hm->first; ; ds = next_dynstr(ds)) {
+	for (ds = hm->loc.first.text; ; ds = next_dynstr(ds)) {
 		struct hashed_macro *nested;
 
 		lloc.first = lloc.last;
@@ -425,7 +428,9 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 
 			macrods = next_dynstr(ds);
 			newfirst = do_expand(&lloc, nested, NULL);
-			ds = macrods ? prev_dynstr(macrods) : hm->last;
+			ds = macrods
+				? prev_dynstr(macrods)
+				: hm->loc.last.text;
 			macrods = oldmacrods;
 
 			if (newfirst) {
@@ -444,7 +449,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 				prevtok = dupds;
 		}
 
-		if (ds == hm->last)
+		if (ds == hm->loc.last.text)
 			break;
 	}
 	ret = next_dynstr(ret);
@@ -460,16 +465,19 @@ expand_params(YYLTYPE *loc, struct hashed_macro *hm, struct macro_exp *exp)
 	nparam = 0;
 	list_for_each_entry(param, &hm->params, list) {
 		struct hashed_macro *arg = findhiddenmacro(param->str->text);
-		struct hashed_macro *newarg = addmacro(arg->name);
+		struct hashed_macro *newarg = addmacro(arg->name, &arg->loc);
 		newarg->isparam = 1;
 		newarg->hidden = 1;
 
-		newarg->first = expand_body(loc, arg, &arg->first->list);
-		newarg->last = newarg->first ? prev_dynstr(arg->first) : NULL;
+		newarg->loc.first.text =
+			expand_body(loc, arg, &arg->loc.first.text->list);
+		newarg->loc.last.text = newarg->loc.first.text
+			? prev_dynstr(arg->loc.first.text)
+			: NULL;
 
 		if (exp) {
-			exp->params[nparam].first = arg->first;
-			exp->params[nparam].last = arg->last;
+			exp->params[nparam].first = arg->loc.first.text;
+			exp->params[nparam].last  = arg->loc.last.text;
 			++nparam;
 		}
 	}
@@ -511,7 +519,7 @@ do_expand(YYLTYPE *loc, struct hashed_macro *hm, struct macro_exp *exp)
 	lex_dynstr_flags.fake = 1;
 
 	if (hm->isparam) {
-		ret = duplist(hm->first, hm->last);
+		ret = duplist(hm->loc.first.text, hm->loc.last.text);
 		if (ret) {
 			struct dynstr *pointds =
 				list_entry(&raw_contents, struct dynstr, list);

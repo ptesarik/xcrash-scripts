@@ -215,7 +215,7 @@ CPP			("#"|"%:"){WS}*
 	}
 
 <cpp_undef>{L}({L}|{D})*	{
-		undefmacro(yytext);
+		undefmacro(yytext, loc);
 		BEGIN(cpp_ign);
 	}
 
