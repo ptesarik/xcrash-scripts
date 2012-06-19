@@ -9,7 +9,6 @@
 #include "lists.h"
 
 typedef struct {
-	int reuse:1;		/* can be reused for following text */
 	int fake:1;		/* not found in input file */
 	int macro:1;		/* verbatim macro text (before expansion) */
 } dynstr_flags_t;

@@ -40,17 +40,19 @@ static int output_off;		/* output offset */
 static struct cpp_cond_state cond_state;
 static node_t *cpp_cond;
 
-static void store_yytext(YYLTYPE *loc, const char *s);
-#define YY_USER_ACTION	store_yytext(loc, yytext);
+static void store_yytext(YYLTYPE *loc, const char *s, int extend);
+#define YY_BREAK	store_yytext(loc, yytext, 1); break;
 
 static void init_vars(void);
 #define YY_USER_INIT	init_vars()
 
-static int store_token(YYSTYPE *, YYLTYPE *, int);
-static int store_btype(YYSTYPE *, YYLTYPE *, int);
+static int store_token_notext(YYSTYPE *, YYLTYPE *, int);
+static int store_token(YYSTYPE *, YYLTYPE *, int, const char *);
+static int store_btype(YYSTYPE *, YYLTYPE *, int, const char *);
 
-#define STORE_TOKEN(tok)	(store_token(val, loc, (tok)))
-#define STORE_BTYPE(btype)	(store_btype(val, loc, (btype)))
+#define STORE_TOKEN_NOTEXT(tok)	(store_token_notext(val, loc, (tok)))
+#define STORE_TOKEN(tok)	(store_token(val, loc, (tok), yytext))
+#define STORE_BTYPE(btype)	(store_btype(val, loc, (btype), yytext))
 
 static size_t dynstr_read(void *, size_t);
 static int parse_cpp(YYLTYPE *loc);
@@ -134,7 +136,7 @@ CPP			("#"|"%:"){WS}*
 		int ret = macrods->token;
 		loc->first.text = loc->last.text = macrods;
 		macrods = next_dynstr(macrods);
-		return STORE_TOKEN(ret);
+		return STORE_TOKEN_NOTEXT(ret);
 	}
 %}
 
@@ -143,21 +145,20 @@ CPP			("#"|"%:"){WS}*
 
   /* CPP directive */
 ^{WS}*{CPP}	{
+			store_yytext(loc, yytext, 1);
 			BEGIN(cpp);
-			if (parse_cpp(loc) && YY_START != INITIAL) {
-				loc->last.text->flags.reuse = 1;
+			if (parse_cpp(loc) && YY_START != INITIAL)
 				BEGIN(cpp_recover);
-			}
+			break;
 		}
 <cpp_recover>\n	{
-			loc->last.text->flags.reuse = 0;
 			BEGIN(INITIAL);
 		}
   /* skip whitespace except newline */
 <cpp_macro,cpp_condition,cpp,cpp_def,cpp_undef>{WS}+
   /* A newline terminates the directive */
 <cpp_macro,cpp_condition,cpp,cpp_def,cpp_undef,cpp_ign>\n	{
-			loc->last.text->flags.reuse = 0;
+			store_yytext(loc, yytext, 1);
 			BEGIN(INITIAL);
 			yyterminate();
 		}
@@ -195,19 +196,20 @@ CPP			("#"|"%:"){WS}*
 			return STORE_TOKEN(CPP_ENDIF);
 			}
 (?s:.)			{
-			loc->last.text->flags.reuse = 1;
 			BEGIN(cpp_ign);
 			}
 }
 
   /* CPP define name */
 <cpp_def>{L}({L}|{D})*/\(	{
+		store_yytext(loc, yytext, 0);
 		BEGIN(cpp_macro);
 		if (yyparse_macro(loc, yytext, 1, cpp_cond))
 			YY_FATAL_ERROR("yyparse_macro failed");
 		yyterminate();
 	}
 <cpp_def>{L}({L}|{D})*		{
+		store_yytext(loc, yytext, 0);
 		BEGIN(cpp_macro);
 		if (yyparse_macro(loc, yytext, 0, cpp_cond))
 			YY_FATAL_ERROR("yyparse_macro failed");
@@ -314,6 +316,7 @@ CPP			("#"|"%:"){WS}*
 "void"			return STORE_BTYPE(TYPE_VOID);
 
 {L}({L}|{D})*		{
+		store_yytext(loc, yytext, 0);
 		if (YY_START == INITIAL) {
 			struct hashed_macro *hm = findmacro(loc->last.text);
 			if (hm) {
@@ -322,7 +325,7 @@ CPP			("#"|"%:"){WS}*
 					return yylex(val, loc);
 			}
 		}
-		return STORE_TOKEN(ID);
+		return STORE_TOKEN_NOTEXT(ID);
 	}
 
 <cpp_macro,cpp_arg>\.?{D}({L}|{D}|[_.]|{E})*	{
@@ -542,6 +545,9 @@ reuse_last_content(const char *s, size_t len)
 		return NULL;
 
 	ds = last_dynstr(&raw_contents);
+	if (ds->token)
+		return NULL;
+
 	if (!dynstr_flags_equal(ds->flags, lex_dynstr_flags))
 		return NULL;
 
@@ -624,15 +630,16 @@ store_segment(YYLTYPE *loc, const char *s, int len, int extend)
 }
 
 static void
-store_yytext(YYLTYPE *loc, const char *s)
+store_yytext(YYLTYPE *loc, const char *s, int extend)
 {
 	int len;
-	int extend = loc->last.text && loc->last.text->flags.reuse;
 
-	loc->first = loc->last;
+	if (!extend) {
+		loc->first = loc->last;
+		loc->first.text = NULL;
+	}
 	update_pos(&loc->last, yytext, yyleng);
 
-	loc->first.text = NULL;
 	len = yyleng;
 	while (len) {
 		int seglen = store_segment(loc, s, len, extend);
@@ -643,7 +650,7 @@ store_yytext(YYLTYPE *loc, const char *s)
 }
 
 static int
-store_token(YYSTYPE *val, YYLTYPE *loc, int token)
+store_token_notext(YYSTYPE *val, YYLTYPE *loc, int token)
 {
 	if (token == ID ||
 	    token == INT_CONST || token == FLOAT_CONST ||
@@ -659,10 +666,17 @@ store_token(YYSTYPE *val, YYLTYPE *loc, int token)
 }
 
 static int
-store_btype(YYSTYPE *val, YYLTYPE *loc, int btype)
+store_token(YYSTYPE *val, YYLTYPE *loc, int token, const char *text)
+{
+	store_yytext(loc, text, 0);
+	return store_token_notext(val, loc, token);
+}
+
+static int
+store_btype(YYSTYPE *val, YYLTYPE *loc, int btype, const char *text)
 {
 	val->btype = btype;
-	return store_token(val, loc, BASIC_TYPE);
+	return store_token(val, loc, BASIC_TYPE, text);
 }
 
 static inline size_t
