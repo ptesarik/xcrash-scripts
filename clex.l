@@ -548,7 +548,7 @@ reuse_last_content(const char *s, size_t len)
 	if (ds->token)
 		return NULL;
 
-	if (!dynstr_flags_equal(ds->flags, lex_dynstr_flags))
+	if (ds->flags.val != lex_dynstr_flags.val)
 		return NULL;
 
 	if (ds->len + len + 1 > ds->alloc) {
@@ -707,7 +707,7 @@ dynstr_read(void *buf, size_t max_size)
 	}
 
 	sm = last_stored_meta();
-	if (!sm || !dynstr_flags_equal(sm->flags, lex_input_first->flags))
+	if (!sm || sm->flags.val != lex_input_first->flags.val)
 		add_stored_meta(input_off, lex_input_first->flags, NULL);
 
 	if (n > max_size)

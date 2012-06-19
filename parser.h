@@ -8,16 +8,13 @@
 #include <stdlib.h>		/* for free */
 #include "lists.h"
 
-typedef struct {
-	int fake:1;		/* not found in input file */
-	int macro:1;		/* verbatim macro text (before expansion) */
+typedef union {
+	struct {
+		int fake:1;	/* not found in input file */
+		int macro:1;	/* verbatim macro text (before expansion) */
+	};
+	unsigned val;
 } dynstr_flags_t;
-
-static inline int
-dynstr_flags_equal(dynstr_flags_t a, dynstr_flags_t b)
-{
-	return a.fake == b.fake && a.macro == b.macro;
-}
 
 /* Stored file contents */
 struct macro_exp;
