@@ -271,6 +271,7 @@ node_t *reparse_node(node_t *node, int type)
 	lex_input_first = node->loc.first.text;
 	lex_input_last = node->loc.last.text;
 	start_symbol = type;
+	node->loc.last = node->loc.first;
 	res = yyparse(&node->loc);
 	yylex_destroy();
 
