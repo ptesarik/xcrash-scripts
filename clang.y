@@ -185,16 +185,16 @@ static void hidedecls(struct list_head *);
 %start input
 %initial-action
 {
-	struct dynstr *ds;
 	@$ = *fileloc;
-	ds = newdynstr(NULL, 0);
-	list_add_tail(&ds->list, &raw_contents);
-	@$.first.text = @$.last.text = ds;
+	@$.first.text = @$.last.text = last_dynstr(&raw_contents);
 }
 %%
 
 input			: translation_unit END
 			{
+				@$.first.text = next_dynstr(@$.first.text);
+				if (&@$.first.text->list == &raw_contents)
+					@$.first.text = @$.last.text = NULL;
 				*fileloc = @$;
 				YYACCEPT;
 			}
