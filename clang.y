@@ -195,7 +195,7 @@ static void hidedecls(struct list_head *);
 
 input			: translation_unit END
 			{
-				fileloc->last = @2.last;
+				*fileloc = @$;
 				YYACCEPT;
 			}
 			;
