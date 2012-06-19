@@ -14,21 +14,6 @@
 #include "clang.tab.h"
 
 /************************************************************
- * Useful helper functions
- *
- */
-
-static int
-list_count(struct list_head *list)
-{
-	struct list_head *iter;
-	int ret = 0;
-	list_for_each(iter, list)
-		++ret;
-	return ret;
-}
-
-/************************************************************
  * CPP conditions
  *
  */
