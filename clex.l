@@ -22,8 +22,6 @@
 #include "clang.tab.h"
 #include "tools.h"
 
-int filenum;
-
 int start_symbol;
 
 struct list_head raw_contents;
@@ -563,17 +561,6 @@ reuse_last_content(const char *s, size_t len)
 }
 
 int tabsize = 8;
-
-void
-init_loc(YYLTYPE *loc, YYLTYPE *parent)
-{
-	static const pos_t begpos = {
-		.line = 1, .column = 0, .vcolumn = 0
-	};
-
-	loc->first = loc->last = begpos;
-	loc->parent = parent;
-}
 
 void
 update_pos(pos_t *pos, const char *p, size_t len)

@@ -339,7 +339,6 @@ int parse_file(struct parsed_file *pf)
 		lex_input_last = list_entry(oldraw.prev, struct dynstr, list);
 	}
 	start_symbol = 0;
-	init_loc(&pf->loc, NULL);
 	ret = yyparse(&pf->loc);
 	if (yyin && yyin != stdin && fclose(yyin)) {
 		fprintf(stderr, "Cannot close %s: %s\n",

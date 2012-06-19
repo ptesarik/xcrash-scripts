@@ -1625,6 +1625,7 @@ static int
 update_parsed_files(struct list_head *filelist)
 {
 	struct parsed_file *pf;
+	int filenum = 0;
 
 	if (uptodate) {
 		list_for_each_entry(pf, filelist, list)
@@ -1634,12 +1635,17 @@ update_parsed_files(struct list_head *filelist)
 
 	clearmacros();
 	init_predef_types();
-	filenum = 0;
 	list_for_each_entry(pf, filelist, list) {
-		int res = parse_file(pf);
-		if (res)
+		int res;
+
+		pf->loc.first.filenum = filenum++;
+		pf->loc.first.line = 1;
+		pf->loc.first.column = pf->loc.first.vcolumn = 0;
+		pf->loc.last = pf->loc.first;
+		pf->loc.parent = NULL;
+
+		if ( (res = parse_file(pf)) )
 			return res;
-		++filenum;
 	}
 
 	uptodate = 1;

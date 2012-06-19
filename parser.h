@@ -71,6 +71,7 @@ extern struct dynstr *macrods;
 extern dynstr_flags_t lex_dynstr_flags;
 
 typedef struct {
+	int filenum;
 	int line;
 	int column, vcolumn;
 	struct dynstr *text;
@@ -84,9 +85,6 @@ typedef struct loc {
 	struct loc *parent;
 } loc_t;
 #define YYLTYPE	loc_t
-
-/* Initialize @loc */
-void init_loc(YYLTYPE *loc, YYLTYPE *parent);
 
 /* Parsed types */
 
@@ -299,7 +297,6 @@ put_macro_exp(struct macro_exp *exp)
 }
 
 /* Parser/lexer interface */
-extern int filenum;
 extern FILE *yyin;
 union YYSTYPE;
 

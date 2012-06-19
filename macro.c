@@ -381,7 +381,11 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 	if (!hm->first)
 		return NULL;
 
-	init_loc(&lloc, loc);
+	lloc.first.filenum = loc->first.filenum;
+	lloc.first.line = 1;
+	lloc.first.column = lloc.first.vcolumn = 0;
+	lloc.last = lloc.first;
+	lloc.parent = loc;
 
 	state = normal;
 	prevtok = NULL;
