@@ -48,14 +48,21 @@ clearmacros(void)
 }
 
 struct hashed_macro *
-findmacro(const struct dynstr *ds)
+findmacro(const struct dynstr *ds, YYLTYPE *loc)
 {
 	unsigned hash = mkhash(ds->text);
 	struct hashed_macro *hm;
-	for (hm = macros[hash]; hm; hm = hm->next) {
+	for (hm = macros[hash]; hm; hm = hm->next)
+		if (hm->loc.first.filenum < loc->first.filenum ||
+		    (hm->loc.first.filenum == loc->first.filenum &&
+		     hm->loc.first.line <= loc->first.line))
+			break;
+
+	while (hm) {
 		if (!hm->hidden && !strcmp(ds->text, hm->name) &&
 		    !cond_is_disjunct(ds->cpp_cond, hm->cpp_cond))
 			return hm->undef ? NULL : hm;
+		hm = hm->next;
 	}
 	return NULL;
 }
@@ -333,13 +340,14 @@ cpp_stringify(struct hashed_macro *hm, struct list_head *point)
 }
 
 static void
-cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
+cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok,
+	   YYLTYPE *loc)
 {
 	struct hashed_macro *nested;
 	struct dynstr *dupds, *merged;
 
 	if (ds->token == ID &&
-	    (nested = findmacro(ds)) &&
+	    (nested = findmacro(ds, loc)) &&
 	    nested->isparam) {
 		nested = nested->next;
 		dupds = duplist(nested->loc.first.text, nested->loc.last.text);
@@ -355,8 +363,12 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok)
 	merged = dupconcat(prevtok, dupds);
 	lex_push_state();
 	lex_input_first = lex_input_last = merged;
-	YYSTYPE val; YYLTYPE loc;
-	while (yylex(&val, &loc));
+	YYSTYPE val; YYLTYPE lloc;
+	lloc.first = loc->first;
+	lloc.first.text = NULL;
+	lloc.last = lloc.first;
+	lloc.parent = loc;
+	while (yylex(&val, &lloc));
 	lex_pop_state();
 	freedynstr(merged);
 
@@ -384,8 +396,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 	if (!hm->loc.first.text)
 		return NULL;
 
-	lloc.first.filenum = loc->first.filenum;
-	lloc.first.line = 1;
+	lloc.first = loc->first;
 	lloc.first.column = lloc.first.vcolumn = 0;
 	lloc.last = lloc.first;
 	lloc.parent = loc;
@@ -404,7 +415,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			if (ds->token)
 				state = normal;
 			if (ds->token == ID &&
-			    (nested = findmacro(ds)) &&
+			    (nested = findmacro(ds, &lloc)) &&
 			    nested->isparam)
 				cpp_stringify(nested->next, point);
 			else
@@ -412,7 +423,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 		} else if (state == concat) {
 			if (ds->token) {
 				state = normal;
-				cpp_concat(point, ds, prevtok);
+				cpp_concat(point, ds, prevtok, &lloc);
 				prevtok = last_dynstr(point);
 			}
 		} else if (ds->token == '#')
@@ -421,7 +432,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			if (prevtok)
 				state = concat;
 		} else if (ds->token == ID &&
-			   (nested = findmacro(ds)) &&
+			   (nested = findmacro(ds, &lloc)) &&
 			   !nested->noexpand) {
 			struct dynstr *newfirst, *newlast;
 			struct dynstr *oldmacrods = macrods;

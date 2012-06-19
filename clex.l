@@ -316,7 +316,7 @@ CPP			("#"|"%:"){WS}*
 {L}({L}|{D})*		{
 		int ret = STORE_TOKEN(ID);
 		if (YY_START == INITIAL) {
-			struct hashed_macro *hm = findmacro(val->str);
+			struct hashed_macro *hm = findmacro(val->str, loc);
 			if (hm) {
 				macrods = expand_macro(loc, hm);
 				if (macrods)
