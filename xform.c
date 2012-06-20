@@ -20,30 +20,17 @@ static int update_parsed_files(const struct file_array *files);
  *
  */
 
-static struct dynstr *
-replace_text(node_t *node, const char *text)
-{
-	nullify_str(node);
-	struct dynstr *ds = newdynstr(text, strlen(text));
-	ds->flags = node->loc.first.text->flags;
-	replace_text_list(node->loc.first.text, node->loc.last.text, ds, ds);
-	return ds;
-}
-
 static void
 replace_node_str(node_t *node, const char *newtext)
 {
 	struct dynstr *oldds = node->str;
 	struct dynstr *newds = newdynstr(newtext, strlen(newtext));
 
-	list_add(&newds->list, &oldds->list);
-	list_add(&newds->node_first, &oldds->node_first);
-	list_add(&newds->node_last, &oldds->node_last);
-	newds->cpp_cond = oldds->cpp_cond;
 	newds->token = oldds->token;
+	newds->flags = oldds->flags;
 
 	set_node_str(node, newds);
-	dynstr_del(oldds);
+	replace_text_list(oldds, oldds, newds, newds);
 	node->pf->clean = 0;
 }
 
@@ -960,7 +947,7 @@ convert_readmem(node_t *node, void *data)
 	char *newfn = get_read_fn(first_node(&size->child[che_arg1]));
 	if (!newfn)
 		return 0;
-	replace_text(first_node(&node->child[che_arg1]), newfn);
+	replace_node_str(first_node(&node->child[che_arg1]), newfn);
 
 	/* Replace the 4th argument */
 	nullify_str(arg);
