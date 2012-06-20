@@ -618,11 +618,8 @@ void
 replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		  struct dynstr *newfirst, struct dynstr *newlast)
 {
-	struct list_head *it, *next, *follow;
+	struct list_head *it, *prev, *next;
 	node_t *node, *nnode;
-
-	implant_text_list(oldfirst->list.prev, oldlast->list.next,
-			  newfirst, newlast);
 
 	if (oldfirst->cpp_cond != oldlast->cpp_cond) {
 		fputs("Replacing CPP conditionals not supported\n", stderr);
@@ -640,17 +637,10 @@ replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 				 &oldlast->node_last, last_list)
 		set_node_last(node, newlast);
 
-	it = &oldfirst->list;
-	follow = oldlast->list.next;
-	while (it != follow) {
-		struct dynstr *ds = list_entry(it, struct dynstr, list);
-		list_del(&ds->node_first);
-		list_del(&ds->node_last);
-
-		next = it->next;
-		freedynstr(ds);
-		it = next;
-	}
+	prev = oldfirst->list.prev;
+	next = oldlast->list.next;
+	remove_text_list(oldfirst, oldlast);
+	implant_text_list(prev, next, newfirst, newlast);
 }
 
 /* Remove text nodes from @first up to, and including @last. */
