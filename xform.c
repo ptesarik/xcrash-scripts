@@ -937,10 +937,7 @@ convert_readmem(node_t *node, void *data)
 		return 0;
 
 	node_t *arg = nth_node(&node->child[che_arg2], 4);
-	if (arg->type != nt_expr) {
-		fputs("Huh?! Argument to call not an expression?\n", stderr);
-		return 0;
-	}
+	assert(arg->type == nt_expr);
 
 	node_t *mult = NULL;
 	node_t *size = arg;
