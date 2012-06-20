@@ -659,23 +659,28 @@ remove_text_list(struct dynstr *ds, struct dynstr *keep)
 {
 	struct dynstr *prev = prev_dynstr(ds);
 	node_t *node, *nnode;
+	LIST_HEAD(first_nodes);
+	LIST_HEAD(last_nodes);
 
 	while (ds != keep) {
-		list_for_each_entry_safe(node, nnode,
-					 &ds->node_first, first_list)
-			set_node_first(node, keep);
-		list_for_each_entry_safe(node, nnode,
-					 &ds->node_last, last_list)
-			set_node_last(node, prev);
+		list_for_each_entry(node, &ds->node_first, first_list)
+			node->loc.first.text = keep;
+		list_splice(&ds->node_first, &first_nodes);
+
+		list_for_each_entry(node, &ds->node_last, last_list)
+			node->loc.last.text = prev;
+		list_splice(&ds->node_last, &last_nodes);
 
 		ds = dynstr_del(ds);
 	}
 
-	list_for_each_entry_safe(node, nnode, &ds->node_first, first_list)
+	list_for_each_entry_safe(node, nnode, &first_nodes, first_list)
 		if (node->loc.last.text == prev) {
 			set_node_first(node, &dummydynstr);
 			set_node_last(node, &dummydynstr);
 		}
+	list_splice(&first_nodes, &keep->node_first);
+	list_splice(&last_nodes, &prev->node_last);
 }
 
 /* Remove text nodes from @ds backwards up to, but not including @keep. */
@@ -684,23 +689,28 @@ remove_text_list_rev(struct dynstr *ds, struct dynstr *keep)
 {
 	struct dynstr *next = next_dynstr(ds);
 	node_t *node, *nnode;
+	LIST_HEAD(first_nodes);
+	LIST_HEAD(last_nodes);
 
 	while (ds != keep) {
-		list_for_each_entry_safe(node, nnode,
-					 &ds->node_first, first_list)
-			set_node_first(node, next);
-		list_for_each_entry_safe(node, nnode,
-					 &ds->node_last, last_list)
-			set_node_last(node, keep);
+		list_for_each_entry(node, &ds->node_first, first_list)
+			node->loc.first.text = next;
+		list_splice(&ds->node_first, &first_nodes);
+
+		list_for_each_entry(node, &ds->node_last, last_list)
+			node->loc.last.text = keep;
+		list_splice(&ds->node_last, &last_nodes);
 
 		ds = dynstr_del_rev(ds);
 	}
 
-	list_for_each_entry_safe(node, nnode, &ds->node_first, first_list)
-		if (node->loc.first.text == next) {
+	list_for_each_entry_safe(node, nnode, &first_nodes, first_list)
+		if (node->loc.last.text == keep) {
 			set_node_first(node, &dummydynstr);
 			set_node_last(node, &dummydynstr);
 		}
+	list_splice(&first_nodes, &next->node_first);
+	list_splice(&last_nodes, &keep->node_last);
 }
 
 /************************************************************
