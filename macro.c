@@ -52,11 +52,15 @@ findmacro(const struct dynstr *ds, YYLTYPE *loc)
 {
 	unsigned hash = mkhash(ds->text);
 	struct hashed_macro *hm;
-	for (hm = macros[hash]; hm; hm = hm->next)
-		if (hm->loc.first.filenum < loc->first.filenum ||
-		    (hm->loc.first.filenum == loc->first.filenum &&
-		     hm->loc.first.line <= loc->first.line))
+	for (hm = macros[hash]; hm; hm = hm->next) {
+		if (hm->isparam) {
+			if (!hm->hidden && !strcmp(ds->text, hm->name))
+				return hm;
+		} else if (hm->loc.first.filenum < loc->first.filenum ||
+			   (hm->loc.first.filenum == loc->first.filenum &&
+			    hm->loc.first.line <= loc->first.line))
 			break;
+	}
 
 	while (hm) {
 		if (!hm->hidden && !strcmp(ds->text, hm->name) &&
@@ -231,6 +235,7 @@ do_parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 	list_for_each_entry(param, &hm->params, list) {
 		int paren = 0;
 		struct hashed_macro *arg = addmacro(param->str->text, loc);
+		arg->isparam = 1;
 		arg->hidden = 1;
 
 		while ((token = yylex_cpp_arg(&val, loc)) &&
