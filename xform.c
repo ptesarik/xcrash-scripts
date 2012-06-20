@@ -1625,7 +1625,6 @@ static int
 update_parsed_files(const struct file_array *files)
 {
 	struct parsed_file *pf;
-	int filenum = 0;
 
 	if (uptodate) {
 		files_for_each(pf, files)
@@ -1638,7 +1637,6 @@ update_parsed_files(const struct file_array *files)
 	files_for_each(pf, files) {
 		int res;
 
-		pf->loc.first.filenum = filenum++;
 		pf->loc.first.line = 1;
 		pf->loc.first.column = pf->loc.first.vcolumn = 0;
 		pf->loc.last = pf->loc.first;

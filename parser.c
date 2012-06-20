@@ -301,22 +301,26 @@ int parse_file(struct parsed_file *pf)
 	return ret;
 }
 
-static void
-init_builtin_file(struct parsed_file *pf)
+static struct parsed_file *
+init_file(struct file_array *files, int filenum, const char *name)
 {
-	struct dynstr *ds = newdynstr(builtin_file, sizeof builtin_file - 1);
-
-	INIT_LIST_HEAD(&pf->parsed);
-	list_add(&pf->raw, &ds->list);
-}
-
-static void
-init_file(struct parsed_file *pf, const char *name)
-{
+	struct parsed_file *pf = files->array + filenum;
 	pf->name = name;
 	INIT_LIST_HEAD(&pf->parsed);
 	INIT_LIST_HEAD(&pf->raw);
+	pf->loc.first.filenum = filenum;
+	pf->loc.last.filenum = filenum;
 	pf->clean = 1;
+	return pf;
+}
+
+static struct parsed_file *
+init_builtin_file(struct file_array *files, int filenum)
+{
+	struct parsed_file *pf = init_file(files, filenum, NULL);
+	struct dynstr *ds = newdynstr(builtin_file, sizeof builtin_file - 1);
+	list_add(&pf->raw, &ds->list);
+	return pf;
 }
 
 static char *
@@ -381,26 +385,25 @@ static struct argp argp = { options, parse_opt, args_doc, doc };
 int main(int argc, char **argv)
 {
 	struct arguments arguments;
-	struct parsed_file *pf;
-	int i;
+	int argf, i;
 
 	/* Default values. */
 	INIT_LIST_HEAD(&arguments.xform_names);
 	arguments.basedir = get_basedir(argv[0]);
 
 	/* Parse arguments */
-	argp_parse(&argp, argc, argv, 0, &i, &arguments);
+	argp_parse(&argp, argc, argv, 0, &argf, &arguments);
 
-	files.n = argc - i + 1;
+	files.n = argc - argf + 1;
 	if (! (files.array = calloc(files.n, sizeof(struct parsed_file))) ) {
 		perror("Cannot allocate file array");
 		return 1;
 	}
 
-	pf = files.array;
-	init_builtin_file(pf++);
-	while(i < argc)
-		init_file(pf++, argv[i++]);
+	i = 0;
+	init_builtin_file(&files, i++);
+	while(i < files.n)
+		init_file(&files, i++, argv[argf++]);
 
 	return xform_files(&arguments, &files);
 }
