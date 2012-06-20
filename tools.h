@@ -87,10 +87,15 @@ dynstr_del_rev(struct dynstr *ds)
 }
 
 void detach_text_list(struct dynstr *first, struct dynstr *last);
+void unflag_text_list(struct dynstr *first, struct dynstr *last);
+
 void insert_text_list(struct dynstr *where,
 		      struct dynstr *first, struct dynstr *last);
 void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		       struct dynstr *newfirst, struct dynstr *newlast);
+
+void remove_text_list(struct dynstr *ds, struct dynstr *keep);
+void remove_text_list_rev(struct dynstr *ds, struct dynstr *keep);
 
 /* Related to the parsed tree */
 void reset_user_data(struct list_head *tree);

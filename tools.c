@@ -587,6 +587,16 @@ detach_text_list(struct dynstr *first, struct dynstr *last)
 	last->list.next = &first->list;
 }
 
+/* Remove special flags from a list of dynstr objects */
+void
+unflag_text_list(struct dynstr *first, struct dynstr *last)
+{
+	while (&first->list != last->list.next) {
+		first->flags.fake = first->flags.macro = 0;
+		first = next_dynstr(first);
+	}
+}
+
 static void
 implant_text_list(struct list_head *prev, struct list_head *next,
 		  struct dynstr *first, struct dynstr *last)
@@ -641,6 +651,56 @@ replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		freedynstr(ds);
 		it = next;
 	}
+}
+
+/* Remove text nodes from @ds up to, but not including @keep. */
+void
+remove_text_list(struct dynstr *ds, struct dynstr *keep)
+{
+	struct dynstr *prev = prev_dynstr(ds);
+	node_t *node, *nnode;
+
+	while (ds != keep) {
+		list_for_each_entry_safe(node, nnode,
+					 &ds->node_first, first_list)
+			set_node_first(node, keep);
+		list_for_each_entry_safe(node, nnode,
+					 &ds->node_last, last_list)
+			set_node_last(node, prev);
+
+		ds = dynstr_del(ds);
+	}
+
+	list_for_each_entry_safe(node, nnode, &ds->node_first, first_list)
+		if (node->loc.last.text == prev) {
+			set_node_first(node, &dummydynstr);
+			set_node_last(node, &dummydynstr);
+		}
+}
+
+/* Remove text nodes from @ds backwards up to, but not including @keep. */
+void
+remove_text_list_rev(struct dynstr *ds, struct dynstr *keep)
+{
+	struct dynstr *next = next_dynstr(ds);
+	node_t *node, *nnode;
+
+	while (ds != keep) {
+		list_for_each_entry_safe(node, nnode,
+					 &ds->node_first, first_list)
+			set_node_first(node, next);
+		list_for_each_entry_safe(node, nnode,
+					 &ds->node_last, last_list)
+			set_node_last(node, keep);
+
+		ds = dynstr_del_rev(ds);
+	}
+
+	list_for_each_entry_safe(node, nnode, &ds->node_first, first_list)
+		if (node->loc.first.text == next) {
+			set_node_first(node, &dummydynstr);
+			set_node_last(node, &dummydynstr);
+		}
 }
 
 /************************************************************
