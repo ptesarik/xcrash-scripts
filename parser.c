@@ -302,7 +302,7 @@ int parse_file(struct parsed_file *pf)
 }
 
 static void
-add_builtin_file(struct parsed_file *pf)
+init_builtin_file(struct parsed_file *pf)
 {
 	struct dynstr *ds = newdynstr(builtin_file, sizeof builtin_file - 1);
 
@@ -310,14 +310,13 @@ add_builtin_file(struct parsed_file *pf)
 	list_add(&pf->raw, &ds->list);
 }
 
-static int
-add_file(struct parsed_file *pf, const char *name)
+static void
+init_file(struct parsed_file *pf, const char *name)
 {
 	pf->name = name;
 	INIT_LIST_HEAD(&pf->parsed);
 	INIT_LIST_HEAD(&pf->raw);
 	pf->clean = 1;
-	return 0;
 }
 
 static char *
@@ -384,7 +383,6 @@ int main(int argc, char **argv)
 	struct arguments arguments;
 	struct parsed_file *pf;
 	int i;
-	int ret;
 
 	/* Default values. */
 	INIT_LIST_HEAD(&arguments.xform_names);
@@ -400,12 +398,9 @@ int main(int argc, char **argv)
 	}
 
 	pf = files.array;
-	add_builtin_file(pf++);
+	init_builtin_file(pf++);
 	while(i < argc)
-		if ( (ret = add_file(pf++, argv[i++])) )
-			break;
-	if (ret)
-		return ret;
+		init_file(pf++, argv[i++]);
 
 	return xform_files(&arguments, &files);
 }
