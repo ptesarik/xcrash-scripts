@@ -41,8 +41,7 @@ static void
 delete_node(node_t *node)
 {
 	nullify_str(node);
-	remove_text_list(node->loc.first.text,
-			 next_dynstr(node->loc.last.text));
+	remove_text_list(node->loc.first.text, node->loc.last.text);
 	freenode(node);
 }
 
@@ -871,8 +870,10 @@ mkstring_variadic(node_t *node, void *data)
 	if (exp && !strcmp(exp->hm->name, "MKSTR")) {
 		nullify_str(opt);
 		freenode(opt);
-		remove_text_list(exp->first, exp->params[0].first);
-		remove_text_list_rev(exp->exp_last, exp->params[0].last);
+		remove_text_list(exp->first,
+				 prev_dynstr(exp->params[0].first));
+		remove_text_list(next_dynstr(exp->params[0].last),
+				 exp->exp_last);
 		unflag_text_list(exp->params[0].first, exp->params[0].last);
 		arg4 = exp->params[0].first;
 	}
@@ -952,8 +953,10 @@ convert_readmem(node_t *node, void *data)
 	/* Replace the 4th argument */
 	nullify_str(arg);
 	if (mult) {
-		remove_text_list(arg->loc.first.text, mult->loc.first.text);
-		remove_text_list_rev(arg->loc.last.text, mult->loc.last.text);
+		remove_text_list(arg->loc.first.text,
+				 prev_dynstr(mult->loc.first.text));
+		remove_text_list(next_dynstr(mult->loc.last.text),
+				 arg->loc.last.text);
 	} else {
 		struct dynstr *ds = newdynstr("1", 1);
 		replace_text_list(arg->loc.first.text, arg->loc.last.text,
@@ -1068,8 +1071,7 @@ replace_struct(node_t *node, const char *oldname, const char *newname)
 		varscope_remove(type);
 		node->pf->clean = 0;
 		nullify_str(node);
-		remove_text_list(node->loc.first.text,
-				 next_dynstr(node->loc.last.text));
+		remove_text_list(node->loc.first.text, node->loc.last.text);
 		freenode(node);
 		return 1;
 	}

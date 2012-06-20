@@ -653,64 +653,35 @@ replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 	}
 }
 
-/* Remove text nodes from @ds up to, but not including @keep. */
+/* Remove text nodes from @first up to, and including @last. */
 void
-remove_text_list(struct dynstr *ds, struct dynstr *keep)
+remove_text_list(struct dynstr *first, struct dynstr *last)
 {
-	struct dynstr *prev = prev_dynstr(ds);
+	struct dynstr *prev = prev_dynstr(first);
+	struct dynstr *next = next_dynstr(last);
 	node_t *node, *nnode;
 	LIST_HEAD(first_nodes);
 	LIST_HEAD(last_nodes);
 
-	while (ds != keep) {
-		list_for_each_entry(node, &ds->node_first, first_list)
-			node->loc.first.text = keep;
-		list_splice(&ds->node_first, &first_nodes);
+	do {
+		list_for_each_entry(node, &first->node_first, first_list)
+			node->loc.first.text = next;
+		list_splice(&first->node_first, &first_nodes);
 
-		list_for_each_entry(node, &ds->node_last, last_list)
+		list_for_each_entry(node, &first->node_last, last_list)
 			node->loc.last.text = prev;
-		list_splice(&ds->node_last, &last_nodes);
+		list_splice(&first->node_last, &last_nodes);
 
-		ds = dynstr_del(ds);
-	}
+		first = dynstr_del(first);
+	} while (first != next);
 
 	list_for_each_entry_safe(node, nnode, &first_nodes, first_list)
 		if (node->loc.last.text == prev) {
 			set_node_first(node, &dummydynstr);
 			set_node_last(node, &dummydynstr);
 		}
-	list_splice(&first_nodes, &keep->node_first);
-	list_splice(&last_nodes, &prev->node_last);
-}
-
-/* Remove text nodes from @ds backwards up to, but not including @keep. */
-void
-remove_text_list_rev(struct dynstr *ds, struct dynstr *keep)
-{
-	struct dynstr *next = next_dynstr(ds);
-	node_t *node, *nnode;
-	LIST_HEAD(first_nodes);
-	LIST_HEAD(last_nodes);
-
-	while (ds != keep) {
-		list_for_each_entry(node, &ds->node_first, first_list)
-			node->loc.first.text = next;
-		list_splice(&ds->node_first, &first_nodes);
-
-		list_for_each_entry(node, &ds->node_last, last_list)
-			node->loc.last.text = keep;
-		list_splice(&ds->node_last, &last_nodes);
-
-		ds = dynstr_del_rev(ds);
-	}
-
-	list_for_each_entry_safe(node, nnode, &first_nodes, first_list)
-		if (node->loc.last.text == keep) {
-			set_node_first(node, &dummydynstr);
-			set_node_last(node, &dummydynstr);
-		}
 	list_splice(&first_nodes, &next->node_first);
-	list_splice(&last_nodes, &keep->node_last);
+	list_splice(&last_nodes, &prev->node_last);
 }
 
 /************************************************************
