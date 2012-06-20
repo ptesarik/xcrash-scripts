@@ -374,7 +374,7 @@ type_split(struct list_head *raw, struct split_node *split)
 
 		node_t *var = typed_parent(type, nt_var);
 		struct dynstr *nextds = next_dynstr(var->loc.last.text);
-		detach_text(var->loc.first.text, var->loc.last.text);
+		detach_text_list(var->loc.first.text, var->loc.last.text);
 		insert_text_list(point,
 				 var->loc.first.text, var->loc.last.text);
 		remove_comma(raw, nextds);

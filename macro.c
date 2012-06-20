@@ -121,7 +121,7 @@ delmacro_text(struct hashed_macro *hm)
 {
 	struct dynstr *ds = hm->loc.first.text;
 
-	detach_text(hm->loc.first.text, hm->loc.last.text);
+	detach_text_list(hm->loc.first.text, hm->loc.last.text);
 	do {
 		struct dynstr *next = next_dynstr(ds);
 		freedynstr(ds);
@@ -381,7 +381,7 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok,
 	if (&first->list != &raw_contents) {
 		struct dynstr *last = last_dynstr(&raw_contents);
 
-		detach_text(first, last);
+		detach_text_list(first, last);
 		replace_text_list(prevtok, dupds, first, last);
 		remove_macros(first, last);
 	}
@@ -453,7 +453,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 				struct dynstr *pointds = 
 					list_entry(point, struct dynstr, list);
 				newlast = last_dynstr(&raw_contents);
-				detach_text(newfirst, newlast);
+				detach_text_list(newfirst, newlast);
 				insert_text_list(pointds, newfirst, newlast);
 				prevtok = newlast;
 			} else

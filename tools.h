@@ -86,6 +86,12 @@ dynstr_del_rev(struct dynstr *ds)
 	return ret;
 }
 
+void detach_text_list(struct dynstr *first, struct dynstr *last);
+void insert_text_list(struct dynstr *where,
+		      struct dynstr *first, struct dynstr *last);
+void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
+		       struct dynstr *newfirst, struct dynstr *newlast);
+
 /* Related to the parsed tree */
 void reset_user_data(struct list_head *tree);
 struct list_head *node_scope(node_t *node);

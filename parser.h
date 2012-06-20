@@ -403,12 +403,6 @@ enum walk_action walk_tree_single(node_t *tree, walkfn *fn, void *data);
 int dump_contents(struct list_head *contents, FILE *f);
 void dump_tree(struct list_head *tree);
 
-void detach_text(struct dynstr *first, struct dynstr *last);
-void insert_text_list(struct dynstr *where,
-		      struct dynstr *first, struct dynstr *last);
-void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
-		       struct dynstr *newfirst, struct dynstr *newlast);
-
 struct parsed_file {
 	const char *name;
 	struct list_head parsed;

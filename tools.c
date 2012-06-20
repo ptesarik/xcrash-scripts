@@ -577,6 +577,72 @@ dynstr_dup_indent(struct list_head *list,
 	return newds;
 }
 
+/* Completely detach a dynstr list from its surrounding */
+void
+detach_text_list(struct dynstr *first, struct dynstr *last)
+{
+	first->list.prev->next = last->list.next;
+	last->list.next->prev = first->list.prev;
+	first->list.prev = &last->list;
+	last->list.next = &first->list;
+}
+
+static void
+implant_text_list(struct list_head *prev, struct list_head *next,
+		  struct dynstr *first, struct dynstr *last)
+{
+	first->list.prev = prev;
+	prev->next = &first->list;
+	last->list.next = next;
+	next->prev = &last->list;	
+}
+
+void
+insert_text_list(struct dynstr *where,
+		 struct dynstr *first, struct dynstr *last)
+{
+	implant_text_list(where->list.prev, &where->list, first, last);
+}
+
+void
+replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
+		  struct dynstr *newfirst, struct dynstr *newlast)
+{
+	struct list_head *it, *next, *follow;
+	node_t *node, *nnode;
+
+	implant_text_list(oldfirst->list.prev, oldlast->list.next,
+			  newfirst, newlast);
+
+	if (oldfirst->cpp_cond != oldlast->cpp_cond) {
+		fputs("Replacing CPP conditionals not supported\n", stderr);
+		exit(1);
+	}
+	for (it = &newfirst->list; it != newlast->list.next; it = it->next) {
+		struct dynstr *ds = list_entry(it, struct dynstr, list);
+		ds->cpp_cond = oldfirst->cpp_cond;
+	}
+
+	list_for_each_entry_safe(node, nnode,
+				 &oldfirst->node_first, first_list)
+		set_node_first(node, newfirst);
+	list_for_each_entry_safe(node, nnode,
+				 &oldlast->node_last, last_list)
+		set_node_last(node, newlast);
+
+	it = &oldfirst->list;
+	follow = oldlast->list.next;
+	while (it != follow) {
+		struct dynstr *ds = list_entry(it, struct dynstr, list);
+		list_del(&ds->node_first);
+		list_del(&ds->node_last);
+
+		next = it->next;
+		freedynstr(ds);
+		it = next;
+	}
+}
+
 /************************************************************
  * Related to the parsed tree
  *
