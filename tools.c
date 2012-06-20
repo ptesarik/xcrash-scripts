@@ -671,6 +671,18 @@ remove_text_list(struct dynstr *first, struct dynstr *last)
 	list_splice(&last_nodes, &prev->node_last);
 }
 
+/* Trim the list between @oldfirst and @oldlast to only keep
+ * the part between @newfirst, @newlast (inclusive) */
+void
+trim_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
+	       struct dynstr *newfirst, struct dynstr *newlast)
+{
+	if (oldfirst != newfirst)
+		remove_text_list(oldfirst, prev_dynstr(newfirst));
+	if (oldlast != newlast)
+		remove_text_list(next_dynstr(oldlast), newlast);
+}
+
 /************************************************************
  * Related to the parsed tree
  *

@@ -870,10 +870,8 @@ mkstring_variadic(node_t *node, void *data)
 	if (exp && !strcmp(exp->hm->name, "MKSTR")) {
 		nullify_str(opt);
 		freenode(opt);
-		remove_text_list(exp->first,
-				 prev_dynstr(exp->params[0].first));
-		remove_text_list(next_dynstr(exp->params[0].last),
-				 exp->exp_last);
+		trim_text_list(exp->first, exp->last,
+			       exp->params[0].first, exp->params[0].last);
 		unflag_text_list(exp->params[0].first, exp->params[0].last);
 		arg4 = exp->params[0].first;
 	}
@@ -953,10 +951,8 @@ convert_readmem(node_t *node, void *data)
 	/* Replace the 4th argument */
 	nullify_str(arg);
 	if (mult) {
-		remove_text_list(arg->loc.first.text,
-				 prev_dynstr(mult->loc.first.text));
-		remove_text_list(next_dynstr(mult->loc.last.text),
-				 arg->loc.last.text);
+		trim_text_list(arg->loc.first.text, arg->loc.last.text,
+			       mult->loc.first.text, mult->loc.last.text);
 	} else {
 		struct dynstr *ds = newdynstr("1", 1);
 		replace_text_list(arg->loc.first.text, arg->loc.last.text,
