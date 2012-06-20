@@ -597,29 +597,27 @@ unflag_text_list(struct dynstr *first, struct dynstr *last)
 	}
 }
 
-static void
-implant_text_list(struct list_head *prev, struct list_head *next,
-		  struct dynstr *first, struct dynstr *last)
-{
-	first->list.prev = prev;
-	prev->next = &first->list;
-	last->list.next = next;
-	next->prev = &last->list;	
-}
-
 void
 insert_text_list(struct dynstr *where,
 		 struct dynstr *first, struct dynstr *last)
 {
-	implant_text_list(where->list.prev, &where->list, first, last);
+	struct list_head *prev = where->list.prev;
+	struct list_head *next = &where->list;
+
+	first->list.prev = prev;
+	prev->next = &first->list;
+
+	last->list.next = next;
+	next->prev = &last->list;	
 }
 
 void
 replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		  struct dynstr *newfirst, struct dynstr *newlast)
 {
-	struct list_head *it, *prev, *next;
+	struct list_head *it;
 	node_t *node, *nnode;
+	struct dynstr *next;
 
 	if (oldfirst->cpp_cond != oldlast->cpp_cond) {
 		fputs("Replacing CPP conditionals not supported\n", stderr);
@@ -637,10 +635,9 @@ replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 				 &oldlast->node_last, last_list)
 		set_node_last(node, newlast);
 
-	prev = oldfirst->list.prev;
-	next = oldlast->list.next;
+	next = next_dynstr(oldlast);
 	remove_text_list(oldfirst, oldlast);
-	implant_text_list(prev, next, newfirst, newlast);
+	insert_text_list(next, newfirst, newlast);
 }
 
 /* Remove text nodes from @first up to, and including @last. */
