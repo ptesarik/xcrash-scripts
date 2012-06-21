@@ -611,35 +611,64 @@ insert_text_list(struct dynstr *where,
 	next->prev = &last->list;	
 }
 
+/* Remove text list between @first and @last.
+ *
+ *  Let's have a text list that looks something like this:
+ *
+ *      +---+  +---+  +---+  +---+  +---+  +---+  +---+
+ * ...==| A |==| B |==| C |==| D |==| E |==| F |==| G |==...
+ *      +---+  +---+  +---+  +---+  +---+  +---+  +---+
+ *               ^                           ^      ^
+ *             first                       last   next
+ *
+ *  Removing B..F is straightforward as long as there are no nodes
+ *  pointing to this range.  Things get a bit more complicated when
+ *  part of a node starts or ends between B and F.
+ *
+ *  We'll assume that the removed text is going to be replaced by
+ *  another list <@rep_first; @rep_last>.  Since we know nothing about
+ *  the internal organization of this new list, we'll assume that it
+ *  replaces any and every part of the removed list. That way we'll
+ *  preserve the relative position of such nodes to its surrounding.
+ *
+ *  In short:
+ *    a. if a node ends inside <@first; @next>, we'll change its
+ *       last text to @rep_last.
+ *    b. if a node starts inside <@first; @next>, we'll change its
+ *       first text to @rep_first.
+ */
+static void
+do_remove(struct dynstr *first, struct dynstr *last,
+	  struct dynstr *rep_first, struct dynstr *rep_last)
+{
+	struct dynstr *next = next_dynstr(last);
+	node_t *node;
+
+	do {
+		list_for_each_entry(node, &first->node_first, first_list)
+			node->loc.first.text = rep_first;
+		list_splice(&first->node_first, &rep_first->node_first);
+
+		list_for_each_entry(node, &first->node_last, last_list)
+			node->loc.last.text = rep_last;
+		list_splice(&first->node_last, &rep_last->node_last);
+
+		first = dynstr_del(first);
+	} while (first != next);
+}
+
 /* Remove text nodes from @first up to, and including @last. */
 void
 remove_text_list(struct dynstr *first, struct dynstr *last)
 {
-	struct dynstr *prev = prev_dynstr(first);
-	struct dynstr *next = next_dynstr(last);
-	node_t *node, *nnode;
-	LIST_HEAD(first_nodes);
-	LIST_HEAD(last_nodes);
+	struct dynstr *nullstr = newdynstr(NULL, 0);
 
-	do {
-		list_for_each_entry(node, &first->node_first, first_list)
-			node->loc.first.text = next;
-		list_splice(&first->node_first, &first_nodes);
+	insert_text_list(first, nullstr, nullstr);
+	do_remove(first, last, nullstr, nullstr);
 
-		list_for_each_entry(node, &first->node_last, last_list)
-			node->loc.last.text = prev;
-		list_splice(&first->node_last, &last_nodes);
-
-		first = dynstr_del(first);
-	} while (first != next);
-
-	list_for_each_entry_safe(node, nnode, &first_nodes, first_list)
-		if (node->loc.last.text == prev) {
-			set_node_first(node, &dummydynstr);
-			set_node_last(node, &dummydynstr);
-		}
-	list_splice(&first_nodes, &next->node_first);
-	list_splice(&last_nodes, &prev->node_last);
+	if (list_empty(&nullstr->node_first) &&
+	    list_empty(&nullstr->node_last))
+		dynstr_del(nullstr);
 }
 
 /* Trim the list between @oldfirst and @oldlast to only keep
