@@ -611,35 +611,6 @@ insert_text_list(struct dynstr *where,
 	next->prev = &last->list;	
 }
 
-void
-replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
-		  struct dynstr *newfirst, struct dynstr *newlast)
-{
-	struct list_head *it;
-	node_t *node, *nnode;
-	struct dynstr *next;
-
-	if (oldfirst->cpp_cond != oldlast->cpp_cond) {
-		fputs("Replacing CPP conditionals not supported\n", stderr);
-		exit(1);
-	}
-	for (it = &newfirst->list; it != newlast->list.next; it = it->next) {
-		struct dynstr *ds = list_entry(it, struct dynstr, list);
-		ds->cpp_cond = oldfirst->cpp_cond;
-	}
-
-	list_for_each_entry_safe(node, nnode,
-				 &oldfirst->node_first, first_list)
-		set_node_first(node, newfirst);
-	list_for_each_entry_safe(node, nnode,
-				 &oldlast->node_last, last_list)
-		set_node_last(node, newlast);
-
-	next = next_dynstr(oldlast);
-	remove_text_list(oldfirst, oldlast);
-	insert_text_list(next, newfirst, newlast);
-}
-
 /* Remove text nodes from @first up to, and including @last. */
 void
 remove_text_list(struct dynstr *first, struct dynstr *last)
@@ -681,6 +652,35 @@ trim_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		remove_text_list(oldfirst, prev_dynstr(newfirst));
 	if (oldlast != newlast)
 		remove_text_list(next_dynstr(oldlast), newlast);
+}
+
+void
+replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
+		  struct dynstr *newfirst, struct dynstr *newlast)
+{
+	struct list_head *it;
+	node_t *node, *nnode;
+	struct dynstr *next;
+
+	if (oldfirst->cpp_cond != oldlast->cpp_cond) {
+		fputs("Replacing CPP conditionals not supported\n", stderr);
+		exit(1);
+	}
+	for (it = &newfirst->list; it != newlast->list.next; it = it->next) {
+		struct dynstr *ds = list_entry(it, struct dynstr, list);
+		ds->cpp_cond = oldfirst->cpp_cond;
+	}
+
+	list_for_each_entry_safe(node, nnode,
+				 &oldfirst->node_first, first_list)
+		set_node_first(node, newfirst);
+	list_for_each_entry_safe(node, nnode,
+				 &oldlast->node_last, last_list)
+		set_node_last(node, newlast);
+
+	next = next_dynstr(oldlast);
+	remove_text_list(oldfirst, oldlast);
+	insert_text_list(next, newfirst, newlast);
 }
 
 /************************************************************
