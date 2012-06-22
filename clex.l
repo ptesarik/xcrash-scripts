@@ -44,6 +44,9 @@ static void store_yytext(YYLTYPE *loc, const char *s, int extend);
 static void init_vars(void);
 #define YY_USER_INIT	init_vars()
 
+static void cleanup_vars(void);
+#define yyterminate() return cleanup_vars(), YY_NULL
+
 static int store_token_notext(YYSTYPE *, YYLTYPE *, int);
 static int store_token(YYSTYPE *, YYLTYPE *, int, const char *);
 static int store_btype(YYSTYPE *, YYLTYPE *, int, const char *);
@@ -451,21 +454,26 @@ last_stored_meta(void)
 
 static void init_vars(void)
 {
-	struct stored_meta *sm;
-
 	lex_input_ptr = NULL;
 	macrods = NULL;
 
-	memset(&lex_dynstr_flags, 0, sizeof lex_dynstr_flags);
 	memset(&cond_state, 0, sizeof cond_state);
 	cpp_cond = NULL;
 
 	input_off = output_off = 0;
+}
+
+static void
+cleanup_vars(void)
+{
+	struct stored_meta *sm;
 
 	while ( (sm = next_stored_meta()) ) {
 		list_del(&sm->list);
 		free(sm);
 	}	
+
+	lex_dynstr_flags.val = 0;
 }
 
 struct dynstr *newdynstr(const char *s, size_t len)
