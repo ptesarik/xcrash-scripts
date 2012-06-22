@@ -104,6 +104,18 @@ WS			[ \t\v\f]
 WSNL			[ \t\v\f\n]
 CPP			("#"|"%:"){WS}*
 
+/*
+ * Lexer state transitions:
+ *
+ *   INITIAL -> cpp        start of a CPP directive
+ *   cpp -> cpp_condition  '#if', '#ifdef', '#ifndef', '#elif'
+ *   cpp -> cpp_undef      '#undef'
+ *   cpp -> cpp_def        '#define'
+ *   cpp_def -> cpp_macro  read defined macro name and parameters
+ *   * -> cpp_ign          unrecognized input
+ *   * -> INITIAL          terminating newline
+ */
+
 %x cpp
 %x cpp_def
 %x cpp_undef
