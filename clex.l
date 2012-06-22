@@ -618,7 +618,9 @@ store_segment(YYLTYPE *loc, const char *s, int len, int extend)
 	}
 
 	if (sm) {
-		lex_dynstr_flags = sm->flags;
+		/* enforce caller's flags when reading macro args */
+		if (YYSTATE != cpp_arg)
+			lex_dynstr_flags = sm->flags;
 		if (sm->ds)
 			list_add_tail(&sm->ds->list, &raw_contents);
 
