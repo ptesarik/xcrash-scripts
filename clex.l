@@ -101,6 +101,7 @@ E			[EePp][+-]?{D}+
 FS			(f|F|l|L)
 IS			(u|U|l|L)*
 WS			[ \t\v\f]
+WSNL			[ \t\v\f\n]
 CPP			("#"|"%:"){WS}*
 
 %x cpp
@@ -153,8 +154,6 @@ CPP			("#"|"%:"){WS}*
 <cpp_recover>\n	{
 			BEGIN(INITIAL);
 		}
-  /* skip whitespace except newline */
-<cpp_macro,cpp_condition,cpp,cpp_def,cpp_undef>{WS}+
   /* A newline terminates the directive */
 <cpp_macro,cpp_condition,cpp,cpp_def,cpp_undef,cpp_ign>\n	{
 			store_yytext(loc, yytext, 1);
@@ -227,7 +226,7 @@ CPP			("#"|"%:"){WS}*
 <cpp_condition>"defined"	return STORE_TOKEN(CPP_DEFINED);
 <cpp_condition>{L}({L}|{D})*	return STORE_TOKEN(ID);
 
-<cpp_ign,cpp_recover>.	/* eat up an ignored directive */
+<cpp_ign,cpp_recover>.+	/* eat up an ignored directive */
 
 "..."			return STORE_TOKEN(ELLIPSIS);
 ">>="			return STORE_TOKEN(SHR_ASSIGN);
@@ -344,7 +343,8 @@ L?\'(?s:\\.|[^\\'])*\'	/* (hilight) ' */ return STORE_TOKEN(CHAR_CONST);
 L?\"(?s:\\.|[^\\"])*\"	/* (hilight) " */ return STORE_TOKEN(STRING_CONST);
 
 <*>\\\n?		/* continuation lines */
-<INITIAL,cpp_arg>[ \t\v\n\f]+	/* skip whitespace */
+<*>{WS}+			/* always skip whitespace except newline */
+<INITIAL,cpp_arg>{WSNL}+	/* for non-CPP states, skip newline too */
 .			/* ignore bad characters */
 
 %%
