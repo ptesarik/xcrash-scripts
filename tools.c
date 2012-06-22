@@ -680,7 +680,7 @@ trim_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 	if (oldfirst != newfirst)
 		remove_text_list(oldfirst, prev_dynstr(newfirst));
 	if (oldlast != newlast)
-		remove_text_list(next_dynstr(oldlast), newlast);
+		remove_text_list(next_dynstr(newlast), oldlast);
 }
 
 void
