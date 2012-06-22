@@ -705,6 +705,23 @@ replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 	do_remove(oldfirst, oldlast, newfirst, newlast);
 }
 
+void
+unexpand_macros(struct dynstr *first, struct dynstr *last)
+{
+	struct dynstr *end = next_dynstr(last);
+	do {
+		struct macro_exp *exp = first->exp;
+		if (exp && exp->exp_first == first) {
+			detach_text_list(exp->first, exp->last);
+			replace_text_list(exp->exp_first, exp->exp_last,
+					  exp->first, exp->last);
+			unflag_text_list(exp->first, exp->last);
+			first = exp->last;
+		}
+		first = next_dynstr(first);
+	} while (first != end);
+}
+
 /************************************************************
  * Related to the parsed tree
  *

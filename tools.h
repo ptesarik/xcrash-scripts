@@ -97,6 +97,7 @@ void trim_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 void replace_text_list(struct dynstr *oldfirst, struct dynstr *oldlast,
 		       struct dynstr *newfirst, struct dynstr *newlast);
 
+void unexpand_macros(struct dynstr *first, struct dynstr *last);
 
 /* Related to the parsed tree */
 void reset_user_data(struct list_head *tree);

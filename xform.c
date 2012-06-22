@@ -950,6 +950,7 @@ convert_readmem(node_t *node, void *data)
 
 	/* Replace the 4th argument */
 	nullify_str(arg);
+	unexpand_macros(arg->loc.first.text, arg->loc.last.text);
 	if (mult) {
 		trim_text_list(arg->loc.first.text, arg->loc.last.text,
 			       mult->loc.first.text, mult->loc.last.text);
