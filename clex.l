@@ -60,6 +60,7 @@ struct lexer_state {
 	YY_BUFFER_STATE buffer;
 	struct dynstr *lex_input_first, *lex_input_last;
 	struct dynstr *macrods;
+	dynstr_flags_t lex_dynstr_flags;
 	int input_off, output_off;
 	struct list_head stored_meta;
 };
@@ -373,6 +374,7 @@ lex_push_state(void)
 	state->lex_input_first = lex_input_first;
 	state->lex_input_last = lex_input_last;
 	state->macrods = macrods;
+	state->lex_dynstr_flags = lex_dynstr_flags;
 	state->input_off = input_off;
 	state->output_off = output_off;
 	list_add(&state->stored_meta, &stored_meta);
@@ -399,6 +401,7 @@ lex_pop_state(void)
 		lex_input_first = state->lex_input_first;
 		lex_input_last = state->lex_input_last;
 		macrods = state->macrods;
+		lex_dynstr_flags = state->lex_dynstr_flags;
 		input_off = state->input_off;
 		output_off = state->output_off;
 		list_add(&stored_meta, &state->stored_meta);
