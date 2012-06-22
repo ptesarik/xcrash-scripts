@@ -108,7 +108,6 @@ CPP			("#"|"%:"){WS}*
 %x cpp_def
 %x cpp_undef
 %x cpp_ign
-%x cpp_recover
 %s cpp_macro
 %s cpp_condition
 %s cpp_arg
@@ -147,12 +146,11 @@ CPP			("#"|"%:"){WS}*
 <INITIAL>^{WS}*{CPP}	{
 			store_yytext(loc, yytext, 1);
 			BEGIN(cpp);
-			if (parse_cpp(loc) && YY_START != INITIAL)
-				BEGIN(cpp_recover);
+			if (parse_cpp(loc) && YY_START != INITIAL) {
+				BEGIN(cpp_ign);
+				yylex(val, loc);
+			}
 			break;
-		}
-<cpp_recover>\n	{
-			BEGIN(INITIAL);
 		}
   /* A newline terminates the directive */
 <cpp_macro,cpp_condition,cpp,cpp_def,cpp_undef,cpp_ign>\n	{
@@ -226,7 +224,7 @@ CPP			("#"|"%:"){WS}*
 <cpp_condition>"defined"	return STORE_TOKEN(CPP_DEFINED);
 <cpp_condition>{L}({L}|{D})*	return STORE_TOKEN(ID);
 
-<cpp_ign,cpp_recover>.+	/* eat up an ignored directive */
+<cpp_ign>.+	/* eat up an ignored directive */
 
 "..."			return STORE_TOKEN(ELLIPSIS);
 ">>="			return STORE_TOKEN(SHR_ASSIGN);
