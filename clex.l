@@ -143,7 +143,7 @@ CPP			("#"|"%:"){WS}*
 <*>"//".*		/* ignore line comments */
 
   /* CPP directive */
-^{WS}*{CPP}	{
+<INITIAL>^{WS}*{CPP}	{
 			store_yytext(loc, yytext, 1);
 			BEGIN(cpp);
 			if (parse_cpp(loc) && YY_START != INITIAL)
