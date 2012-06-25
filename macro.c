@@ -32,6 +32,15 @@ mkhash(const char *s)
 	return ret % HASH_SIZE;
 }
 
+static void
+freemacro(struct hashed_macro *hm)
+{
+	node_t *param, *nparam;
+	list_for_each_entry_safe(param, nparam, &hm->params, list)
+		freenode(param);
+	free(hm);
+}
+
 void
 clearmacros(void)
 {
@@ -42,7 +51,7 @@ clearmacros(void)
 		macros[hash] = NULL;
 		while ( (hm = next) ) {
 			next = hm->next;
-			free(hm);
+			freemacro(hm);
 		}
 	}
 }
@@ -141,7 +150,7 @@ delmacro(const char *name)
 			if (hm->loc.first.text &&
 			    hm->loc.first.text->flags.fake)
 				delmacro_text(hm);
-			free(hm);
+			freemacro(hm);
 			break;
 		}
 		pprev = &hm->next;
