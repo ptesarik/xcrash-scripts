@@ -65,8 +65,8 @@ findmacro(const struct dynstr *ds, YYLTYPE *loc)
 		if (hm->isparam) {
 			if (!hm->hidden && !strcmp(ds->text, hm->name))
 				return hm;
-		} else if (hm->loc.first.filenum < loc->first.filenum ||
-			   (hm->loc.first.filenum == loc->first.filenum &&
+		} else if (hm->loc.first.pf < loc->first.pf ||
+			   (hm->loc.first.pf == loc->first.pf &&
 			    hm->loc.first.line <= loc->first.line))
 			break;
 	}

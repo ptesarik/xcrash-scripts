@@ -70,8 +70,10 @@ extern struct dynstr *macrods;
 /* Default flags for newly created dynstr objects. */
 extern dynstr_flags_t lex_dynstr_flags;
 
+struct parsed_file;
+
 typedef struct {
-	int filenum;
+	struct parsed_file *pf;
 	int line;
 	int column, vcolumn;
 	struct dynstr *text;
@@ -185,8 +187,6 @@ enum node_type {
 	nt_var,
 	nt_decl,
 };
-
-struct parsed_file;
 
 typedef struct node {
 	struct list_head list;
