@@ -794,7 +794,7 @@ node_scope(node_t *node)
 struct list_head *
 find_scope(node_t *node, node_t **pparent)
 {
-	struct list_head *ret = &node->pf->parsed;
+	struct list_head *ret = &node->loc.first.pf->parsed;
 	node_t *parent;
 	while ( (parent = node->parent) ) {
 		if (parent->type == nt_type &&

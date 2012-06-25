@@ -1089,7 +1089,6 @@ yyerror(YYLTYPE *loc, YYLTYPE *fileloc, const char *s)
 			"...expanded from the above macro");
 }
 
-struct parsed_file *parsed_file;
 struct list_head parsed_tree;
 
 static YYLTYPE *
@@ -1119,7 +1118,6 @@ newnode(const YYLTYPE *loc, enum node_type type, int nchild)
 	for (i = 0; i < nchild; ++i)
 		INIT_LIST_HEAD(&ret->child[i]);
 
-	ret->pf = parsed_file;
 	INIT_LIST_HEAD(&ret->dup_list);
 	ret->loc = *loc;
 	list_add(&ret->first_list, &loc->first.text->node_first);

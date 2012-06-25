@@ -380,7 +380,7 @@ shortdump_scope(node_t *node)
 		return;
 	}
 
-	if (scope == &node->pf->parsed) {
+	if (scope == &node->loc.first.pf->parsed) {
 		fputs("<file>", fdump);
 		return;
 	}

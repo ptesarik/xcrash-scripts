@@ -30,7 +30,7 @@ mkhash(const char *name, void *scope)
 struct list_head *
 find_var_scope(node_t *node)
 {
-	struct parsed_file *pf = node->pf;
+	struct parsed_file *pf = node->loc.first.pf;
 	struct list_head *tree = &pf->parsed;
 	struct list_head *scope = find_scope(node, NULL);
 	if (scope == tree && is_header_file(pf))
@@ -191,7 +191,7 @@ varscope_find_next_var(node_t *var)
 {
 	struct list_head *scope = find_var_scope(var);
 	node_t *ret = varscope_find_next(scope, var);
-	if (!ret && scope == &var->pf->parsed)
+	if (!ret && scope == &var->loc.first.pf->parsed)
 		ret = varscope_find(NULL, var->type, var->str->text);
 	return ret;
 }
@@ -256,7 +256,7 @@ expr_type(node_t *expr)
 node_t *
 varscope_find_expr(node_t *expr)
 {
-	struct list_head *tree = &expr->pf->parsed;
+	struct list_head *tree = &expr->loc.first.pf->parsed;
 	node_t *left, *right, *type;
 	node_t *ret;
 

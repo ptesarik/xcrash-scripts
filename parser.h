@@ -199,7 +199,6 @@ typedef struct node {
 
 	struct dynstr *str;
 	struct node *parent;
-	struct parsed_file *pf;
 	struct list_head dup_list;
 
 	loc_t loc;
@@ -232,9 +231,6 @@ typedef struct declarator {
 	node_t *var;
 	abstract_t abstract;
 } declarator_t;
-
-/* File that is being parsed right now */
-extern struct parsed_file *parsed_file;
 
 /* When yyparse() succeeds, the resulting tree is here: */
 extern struct list_head parsed_tree;

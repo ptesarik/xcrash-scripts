@@ -31,7 +31,7 @@ replace_node_str(node_t *node, const char *newtext)
 
 	set_node_str(node, newds);
 	replace_text_list(oldds, oldds, newds, newds);
-	node->pf->clean = 0;
+	node->loc.first.pf->clean = 0;
 }
 
 /* Delete the node (and all its children). Also removes the acoompanying
@@ -96,7 +96,7 @@ base_type(node_t *type)
 static void
 squeeze_whitespace(node_t *node)
 {
-	struct list_head *raw = &node->pf->raw;
+	struct list_head *raw = &node->loc.first.pf->raw;
 	struct dynstr *next = next_dynstr(node->loc.last.text);
 	struct dynstr *prev = prev_dynstr(node->loc.first.text);
 	if (&next->list == raw || &prev->list == raw)
@@ -435,7 +435,8 @@ target_type_name(node_t *type)
 	else if (type->t.category == type_pointer)
 		modified = "tptr";
 
-	if (modified && type->pf->name && !strcmp(type->pf->name, "defs.h") &&
+	if (modified && type->loc.first.pf->name &&
+	    !strcmp(type->loc.first.pf->name, "defs.h") &&
 	    check_cpp_cond(type->str->cpp_cond,
 			   "GDB_COMMON", NULL, NULL) >= 0)
 		modified = ttype_to_gdb(modified);
@@ -462,7 +463,7 @@ subst_target_type(node_t *type, const ind_t *ind)
 	if (! (type = ind_base_type(type, ind)) )
 		return 0;
 
-	if (type->pf->name) {
+	if (type->loc.first.pf->name) {
 		const char *newtype = target_type_name(type);
 		if (newtype) {
 			replace_type(type, newtype);
@@ -1066,7 +1067,7 @@ replace_struct(node_t *node, const char *oldname, const char *newname)
 		if (!is_struct(type, oldname))
 			return 0;
 		varscope_remove(type);
-		node->pf->clean = 0;
+		node->loc.first.pf->clean = 0;
 		nullify_str(node);
 		remove_text_list(node->loc.first.text, node->loc.last.text);
 		freenode(node);
@@ -1085,7 +1086,7 @@ replace_struct(node_t *node, const char *oldname, const char *newname)
 static enum walk_action
 use_pt_regs_x86_64(node_t *node, void *data)
 {
-	struct parsed_file *pf = node->pf;
+	struct parsed_file *pf = node->loc.first.pf;
 	int cond = check_cpp_cond(node->loc.first.text->cpp_cond,
 			      "X86_64", NULL, NULL);
 	if (!cond && pf->name && strcmp(pf->name, "unwind_x86_64.h"))

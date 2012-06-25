@@ -28,7 +28,7 @@ dump_node_text(node_t *node, int markup)
 static inline const char *
 node_file_name(node_t *node)
 {
-	return node->pf->name ?: "<builtin>";
+	return node->loc.first.pf->name ?: "<builtin>";
 }
 
 #endif	/* DUMP_H */
