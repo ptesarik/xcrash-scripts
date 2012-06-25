@@ -75,7 +75,7 @@ struct parsed_file;
 typedef struct {
 	struct parsed_file *pf;
 	int line;
-	int column, vcolumn;
+	unsigned short column, vcolumn;
 	struct dynstr *text;
 } pos_t;
 
