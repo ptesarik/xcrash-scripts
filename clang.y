@@ -1081,8 +1081,8 @@ yyerror(YYLTYPE *loc, YYLTYPE *fileloc, const char *s)
 	fprintf(stderr, "%*s", first_vcolumn + 1, "^");
 	for (i = 1; i < loc->last.vcolumn - first_vcolumn; ++i)
 		putc('^', stderr);
-	fprintf(stderr, "\n%*s on line %d\n",
-		first_vcolumn + 1, s, loc->last.line);
+	fprintf(stderr, "\n%*s at %s:%d\n",
+		first_vcolumn + 1, s, loc->last.pf->name, loc->last.line);
 
 	if (loc->parent)
 		yyerror(loc->parent, fileloc,
