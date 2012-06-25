@@ -236,6 +236,7 @@ int parse_file(struct parsed_file *pf)
 	node_t *node, *nextnode;
 	struct dynstr *ds, *nextds;
 	struct list_head oldraw;
+	LIST_HEAD(cpp_cond);
 	int ret;
 
 	INIT_LIST_HEAD(&oldraw);
@@ -249,6 +250,15 @@ int parse_file(struct parsed_file *pf)
 	/* Clean up any respective old contents first */
 	list_for_each_entry_safe(node, nextnode, &pf->parsed, list)
 		freenode(node);
+
+	/* Clean up CPP conditions */
+	list_for_each_entry(ds, &pf->raw, list)
+		if (ds->cpp_cond && list_empty(&ds->cpp_cond->list))
+			list_add_tail(&ds->cpp_cond->list, &cpp_cond);
+	list_for_each_entry_safe(node, nextnode, &cpp_cond, list)
+		freenode(node);
+
+	/* Clean up raw content */
 	list_for_each_entry_safe(ds, nextds, &pf->raw, list)
 		freedynstr(ds);
 
