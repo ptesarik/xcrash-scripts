@@ -117,16 +117,6 @@ get_cpp_cond(struct cpp_cond_state *state, struct list_head *tree)
 	if (op == CPP_IFNDEF || op == CPP_ELSE || op == CPP_ELIF)
 		root = newexpr1(&dummyloc, '!', root);
 
-	/* Include the real condition for #elif */
-	if (op == CPP_ELIF) {
-		state->precond = state->precond
-			? newexpr2(&dummyloc, AND_OP,
-				   dupnode(state->precond), root)
-			: root;
-
-		root = realroot;
-	}
-
 	/* Push new state when starting a conditional block */
 	if (op == CPP_IF || op == CPP_IFDEF || op == CPP_IFNDEF) {
 		state->stack[state->stackptr].node = state->current;
@@ -137,8 +127,15 @@ get_cpp_cond(struct cpp_cond_state *state, struct list_head *tree)
 	}
 
 	/* Add the new condition */
-	if (op == CPP_IF || op == CPP_IFDEF || op == CPP_IFNDEF ||
-	    op == CPP_ELSE || op == CPP_ELIF)
+	if (op == CPP_ELIF) {
+		state->precond = state->precond
+			? newexpr2(&dummyloc, AND_OP,
+				   dupnode(state->precond), root)
+			: root;
+		state->current = newexpr2(&dummyloc, AND_OP,
+					  state->precond, realroot);
+	} else if (op == CPP_IF || op == CPP_IFDEF || op == CPP_IFNDEF ||
+		   op == CPP_ELSE)
 		state->current = state->precond
 			? newexpr2(&dummyloc, AND_OP,
 				   dupnode(state->precond), root)
