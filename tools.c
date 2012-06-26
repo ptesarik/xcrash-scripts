@@ -492,8 +492,11 @@ dynstr_isspace(struct dynstr *ds)
 struct dynstr *
 dynstr_delspace(struct list_head *list, struct dynstr *ds)
 {
+	struct dynstr *first = ds;
 	while (&ds->list != list && dynstr_isspace(ds))
-		ds = dynstr_del(ds);
+		ds = next_dynstr(ds);
+	if (ds != first)
+		remove_text_list(first, prev_dynstr(ds));
 	return ds;
 }
 
@@ -503,8 +506,11 @@ dynstr_delspace(struct list_head *list, struct dynstr *ds)
 struct dynstr *
 dynstr_delspace_rev(struct list_head *list, struct dynstr *ds)
 {
+	struct dynstr *last = ds;
 	while (&ds->list != list && dynstr_isspace(ds))
-		ds = dynstr_del_rev(ds);
+		ds = prev_dynstr(ds);
+	if (ds != last)
+		remove_text_list(next_dynstr(ds), last);
 	return ds;
 }
 
