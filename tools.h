@@ -106,6 +106,7 @@ void reset_user_data(struct list_head *tree);
 struct list_head *node_scope(node_t *node);
 struct list_head *find_scope(node_t *node, node_t **pparent);
 void nullify_str(node_t *node);
+node_t *find_matching_node(struct dynstr *first, struct dynstr *last);
 
 /* Return the parent of @node with a given @type (or NULL if not found) */
 static inline node_t *

@@ -866,6 +866,17 @@ nullify_str(node_t *node)
 	walk_tree_single(node, nullify_str_fn, NULL);
 }
 
+node_t *
+find_matching_node(struct dynstr *first, struct dynstr *last)
+{
+	node_t *node;
+	list_for_each_entry(node, &first->node_first, first_list)
+		if (node->loc.first.text == first &&
+		    node->loc.last.text == last)
+			return node;
+	return NULL;
+}
+
 void
 rollback_user_list(struct list_head *list, node_t *ptr)
 {
