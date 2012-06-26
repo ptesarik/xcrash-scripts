@@ -978,7 +978,7 @@ printf_spec_one(node_t *node, void *data)
 
 	char *start = node->loc.first.text->text;
 	char *p = start;
-	LIST_HEAD(ds);
+	LIST_HEAD(point);
 	while ( (p = strchr(p, '%')) ) {
 		char *spec;
 		do {
@@ -994,14 +994,14 @@ printf_spec_one(node_t *node, void *data)
 			dspfx->token = STRING_CONST;
 			memcpy(dspfx->text, start, len);
 			dspfx->text[len] = '\"';
-			list_add_tail(&dspfx->list, &ds);
+			list_add_tail(&dspfx->list, &point);
 
 			/* Create the PRI identifier */
 			len = p - spec + 1 + 3;
 			struct dynstr *dspri = newdynstr(NULL, len);
 			dspri->token = ID;
 			memcpy(stpcpy(dspri->text, "PRI"), spec, len - 3);
-			list_add_tail(&dspri->list, &ds);
+			list_add_tail(&dspri->list, &point);
 
 			/* Re-open the tail string */
 			*p = '\"';
@@ -1010,16 +1010,15 @@ printf_spec_one(node_t *node, void *data)
 			++p;
 	}
 
-	if (!list_empty(&ds)) {
+	if (!list_empty(&point)) {
 		if (strcmp(start, "\"\"")) {
 			struct dynstr *dslast =
 				newdynstr(start, strlen(start));
-			list_add_tail(&dslast->list, &ds);
+			list_add_tail(&dslast->list, &point);
 		}
 		nullify_str(node);
 		replace_text_list(node->loc.first.text, node->loc.last.text,
-				  list_entry(ds.next, struct dynstr, list),
-				  list_entry(ds.prev, struct dynstr, list));
+				  first_dynstr(&point), last_dynstr(&point));
 		reparse_node(node, START_EXPR);
 	}
 
