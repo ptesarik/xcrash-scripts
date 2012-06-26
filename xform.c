@@ -976,7 +976,10 @@ printf_spec_one(node_t *node, void *data)
 	if (node->type != nt_expr || node->e.op != STRING_CONST)
 		return walk_continue;
 
-	char *start = node->loc.first.text->text;
+	struct dynstr *ds = node->str;
+	lex_dynstr_flags = ds->flags;
+
+	char *start = ds->text;
 	char *p = start;
 	LIST_HEAD(point);
 	while ( (p = strchr(p, '%')) ) {
