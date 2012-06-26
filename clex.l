@@ -482,6 +482,7 @@ struct dynstr *newdynstr(const char *s, size_t len)
 	INIT_LIST_HEAD(&ds->list);
 	INIT_LIST_HEAD(&ds->node_first);
 	INIT_LIST_HEAD(&ds->node_last);
+	INIT_LIST_HEAD(&ds->dup_list);
 	ds->cpp_cond = NULL;
 	ds->exp = NULL;
 	ds->token = 0;
@@ -502,6 +503,8 @@ dupdynstr(struct dynstr *ds)
 	INIT_LIST_HEAD(&ret->list);
 	INIT_LIST_HEAD(&ret->node_first);
 	INIT_LIST_HEAD(&ret->node_last);
+	INIT_LIST_HEAD(&ret->dup_list);
+	list_add_tail(&ret->dup_list, &ds->dup_list);
 	ret->cpp_cond = cpp_cond;
 	ret->exp = NULL;
 	ret->token = ds->token;
@@ -519,6 +522,7 @@ void freedynstr(struct dynstr *ds)
 		fputs("Attempt to free an in-use dynstr!\n", stderr);
 		abort();
 	}
+	list_del(&ds->dup_list);
 	put_macro_exp(ds->exp);
 	free(ds);
 }
@@ -534,6 +538,8 @@ realloc_dynstr(struct dynstr *ds, size_t newalloc)
 	list_del(&ds->node_first);
 	list_add_tail(&tmp.node_last, &ds->node_last);
 	list_del(&ds->node_last);
+	list_add_tail(&tmp.dup_list, &ds->dup_list);
+	list_del(&ds->dup_list);
 
 	newds = realloc(ds, sizeof(struct dynstr) + newalloc);
 	if (newds) {
@@ -548,6 +554,8 @@ realloc_dynstr(struct dynstr *ds, size_t newalloc)
 	list_del(&tmp.node_first);
 	list_add(&ds->node_last, &tmp.node_last);
 	list_del(&tmp.node_last);
+	list_add(&ds->dup_list, &tmp.dup_list);
+	list_del(&tmp.dup_list);
 
 	return newds;
 }

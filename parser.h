@@ -21,6 +21,7 @@ struct macro_exp;
 struct dynstr {
 	struct list_head list;
 	struct list_head node_first, node_last;
+	struct list_head dup_list;
 	struct node *cpp_cond;
 	struct macro_exp *exp;
 
