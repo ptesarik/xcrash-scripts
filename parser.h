@@ -44,6 +44,8 @@ void freedynstr(struct dynstr *ds);
 #define text_dynstr(ptr) ({	\
         const char *__mptr = (ptr);	\
         (struct dynstr *)(__mptr - offsetof(struct dynstr,text) );})
+#define first_dynstr(listptr) \
+	(list_entry((listptr)->next, struct dynstr, list))
 #define last_dynstr(listptr) \
 	(list_entry((listptr)->prev, struct dynstr, list))
 
