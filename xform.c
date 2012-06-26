@@ -1482,6 +1482,31 @@ check_func_arg(node_t *node, ind_t *ind)
 	return parent;
 }
 
+/* Known exceptions to type tracking */
+static int
+is_tracking(node_t *var, ind_t *ind)
+{
+	if (ind[0] == ind_return && !ind[1] && var->str) {
+		const char *fname = var->str->text;
+		/* The htol() and stol() functions are too generic to
+		 * determine the type of the result.
+		 */
+		if (!strcmp(fname, "htol") ||
+		    !strcmp(fname, "stol"))
+			return 0;
+
+		/* The return type these functions may be regarded
+		 * as target-specific, but they have many dependencies,
+		 * some of which should not be converted, and a host
+		 * type is also good enough, so don't convert them.
+		 */
+		if (!strcmp(fname, "OFFSET_verify") ||
+		    !strcmp(fname, "SIZE_verify"))
+			return 0;
+	}
+	return 1;
+}
+
 /* Track one instance of the @type object. All containing variables
  * are tracked appropriately.
  */
@@ -1498,14 +1523,18 @@ track_type(const struct file_array *files, node_t *type)
 	do {
 		node_t *parent = build_ind(type, &ind);
 		if (parent->type == nt_var) {
-			fputs("Track ", fdump);
+			int tracking = is_tracking(parent, ind);
+
+			fputs(tracking ? "Track " : "SKIP ", fdump);
 			shortdump_varind(parent, ind);
 
 			subst_other_decls(files, parent, ind);
 
 			putc('\n', fdump);
 
-			track_var_usage(parent, ind);
+			if (tracking)
+				track_var_usage(parent, ind);
+
 			type = parent->parent;
 		} else
 			type = parent;
