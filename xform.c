@@ -990,19 +990,17 @@ printf_spec_one(node_t *node, void *data)
 		if (strchr("dioux", *p)) {
 			/* Re-create prefix string */
 			size_t len = spec - start;
-			char *pfx = calloc(len + 2, sizeof(char));
-			memcpy(pfx, start, len);
-			pfx[len] = '\"';
-			struct dynstr *dspfx = newdynstr(pfx, len + 1);
+			struct dynstr *dspfx = newdynstr(NULL, len + 1);
 			dspfx->token = STRING_CONST;
+			memcpy(dspfx->text, start, len);
+			dspfx->text[len] = '\"';
 			list_add_tail(&dspfx->list, &ds);
 
 			/* Create the PRI identifier */
 			len = p - spec + 1 + 3;
-			char *pri = calloc(len + 1, sizeof(char));
-			memcpy(stpcpy(pri, "PRI"), spec, len - 3);
-			struct dynstr *dspri = newdynstr(pri, len);
+			struct dynstr *dspri = newdynstr(NULL, len);
 			dspri->token = ID;
+			memcpy(stpcpy(dspri->text, "PRI"), spec, len - 3);
 			list_add_tail(&dspri->list, &ds);
 
 			/* Re-open the tail string */
