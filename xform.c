@@ -970,12 +970,9 @@ convert_readmem(node_t *node, void *data)
  *
  */
 
-static enum walk_action
-printf_spec_one(node_t *node, void *data)
+static node_t *
+replace_printf(node_t *node)
 {
-	if (node->type != nt_expr || node->e.op != STRING_CONST)
-		return walk_continue;
-
 	struct dynstr *ds = node->str;
 	lex_dynstr_flags = ds->flags;
 
@@ -1013,16 +1010,59 @@ printf_spec_one(node_t *node, void *data)
 			++p;
 	}
 
-	if (!list_empty(&point)) {
-		if (strcmp(start, "\"\"")) {
-			struct dynstr *dslast =
-				newdynstr(start, strlen(start));
-			list_add_tail(&dslast->list, &point);
+	if (list_empty(&point))
+		return NULL;
+
+	if (strcmp(start, "\"\"")) {
+		struct dynstr *dslast = newdynstr(start, strlen(start));
+		list_add_tail(&dslast->list, &point);
+	}
+
+	nullify_str(node);
+	replace_text_list(ds, ds, first_dynstr(&point), last_dynstr(&point));
+	return reparse_node(node, START_EXPR);
+}
+
+static enum walk_action
+printf_spec_one(node_t *node, void *data)
+{
+	if (node->type != nt_expr || node->e.op != STRING_CONST)
+		return walk_continue;
+
+	struct list_head dupds;
+	list_add(&dupds, &node->str->dup_list);
+	list_del_init(&node->str->dup_list);
+	node = replace_printf(node);
+	if (!node)
+		return walk_continue;
+
+	struct dynstr *ds, *dsnext;
+	list_for_each_entry_safe(ds, dsnext, &dupds, dup_list) {
+		struct dynstr *dupfirst, *duplast;
+		node_t *other, *dup;
+
+		other = find_matching_node(ds, ds);
+		if (other) {
+			/* the new node is not a real duplicate, but it
+			 * almost is, so let's reuse dupnode() and adjust
+			 * the node afterwards
+			 */
+			dup = dupnode(node);
+			dup->parent = other->parent;
+			list_del_init(&dup->dup_list);
+			list_add(&dup->list, &other->list);
+			freenode(other);
 		}
-		nullify_str(node);
-		replace_text_list(node->loc.first.text, node->loc.last.text,
-				  first_dynstr(&point), last_dynstr(&point));
-		reparse_node(node, START_EXPR);
+
+		lex_dynstr_flags = ds->flags;
+		dup_text_list(node->loc.first.text, node->loc.last.text,
+			      &dupfirst, &duplast);
+		replace_text_list(ds, ds, dupfirst, duplast);
+
+		if (other) {
+			dup->loc.first.text = dupfirst;
+			dup->loc.last.text = duplast;
+		}
 	}
 
 	return walk_continue;
