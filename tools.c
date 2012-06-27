@@ -596,7 +596,7 @@ void
 unflag_text_list(struct dynstr *first, struct dynstr *last)
 {
 	while (&first->list != last->list.next) {
-		first->flags.fake = first->flags.macro = 0;
+		first->flags = null_dynstr_flags;
 		first = next_dynstr(first);
 	}
 }

@@ -16,6 +16,8 @@ typedef union {
 	unsigned val;
 } dynstr_flags_t;
 
+#define null_dynstr_flags	((dynstr_flags_t) {})
+
 /* Stored file contents */
 struct macro_exp;
 struct dynstr {

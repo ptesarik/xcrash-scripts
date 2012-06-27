@@ -323,10 +323,9 @@ init_file(struct parsed_file *pf, const char *name)
 static void
 init_builtin_file(struct parsed_file *pf)
 {
-	static const dynstr_flags_t nullflags;
 	init_file(pf, NULL);
 	struct dynstr *ds = newdynstr(builtin_file, sizeof builtin_file - 1,
-				      nullflags);
+				      null_dynstr_flags);
 	list_add(&pf->raw, &ds->list);
 }
 
