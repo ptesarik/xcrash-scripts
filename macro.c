@@ -310,17 +310,15 @@ dupmerge(struct dynstr *first, struct dynstr *last)
 }
 
 static struct dynstr *
-duplist(struct dynstr *first, struct dynstr *last)
+insert_dup_macro(struct hashed_macro *hm, struct list_head *point)
 {
-	if (!first)
+	if (!hm->loc.first.text)
 		return NULL;
-	
-	struct dynstr *ret = dupdynstr(first);
-	while (first != last) {
-		first = next_dynstr(first);
-		struct dynstr *ds = dupdynstr(first);
-		list_add_tail(&ds->list, &ret->list);
-	}
+
+	struct dynstr *ret =
+		dup_text_list(hm->loc.first.text, hm->loc.last.text);
+	insert_text_list(list_entry(point, struct dynstr, list),
+			 ret, prev_dynstr(ret));
 	return ret;
 }
 
@@ -364,9 +362,7 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok,
 	    (nested = findmacro(ds, loc)) &&
 	    nested->isparam) {
 		nested = nested->next;
-		dupds = duplist(nested->loc.first.text, nested->loc.last.text);
-		insert_text_list(list_entry(point, struct dynstr, list),
-				 dupds, prev_dynstr(dupds));
+		dupds = insert_dup_macro(nested, point);
 	} else {
 		dupds = dupdynstr(ds);
 		list_add_tail(&dupds->list, point);
@@ -544,12 +540,7 @@ do_expand(YYLTYPE *loc, struct hashed_macro *hm, struct macro_exp *exp)
 	lex_dynstr_flags.fake = 1;
 
 	if (hm->isparam) {
-		ret = duplist(hm->loc.first.text, hm->loc.last.text);
-		if (ret) {
-			struct dynstr *pointds =
-				list_entry(&raw_contents, struct dynstr, list);
-			insert_text_list(pointds, ret, prev_dynstr(ret));
-		}
+		ret = insert_dup_macro(hm, &raw_contents);
 	} else {
 		hm->noexpand = 1;
 		ret = expand_body(loc, hm, &raw_contents);
