@@ -381,6 +381,12 @@ node_t *newexpr4(const YYLTYPE *, int, node_t *, node_t *, node_t *, node_t *);
 extern struct dynstr dummydynstr;
 extern YYLTYPE dummyloc;
 
+/* Linked string */
+struct linkedstr {
+	struct list_head list;
+	char text[];
+};
+
 /* Program arguments */
 struct arguments {
 	char *basedir;

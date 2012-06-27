@@ -1879,16 +1879,16 @@ xform_files(struct arguments *args, const struct file_array *files)
 			if ( (ret = run_xform(&xforms[i], files)) )
 				break;
 	} else {
-		struct dynstr *ds;
-		list_for_each_entry(ds, &args->xform_names, list) {
-			struct xform_desc *desc = find_xform(ds->text);
+		struct linkedstr *str;
+		list_for_each_entry(str, &args->xform_names, list) {
+			struct xform_desc *desc = find_xform(str->text);
 			if (desc) {
 				if ( (ret = run_xform(desc, files)) )
 					break;
 			} else
 				fprintf(stderr, "WARNING: "
 					"Cannot find transform %s\n",
-					ds->text);
+					str->text);
 		}
 	}
 

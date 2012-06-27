@@ -364,7 +364,7 @@ static error_t
 parse_opt (int key, char *arg, struct argp_state *state)
 {
 	struct arguments *arguments = state->input;
-	struct dynstr *ds;
+	struct linkedstr *xform;
 
 	switch (key) {
 	case 'd':
@@ -374,8 +374,9 @@ parse_opt (int key, char *arg, struct argp_state *state)
 
 	case 'x':
 	case 'p':
-		ds = newdynstr(arg, strlen(arg) + 1);
-		list_add_tail(&ds->list, &arguments->xform_names);
+		xform = malloc(sizeof(struct linkedstr) + strlen(arg) + 1);
+		strcpy(xform->text, arg);
+		list_add_tail(&xform->list, &arguments->xform_names);
 		break;
 
          default:
