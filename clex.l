@@ -498,7 +498,7 @@ newdynstr(const char *s, size_t len, dynstr_flags_t flags)
 }
 
 struct dynstr *
-dupdynstr(struct dynstr *ds, dynstr_flags_t flags)
+dupdynstr(struct dynstr *ds)
 {
 	struct dynstr *ret = malloc(sizeof(struct dynstr) + ds->len + 1);
 	INIT_LIST_HEAD(&ret->list);
@@ -510,7 +510,7 @@ dupdynstr(struct dynstr *ds, dynstr_flags_t flags)
 	ret->exp = NULL;
 	ret->token = ds->token;
 	ret->refcount = 0;
-	ret->flags = flags;
+	ret->flags = ds->flags;
 	ret->len = ds->len;
 	ret->alloc = ds->len + 1;
 	memcpy(ret->text, ds->text, ds->len + 1);
@@ -717,8 +717,7 @@ dynstr_read(void *buf, size_t max_size)
 		! (n = dynstr_remain(lex_input_first, lex_input_ptr))) &&
 	       lex_input_first != lex_input_last) {
 		if (lex_input_first->flags.macro) {
-			struct dynstr *ds = dupdynstr(lex_input_first,
-						      lex_input_first->flags);
+			struct dynstr *ds = dupdynstr(lex_input_first);
 			add_stored_meta(input_off, ds->flags, ds);
 		}
 		lex_input_first = next_dynstr(lex_input_first);

@@ -366,9 +366,10 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok,
 		nested = nested->next;
 		dupds = insert_dup_macro(nested, point);
 	} else {
-		dupds = dupdynstr(ds, lex_dynstr_flags);
+		dupds = dupdynstr(ds);
 		list_add_tail(&dupds->list, point);
 	}
+	unflag_text_list(dupds, last_dynstr(point));
 
 	struct dynstr *first = last_dynstr(&raw_contents);
 
@@ -466,7 +467,8 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			} else
 				prevtok = NULL;
 		} else {
-			struct dynstr *dupds = dupdynstr(ds, lex_dynstr_flags);
+			struct dynstr *dupds = dupdynstr(ds);
+			dupds->flags = lex_dynstr_flags;
 			list_add_tail(&dupds->list, point);
 			if (ds->token)
 				prevtok = dupds;
