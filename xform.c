@@ -1046,8 +1046,10 @@ printf_spec_one(node_t *node, void *data)
 	list_add(&dupds, &node->str->dup_list);
 	list_del_init(&node->str->dup_list);
 	node = replace_printf(node);
-	if (!node)
+	if (!node) {
+		list_del(&dupds);
 		return walk_continue;
+	}
 
 	struct dynstr *ds, *dsnext;
 	list_for_each_entry_safe(ds, dsnext, &dupds, dup_list) {
