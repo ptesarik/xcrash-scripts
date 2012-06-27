@@ -605,11 +605,9 @@ struct dynstr *
 dup_text_list(struct dynstr *first, struct dynstr *last)
 {
 	struct dynstr *ret = dupdynstr(first);
-	ret->flags = lex_dynstr_flags;
 	while (first != last) {
 		first = next_dynstr(first);
 		struct dynstr *ds = dupdynstr(first);
-		ds->flags = lex_dynstr_flags;
 		list_add_tail(&ds->list, &ret->list);
 	}
 	return ret;

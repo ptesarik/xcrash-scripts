@@ -1026,6 +1026,16 @@ replace_printf(node_t *node)
 	return reparse_node(node, START_EXPR);
 }
 
+static void
+set_text_list_flags(struct dynstr *first, struct dynstr *last,
+		    dynstr_flags_t flags)
+{
+	do {
+		first->flags = flags;
+		first = next_dynstr(first);
+	} while (&first->list != last->list.next);
+}
+
 static enum walk_action
 printf_spec_one(node_t *node, void *data)
 {
@@ -1057,9 +1067,9 @@ printf_spec_one(node_t *node, void *data)
 			freenode(other);
 		}
 
-		lex_dynstr_flags = ds->flags;
 		dupds = dup_text_list(node->loc.first.text,
 				      node->loc.last.text);
+		set_text_list_flags(dupds, prev_dynstr(dupds), ds->flags);
 		if (other) {
 			dup->loc.first.text = dupds;
 			dup->loc.last.text = prev_dynstr(dupds);
