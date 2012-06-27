@@ -1038,7 +1038,7 @@ printf_spec_one(node_t *node, void *data)
 
 	struct dynstr *ds, *dsnext;
 	list_for_each_entry_safe(ds, dsnext, &dupds, dup_list) {
-		struct dynstr *dupfirst, *duplast;
+		struct dynstr *dupds;
 		node_t *other, *dup;
 
 		other = find_matching_node(ds, ds);
@@ -1055,14 +1055,14 @@ printf_spec_one(node_t *node, void *data)
 		}
 
 		lex_dynstr_flags = ds->flags;
-		dup_text_list(node->loc.first.text, node->loc.last.text,
-			      &dupfirst, &duplast);
-		replace_text_list(ds, ds, dupfirst, duplast);
-
+		dupds = dup_text_list(node->loc.first.text,
+				      node->loc.last.text);
 		if (other) {
-			dup->loc.first.text = dupfirst;
-			dup->loc.last.text = duplast;
+			dup->loc.first.text = dupds;
+			dup->loc.last.text = prev_dynstr(dupds);
 		}
+
+		replace_text_list(ds, ds, dupds, prev_dynstr(dupds));
 	}
 
 	return walk_continue;

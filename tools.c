@@ -600,21 +600,16 @@ unflag_text_list(struct dynstr *first, struct dynstr *last)
 	}
 }
 
-void
-dup_text_list(struct dynstr *first, struct dynstr *last,
-	      struct dynstr **dupfirst, struct dynstr **duplast)
+struct dynstr *
+dup_text_list(struct dynstr *first, struct dynstr *last)
 {
-	struct dynstr *dup, *prevdup;
-
-	*dupfirst = prevdup = dupdynstr(first);
+	struct dynstr *ret = dupdynstr(first);
 	while (first != last) {
 		first = next_dynstr(first);
-
-		dup = dupdynstr(first);
-		list_add(&dup->list, &prevdup->list);
-		prevdup = dup;
+		struct dynstr *ds = dupdynstr(first);
+		list_add_tail(&ds->list, &ret->list);
 	}
-	*duplast = prevdup;
+	return ret;
 }
 
 void

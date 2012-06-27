@@ -89,8 +89,7 @@ dynstr_del_rev(struct dynstr *ds)
 void detach_text_list(struct dynstr *first, struct dynstr *last);
 void unflag_text_list(struct dynstr *first, struct dynstr *last);
 
-void dup_text_list(struct dynstr *first, struct dynstr *last,
-		   struct dynstr **dupfirst, struct dynstr **duplast);
+struct dynstr *dup_text_list(struct dynstr *first, struct dynstr *last);
 void insert_text_list(struct dynstr *where,
 		      struct dynstr *first, struct dynstr *last);
 void remove_text_list(struct dynstr *first, struct dynstr *last);
