@@ -66,7 +66,8 @@ make_arch_exclusive(node_t *node, void *data)
 			continue;
 
 		node_t *other = dupnode_nochild(node);
-		struct dynstr *ds = newdynstr(*p, strlen(*p));
+		struct dynstr *ds = newdynstr(*p, strlen(*p),
+					      lex_dynstr_flags);
 		set_node_str(other, ds);
 
 		node_t *op_not = dupnode_nochild(other);
@@ -560,7 +561,7 @@ dynstr_dup_indent(struct list_head *list,
 	while (i < startoff && isspace(ds->text[i]))
 		++i, ++len;
 
-	struct dynstr *newds = newdynstr(NULL, len + 1);
+	struct dynstr *newds = newdynstr(NULL, len + 1, lex_dynstr_flags);
 	char *p = newds->text;
 	*p++ = '\n';
 
@@ -603,10 +604,10 @@ unflag_text_list(struct dynstr *first, struct dynstr *last)
 struct dynstr *
 dup_text_list(struct dynstr *first, struct dynstr *last)
 {
-	struct dynstr *ret = dupdynstr(first);
+	struct dynstr *ret = dupdynstr(first, lex_dynstr_flags);
 	while (first != last) {
 		first = next_dynstr(first);
-		struct dynstr *ds = dupdynstr(first);
+		struct dynstr *ds = dupdynstr(first, lex_dynstr_flags);
 		list_add_tail(&ds->list, &ret->list);
 	}
 	return ret;
@@ -676,7 +677,7 @@ do_remove(struct dynstr *first, struct dynstr *last,
 void
 remove_text_list(struct dynstr *first, struct dynstr *last)
 {
-	struct dynstr *nullstr = newdynstr(NULL, 0);
+	struct dynstr *nullstr = newdynstr(NULL, 0, lex_dynstr_flags);
 
 	insert_text_list(first, nullstr, nullstr);
 	do_remove(first, last, nullstr, nullstr);

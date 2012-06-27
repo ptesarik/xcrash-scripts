@@ -197,7 +197,8 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 			if (token == ELLIPSIS) {
 				struct dynstr *ds;
 				hm->variadic = 1;
-				ds = newdynstr("__VA_ARGS__", 11);
+				ds = newdynstr("__VA_ARGS__", 11,
+					       lex_dynstr_flags);
 				ds->flags.fake = 1;
 				list_add_tail(&ds->list, &raw_contents);
 				var = newvar(loc, ds);
@@ -283,7 +284,8 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 static struct dynstr *
 dupconcat(struct dynstr *a, struct dynstr *b)
 {
-	struct dynstr *ret = newdynstr(NULL, a->len + b->len);
+	struct dynstr *ret = newdynstr(NULL, a->len + b->len,
+				       lex_dynstr_flags);
 	char *p = ret->text;
 	memcpy(p, a->text, a->len);
 	memcpy(p + a->len, b->text, b->len);
@@ -299,7 +301,7 @@ dupmerge(struct dynstr *first, struct dynstr *last)
 	size_t len = 0;
 	for (ds = first, len = 0; ds != endmark; ds = next_dynstr(ds))
 		len += ds->len;
-	ret = newdynstr(NULL, len);
+	ret = newdynstr(NULL, len, lex_dynstr_flags);
 
 	char *p = ret->text;
 	for (ds = first; ds != endmark; ds = next_dynstr(ds)) {
@@ -340,14 +342,14 @@ cpp_stringify(struct hashed_macro *hm, struct list_head *point)
 {
 	struct dynstr *ds;
 
-	ds = newdynstr("\"", 1);
+	ds = newdynstr("\"", 1, lex_dynstr_flags);
 	list_add_tail(&ds->list, point);
 
 	ds = dupmerge(hm->loc.first.text, hm->loc.last.text);
 	ds->token = STRING_CONST;
 	list_add_tail(&ds->list, point);
 
-	ds = newdynstr("\"", 1);
+	ds = newdynstr("\"", 1, lex_dynstr_flags);
 	list_add_tail(&ds->list, point);
 }
 
@@ -364,7 +366,7 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok,
 		nested = nested->next;
 		dupds = insert_dup_macro(nested, point);
 	} else {
-		dupds = dupdynstr(ds);
+		dupds = dupdynstr(ds, lex_dynstr_flags);
 		list_add_tail(&dupds->list, point);
 	}
 
@@ -464,7 +466,7 @@ expand_body(YYLTYPE *loc, struct hashed_macro *hm, struct list_head *point)
 			} else
 				prevtok = NULL;
 		} else {
-			struct dynstr *dupds = dupdynstr(ds);
+			struct dynstr *dupds = dupdynstr(ds, lex_dynstr_flags);
 			list_add_tail(&dupds->list, point);
 			if (ds->token)
 				prevtok = dupds;

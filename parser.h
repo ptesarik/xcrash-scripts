@@ -34,8 +34,8 @@ struct dynstr {
 	char text[];
 };
 
-struct dynstr *newdynstr(const char *, size_t);
-struct dynstr *dupdynstr(struct dynstr *);
+struct dynstr *newdynstr(const char *, size_t, dynstr_flags_t);
+struct dynstr *dupdynstr(struct dynstr *, dynstr_flags_t);
 void freedynstr(struct dynstr *ds);
 
 #define next_dynstr(ds)	\

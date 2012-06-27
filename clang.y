@@ -187,7 +187,7 @@ static void hidedecls(struct list_head *);
 {
 	struct dynstr *ds;
 	@$ = *fileloc;
-	ds = newdynstr(NULL, 0);
+	ds = newdynstr(NULL, 0, lex_dynstr_flags);
 	list_add_tail(&ds->list, &raw_contents);
 	@$.first.text = @$.last.text = ds;
 }
@@ -1095,7 +1095,7 @@ static YYLTYPE *
 empty_loc(const YYLTYPE *point)
 {
 	static YYLTYPE loc;
-	struct dynstr *str = newdynstr(NULL, 0);
+	struct dynstr *str = newdynstr(NULL, 0, lex_dynstr_flags);
 
 	list_add_tail(&str->list, &point->first.text->list);
 	loc.first = loc.last = point->first;
