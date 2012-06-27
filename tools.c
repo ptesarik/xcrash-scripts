@@ -595,10 +595,10 @@ detach_text_list(struct dynstr *first, struct dynstr *last)
 void
 unflag_text_list(struct dynstr *first, struct dynstr *last)
 {
-	while (&first->list != last->list.next) {
+	do {
 		first->flags = null_dynstr_flags;
 		first = next_dynstr(first);
-	}
+	} while (&first->list != last->list.next);
 }
 
 struct dynstr *
