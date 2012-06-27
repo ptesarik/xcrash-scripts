@@ -282,17 +282,6 @@ parse_macro_args(YYLTYPE *loc, struct hashed_macro *hm)
 }
 
 static struct dynstr *
-dupconcat(struct dynstr *a, struct dynstr *b)
-{
-	struct dynstr *ret = newdynstr(NULL, a->len + b->len,
-				       lex_dynstr_flags);
-	char *p = ret->text;
-	memcpy(p, a->text, a->len);
-	memcpy(p + a->len, b->text, b->len);
-	return ret;
-}
-
-static struct dynstr *
 dupmerge(struct dynstr *first, struct dynstr *last)
 {
 	struct dynstr *endmark = next_dynstr(last);
@@ -364,16 +353,15 @@ cpp_concat(struct list_head *point, struct dynstr *ds, struct dynstr *prevtok,
 	    (nested = findmacro(ds, loc)) &&
 	    nested->isparam) {
 		nested = nested->next;
-		dupds = insert_dup_macro(nested, point);
+		dupds = insert_dup_macro(nested, prevtok->list.next);
 	} else {
 		dupds = dupdynstr(ds);
-		list_add_tail(&dupds->list, point);
+		list_add(&dupds->list, &prevtok->list);
 	}
-	unflag_text_list(dupds, last_dynstr(point));
 
 	struct dynstr *first = last_dynstr(&raw_contents);
 
-	merged = dupconcat(prevtok, dupds);
+	merged = dupmerge(prevtok, dupds);
 	lex_push_state();
 	lex_input_first = lex_input_last = merged;
 	YYSTYPE val; YYLTYPE lloc;
