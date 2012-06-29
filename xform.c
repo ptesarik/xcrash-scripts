@@ -288,12 +288,11 @@ type_split(struct list_head *raw, struct split_node *split)
 	point = olddecl->loc.first.text;
 
 	/* Create a new dynstr chain */
-	lex_dynstr_flags = point->flags;
 	insert_text_list(point, split->newds, split->newds);
-	ds = newdynstr(" ", 1, lex_dynstr_flags);
+	ds = newdynstr(" ", 1, point->flags);
 	list_for_each_entry_safe(type, ntype, &flat_list, user_list) {
 		if (!ds)
-			ds = newdynstr(", ", 2, lex_dynstr_flags);
+			ds = newdynstr(", ", 2, point->flags);
 		insert_text_list(point, ds, ds);
 		ds = NULL;
 
@@ -306,7 +305,7 @@ type_split(struct list_head *raw, struct split_node *split)
 
 		freenode(var);
 	}
-	ds = newdynstr(";", 1, lex_dynstr_flags);
+	ds = newdynstr(";", 1, point->flags);
 	insert_text_list(point, ds, ds);
 
 	/* Create a new parse tree node */
@@ -881,8 +880,8 @@ mkstring_variadic(node_t *node, void *data)
 	node_t *flags = nth_node(&node->child[che_arg2], 3);
 	walk_tree_single(flags, mkstring_typecast, &typecast);
 	if (typecast) {
-		struct dynstr *ds = newdynstr(typecast, strlen(typecast),
-					      lex_dynstr_flags);
+		struct dynstr *ds =
+			newdynstr(typecast, strlen(typecast), arg4->flags);
 		list_add_tail(&ds->list, &arg4->list);
 	}
 
@@ -974,7 +973,6 @@ static node_t *
 replace_printf(node_t *node)
 {
 	struct dynstr *ds = node->str;
-	lex_dynstr_flags = null_dynstr_flags;
 
 	char *start = ds->text;
 	char *p = start;
@@ -991,7 +989,7 @@ replace_printf(node_t *node)
 			/* Re-create prefix string */
 			size_t len = spec - start;
 			struct dynstr *dspfx = newdynstr(NULL, len + 1,
-							 lex_dynstr_flags);
+							 null_dynstr_flags);
 			dspfx->token = STRING_CONST;
 			memcpy(dspfx->text, start, len);
 			dspfx->text[len] = '\"';
@@ -1000,7 +998,7 @@ replace_printf(node_t *node)
 			/* Create the PRI identifier */
 			len = p - spec + 1 + 3;
 			struct dynstr *dspri = newdynstr(NULL, len,
-							 lex_dynstr_flags);
+							 null_dynstr_flags);
 			dspri->token = ID;
 			memcpy(stpcpy(dspri->text, "PRI"), spec, len - 3);
 			list_add_tail(&dspri->list, &point);
@@ -1017,7 +1015,7 @@ replace_printf(node_t *node)
 
 	if (strcmp(start, "\"\"")) {
 		struct dynstr *dslast = newdynstr(start, strlen(start),
-						  lex_dynstr_flags);
+						  null_dynstr_flags);
 		list_add_tail(&dslast->list, &point);
 	}
 
@@ -1208,7 +1206,7 @@ use_pt_regs_x86_64(node_t *node, void *data)
 			struct dynstr *ds =
 				newdynstr(DEF_PT_REGS_X86_64,
 					  strlen(DEF_PT_REGS_X86_64),
-					  lex_dynstr_flags);
+					  null_dynstr_flags);
 			insert_text_list(node->loc.first.text, ds, ds);
 		}
 	}

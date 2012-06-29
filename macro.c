@@ -198,8 +198,7 @@ yyparse_macro(YYLTYPE *loc, const char *name, int hasparam, node_t *cpp_cond)
 				struct dynstr *ds;
 				hm->variadic = 1;
 				ds = newdynstr("__VA_ARGS__", 11,
-					       lex_dynstr_flags);
-				ds->flags.fake = 1;
+					       fake_dynstr_flags);
 				list_add_tail(&ds->list, &raw_contents);
 				var = newvar(loc, ds);
 			} else
