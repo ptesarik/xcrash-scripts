@@ -177,29 +177,54 @@ text_to_fake(struct list_head *dslist, struct macro_exp *newexp)
 	}
 }
 
+static struct dynstr *
+advance_dynstr(struct dynstr *ds, int off)
+{
+	while (off)
+		if (ds->len && --off)
+			ds = next_dynstr(ds);
+	return ds;
+}
+
 int
 replace_node(node_t *node, replace_fn *replace)
 {
-	dynstr_flags_t origflags = node->str->flags;
-	struct macro_exp *origexp = node->str->exp
-		? get_macro_exp(node->str->exp)
-		: NULL;
+	struct dynstr *ds = node->loc.first.text;
+	dynstr_flags_t origflags = ds->flags;
+	struct macro_exp *origexp = ds->exp ? get_macro_exp(ds->exp) : NULL;
 
+	int chainlen = !!ds->len;
+	while (ds != node->loc.last.text) {
+		ds = next_dynstr(ds);
+		if (!ds->len)
+			continue;
+
+		if (ds->flags.val != origflags.val ||
+		    ds->exp != origexp) {
+			fputs("Replacing heterogeneous nodes not"
+			      " implemented.\n", stderr);
+			abort();
+		}
+		++chainlen;
+	}
+
+	ds = node->loc.first.text;
 	struct list_head dupds;
-	list_add(&dupds, &node->str->dup_list);
-	list_del_init(&node->str->dup_list);
+	list_add(&dupds, &ds->dup_list);
+	list_del_init(&ds->dup_list);
 	node = replace(node);
 	if (!node) {
 		list_del(&dupds);
 		return 0;
 	}
 
-	struct dynstr *ds, *dsnext;
+	struct dynstr *dsnext;
 	list_for_each_entry_safe(ds, dsnext, &dupds, dup_list) {
-		struct dynstr *dupds;
+		struct dynstr *dslast, *dupds;
 		node_t *other, *dup;
 
-		other = find_matching_node(ds, ds);
+		dslast = advance_dynstr(ds, chainlen);
+		other = find_matching_node(ds, dslast);
 		if (other) {
 			/* the new node is not a real duplicate, but it
 			 * almost is, so let's reuse dupnode() and adjust
@@ -227,7 +252,8 @@ replace_node(node_t *node, replace_fn *replace)
 			dup->loc.last.text = last_dynstr(&dslist);
 		}
 
-		replace_text_list(ds, ds, first_dynstr(&dslist),
+		replace_text_list(ds, dslast,
+				  first_dynstr(&dslist),
 				  last_dynstr(&dslist));
 	}
 
