@@ -131,6 +131,120 @@ flatten_type(node_t *type, node_t *base)
 }
 
 /************************************************************
+ * Node replacement
+ *
+ */
+
+typedef node_t *replace_fn(node_t *node);
+
+static void
+text_to_macro(struct list_head *dslist, struct macro_exp *newexp)
+{
+	struct dynstr *ds, *dsnext;
+	list_for_each_entry_safe(ds, dsnext, dslist, list) {
+		if (ds->flags.macro) {
+			put_macro_exp(ds->exp);
+			ds->exp = get_macro_exp(newexp);
+		} else if (!ds->flags.fake) {
+			ds->flags.macro = 1;
+			ds->exp = get_macro_exp(newexp);
+		} else
+			remove_text_list(ds, ds);
+	}
+	if (list_empty(dslist)) {
+		ds = newdynstr(NULL, 0, macro_dynstr_flags);
+		list_add_tail(&ds->list, dslist);
+	}
+}
+
+static void
+text_to_fake(struct list_head *dslist, struct macro_exp *newexp)
+{
+	struct dynstr *ds, *dsnext;
+	list_for_each_entry_safe(ds, dsnext, dslist, list) {
+		if (ds->flags.fake) {
+			put_macro_exp(ds->exp);
+			ds->exp = get_macro_exp(newexp);
+		} else if (!ds->flags.macro) {
+			ds->flags.fake = 1;
+			ds->exp = get_macro_exp(newexp);
+		} else
+			remove_text_list(ds, ds);
+	}
+	if (list_empty(dslist)) {
+		ds = newdynstr(NULL, 0, fake_dynstr_flags);
+		list_add_tail(&ds->list, dslist);
+	}
+}
+
+int
+replace_node(node_t *node, replace_fn *replace)
+{
+	dynstr_flags_t origflags = node->str->flags;
+	struct macro_exp *origexp = node->str->exp
+		? get_macro_exp(node->str->exp)
+		: NULL;
+
+	struct list_head dupds;
+	list_add(&dupds, &node->str->dup_list);
+	list_del_init(&node->str->dup_list);
+	node = replace(node);
+	if (!node) {
+		list_del(&dupds);
+		return 0;
+	}
+
+	struct dynstr *ds, *dsnext;
+	list_for_each_entry_safe(ds, dsnext, &dupds, dup_list) {
+		struct dynstr *dupds;
+		node_t *other, *dup;
+
+		other = find_matching_node(ds, ds);
+		if (other) {
+			/* the new node is not a real duplicate, but it
+			 * almost is, so let's reuse dupnode() and adjust
+			 * the node afterwards
+			 */
+			dup = dupnode(node);
+			dup->parent = other->parent;
+			list_del_init(&dup->dup_list);
+			list_add(&dup->list, &other->list);
+			freenode(other);
+		}
+
+		dupds = dup_text_list(node->loc.first.text,
+				      node->loc.last.text);
+
+		struct list_head dslist;
+		list_add_tail(&dslist, &dupds->list);
+		if (ds->flags.macro)
+			text_to_macro(&dslist, ds->exp);
+		else if (ds->flags.fake)
+			text_to_fake(&dslist, ds->exp);
+
+		if (other) {
+			dup->loc.first.text = first_dynstr(&dslist);
+			dup->loc.last.text = last_dynstr(&dslist);
+		}
+
+		replace_text_list(ds, ds, first_dynstr(&dslist),
+				  last_dynstr(&dslist));
+	}
+
+	struct list_head dslist, *point;
+	point = node->loc.first.text->list.prev;
+	detach_text_list(node->loc.first.text, node->loc.last.text);
+	list_add_tail(&dslist, &node->loc.first.text->list);
+	if (origflags.macro)
+		text_to_macro(&dslist, origexp);
+	else if (origflags.fake)
+		text_to_fake(&dslist, origexp);
+	list_splice(&dslist, point);
+
+	return 1;
+}
+
+/************************************************************
  * Type replacements with split declarations
  *
  */
@@ -1024,114 +1138,15 @@ replace_printf(node_t *node)
 	return reparse_node(node, START_EXPR);
 }
 
-static void
-text_to_macro(struct list_head *dslist, struct macro_exp *newexp)
-{
-	struct dynstr *ds, *dsnext;
-	list_for_each_entry_safe(ds, dsnext, dslist, list) {
-		if (ds->flags.macro) {
-			put_macro_exp(ds->exp);
-			ds->exp = get_macro_exp(newexp);
-		} else if (!ds->flags.fake) {
-			ds->flags.macro = 1;
-			ds->exp = get_macro_exp(newexp);
-		} else
-			remove_text_list(ds, ds);
-	}
-	if (list_empty(dslist)) {
-		ds = newdynstr(NULL, 0, macro_dynstr_flags);
-		list_add_tail(&ds->list, dslist);
-	}
-}
-
-static void
-text_to_fake(struct list_head *dslist, struct macro_exp *newexp)
-{
-	struct dynstr *ds, *dsnext;
-	list_for_each_entry_safe(ds, dsnext, dslist, list) {
-		if (ds->flags.fake) {
-			put_macro_exp(ds->exp);
-			ds->exp = get_macro_exp(newexp);
-		} else if (!ds->flags.macro) {
-			ds->flags.fake = 1;
-			ds->exp = get_macro_exp(newexp);
-		} else
-			remove_text_list(ds, ds);
-	}
-	if (list_empty(dslist)) {
-		ds = newdynstr(NULL, 0, fake_dynstr_flags);
-		list_add_tail(&ds->list, dslist);
-	}
-}
-
 static enum walk_action
 printf_spec_one(node_t *node, void *data)
 {
 	if (node->type != nt_expr || node->e.op != STRING_CONST)
 		return walk_continue;
 
-	dynstr_flags_t origflags = node->str->flags;
-	struct macro_exp *origexp = node->str->exp
-		? get_macro_exp(node->str->exp)
-		: NULL;
-
-	struct list_head dupds;
-	list_add(&dupds, &node->str->dup_list);
-	list_del_init(&node->str->dup_list);
-	node = replace_printf(node);
-	if (!node) {
-		list_del(&dupds);
-		return walk_continue;
-	}
-
-	struct dynstr *ds, *dsnext;
-	list_for_each_entry_safe(ds, dsnext, &dupds, dup_list) {
-		struct dynstr *dupds;
-		node_t *other, *dup;
-
-		other = find_matching_node(ds, ds);
-		if (other) {
-			/* the new node is not a real duplicate, but it
-			 * almost is, so let's reuse dupnode() and adjust
-			 * the node afterwards
-			 */
-			dup = dupnode(node);
-			dup->parent = other->parent;
-			list_del_init(&dup->dup_list);
-			list_add(&dup->list, &other->list);
-			freenode(other);
-		}
-
-		dupds = dup_text_list(node->loc.first.text,
-				      node->loc.last.text);
-
-		struct list_head dslist;
-		list_add_tail(&dslist, &dupds->list);
-		if (ds->flags.macro)
-			text_to_macro(&dslist, ds->exp);
-		else if (ds->flags.fake)
-			text_to_fake(&dslist, ds->exp);
-
-		if (other) {
-			dup->loc.first.text = first_dynstr(&dslist);
-			dup->loc.last.text = last_dynstr(&dslist);
-		}
-
-		replace_text_list(ds, ds, first_dynstr(&dslist),
-				  last_dynstr(&dslist));
-	}
-
-	struct list_head dslist, *point;
-	point = node->loc.first.text->list.prev;
-	detach_text_list(node->loc.first.text, node->loc.last.text);
-	list_add_tail(&dslist, &node->loc.first.text->list);
-	if (origflags.macro)
-		text_to_macro(&dslist, origexp);
-	else if (origflags.fake)
-		text_to_fake(&dslist, origexp);
-	list_splice(&dslist, point);
-
-	return walk_continue;
+	return replace_node(node, replace_printf)
+		? walk_skip_children
+		: walk_continue;
 }
 
 static enum walk_action
