@@ -99,7 +99,7 @@ static void hidedecls(struct list_head *);
 %token <token> SWITCH TYPEDEF TYPEOF UNION VOLATILE WHILE
 
 /* basic types */
-%token <btype> BASIC_TYPE
+%token <token> VOID SIGNED UNSIGNED CHAR SHORT INT LONG FLOAT DOUBLE	
 
 /* constants */
 %token <str> INT_CONST FLOAT_CONST CHAR_CONST STRING_CONST
@@ -132,6 +132,7 @@ static void hidedecls(struct list_head *);
 %type <token> struct_or_union
 
 %type <tflags> storage_class_spec type_qualifier type_qualifier_list
+%type <btype> basic_type
 
 %type <str> id_or_typeid
 
@@ -389,13 +390,13 @@ type_spec		: basic_type_list
 			| enum_spec
 			;
 
-basic_type_list		: BASIC_TYPE
+basic_type_list		: basic_type
 			{
 				$$ = newtype_name(&@$, @1.first.text);
 				$$->t.category = type_basic;
 				$$->t.btype = $1;
 			}
-			| basic_type_list BASIC_TYPE
+			| basic_type_list basic_type
 			{
 				$$ = $1;
 				/* "long" can be repeated */
@@ -405,6 +406,26 @@ basic_type_list		: BASIC_TYPE
 				$$->t.btype |= $2;
 				set_node_last($$, @2.last.text);
 			}
+			;
+
+basic_type		: VOID
+			{ $$ = TYPE_VOID; }
+			| SIGNED
+			{ $$ = TYPE_SIGNED; }
+			| UNSIGNED
+			{ $$ = TYPE_UNSIGNED; }
+			| CHAR
+			{ $$ = TYPE_CHAR; }
+			| SHORT
+			{ $$ = TYPE_SHORT; }
+			| INT
+			{ $$ = TYPE_INT; }
+			| LONG
+			{ $$ = TYPE_LONG; }
+			| FLOAT
+			{ $$ = TYPE_FLOAT; }
+			| DOUBLE
+			{ $$ = TYPE_DOUBLE; }
 			;
 
 typedef_name		: TYPEID

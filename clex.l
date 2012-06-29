@@ -49,11 +49,9 @@ static void cleanup_vars(void);
 
 static int store_token_notext(YYSTYPE *, YYLTYPE *, int);
 static int store_token(YYSTYPE *, YYLTYPE *, int, const char *);
-static int store_btype(YYSTYPE *, YYLTYPE *, int, const char *);
 
 #define STORE_TOKEN_NOTEXT(tok)	(store_token_notext(val, loc, (tok)))
 #define STORE_TOKEN(tok)	(store_token(val, loc, (tok), yytext))
-#define STORE_BTYPE(btype)	(store_btype(val, loc, (btype), yytext))
 
 static size_t dynstr_read(void *, size_t);
 static int parse_cpp(YYLTYPE *loc);
@@ -316,15 +314,15 @@ CPP			("#"|"%:"){WS}*
 "volatile"		return STORE_TOKEN(VOLATILE);
 "while"			return STORE_TOKEN(WHILE);
 
-"char"			return STORE_BTYPE(TYPE_CHAR);
-"double"		return STORE_BTYPE(TYPE_DOUBLE);
-"int"			return STORE_BTYPE(TYPE_INT);
-"float"			return STORE_BTYPE(TYPE_FLOAT);
-"long"			return STORE_BTYPE(TYPE_LONG);
-"short"			return STORE_BTYPE(TYPE_SHORT);
-"signed"		return STORE_BTYPE(TYPE_SIGNED);
-"unsigned"		return STORE_BTYPE(TYPE_UNSIGNED);
-"void"			return STORE_BTYPE(TYPE_VOID);
+"char"			return STORE_TOKEN(CHAR);
+"double"		return STORE_TOKEN(DOUBLE);
+"int"			return STORE_TOKEN(INT);
+"float"			return STORE_TOKEN(FLOAT);
+"long"			return STORE_TOKEN(LONG);
+"short"			return STORE_TOKEN(SHORT);
+"signed"		return STORE_TOKEN(SIGNED);
+"unsigned"		return STORE_TOKEN(UNSIGNED);
+"void"			return STORE_TOKEN(VOID);
 
 {L}({L}|{D})*		{
 		int ret = STORE_TOKEN(ID);
@@ -675,7 +673,7 @@ store_token_notext(YYSTYPE *val, YYLTYPE *loc, int token)
 	    token == INT_CONST || token == FLOAT_CONST ||
 	    token == CHAR_CONST || token == STRING_CONST)
 		val->str = loc->first.text;
-	else if (token != BASIC_TYPE)
+	else
 		val->token = token;
 	loc->last.text->token = token;
 
@@ -689,13 +687,6 @@ store_token(YYSTYPE *val, YYLTYPE *loc, int token, const char *text)
 {
 	store_yytext(loc, text, 0);
 	return store_token_notext(val, loc, token);
-}
-
-static int
-store_btype(YYSTYPE *val, YYLTYPE *loc, int btype, const char *text)
-{
-	val->btype = btype;
-	return store_token(val, loc, BASIC_TYPE, text);
 }
 
 static inline size_t
