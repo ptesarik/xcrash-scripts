@@ -1030,11 +1030,11 @@ get_read_fn(node_t *type)
 	return NULL;
 }
 
-static int
+static enum walk_action
 convert_readmem(node_t *node, void *data)
 {
 	if (!is_direct_call(node, "readmem"))
-		return 0;
+		return walk_continue;
 
 	node_t *arg = nth_node(&node->child[che_arg2], 4);
 	assert(arg->type == nt_expr);
@@ -1052,14 +1052,14 @@ convert_readmem(node_t *node, void *data)
 			size = arg2;
 		} else
 			/* not a recognized format */
-			return 0;
+			return walk_continue;
 	} else if (arg->e.op != SIZEOF_TYPE)
-		return 0;
+		return walk_continue;
 
 	/* Replace the function name */
 	char *newfn = get_read_fn(first_node(&size->child[che_arg1]));
 	if (!newfn)
-		return 0;
+		return walk_continue;
 	replace_node_str(first_node(&node->child[che_arg1]), newfn);
 
 	/* Replace the 4th argument */
@@ -1075,7 +1075,7 @@ convert_readmem(node_t *node, void *data)
 	}
 
 	reparse_node(node, START_EXPR);
-	return 0;
+	return walk_continue;
 }
 
 /************************************************************
