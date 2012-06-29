@@ -974,7 +974,7 @@ static node_t *
 replace_printf(node_t *node)
 {
 	struct dynstr *ds = node->str;
-	lex_dynstr_flags = ds->flags;
+	lex_dynstr_flags = null_dynstr_flags;
 
 	char *start = ds->text;
 	char *p = start;
@@ -1027,13 +1027,43 @@ replace_printf(node_t *node)
 }
 
 static void
-set_text_list_flags(struct dynstr *first, struct dynstr *last,
-		    dynstr_flags_t flags)
+text_to_macro(struct list_head *dslist, struct macro_exp *newexp)
 {
-	do {
-		first->flags = flags;
-		first = next_dynstr(first);
-	} while (&first->list != last->list.next);
+	struct dynstr *ds, *dsnext;
+	list_for_each_entry_safe(ds, dsnext, dslist, list) {
+		if (ds->flags.macro) {
+			put_macro_exp(ds->exp);
+			ds->exp = get_macro_exp(newexp);
+		} else if (!ds->flags.fake) {
+			ds->flags.macro = 1;
+			ds->exp = get_macro_exp(newexp);
+		} else
+			remove_text_list(ds, ds);
+	}
+	if (list_empty(dslist)) {
+		ds = newdynstr(NULL, 0, macro_dynstr_flags);
+		list_add_tail(&ds->list, dslist);
+	}
+}
+
+static void
+text_to_fake(struct list_head *dslist, struct macro_exp *newexp)
+{
+	struct dynstr *ds, *dsnext;
+	list_for_each_entry_safe(ds, dsnext, dslist, list) {
+		if (ds->flags.fake) {
+			put_macro_exp(ds->exp);
+			ds->exp = get_macro_exp(newexp);
+		} else if (!ds->flags.macro) {
+			ds->flags.fake = 1;
+			ds->exp = get_macro_exp(newexp);
+		} else
+			remove_text_list(ds, ds);
+	}
+	if (list_empty(dslist)) {
+		ds = newdynstr(NULL, 0, fake_dynstr_flags);
+		list_add_tail(&ds->list, dslist);
+	}
 }
 
 static enum walk_action
@@ -1041,6 +1071,11 @@ printf_spec_one(node_t *node, void *data)
 {
 	if (node->type != nt_expr || node->e.op != STRING_CONST)
 		return walk_continue;
+
+	dynstr_flags_t origflags = node->str->flags;
+	struct macro_exp *origexp = node->str->exp
+		? get_macro_exp(node->str->exp)
+		: NULL;
 
 	struct list_head dupds;
 	list_add(&dupds, &node->str->dup_list);
@@ -1071,14 +1106,32 @@ printf_spec_one(node_t *node, void *data)
 
 		dupds = dup_text_list(node->loc.first.text,
 				      node->loc.last.text);
-		set_text_list_flags(dupds, prev_dynstr(dupds), ds->flags);
+
+		struct list_head dslist;
+		list_add_tail(&dslist, &dupds->list);
+		if (ds->flags.macro)
+			text_to_macro(&dslist, ds->exp);
+		else if (ds->flags.fake)
+			text_to_fake(&dslist, ds->exp);
+
 		if (other) {
-			dup->loc.first.text = dupds;
-			dup->loc.last.text = prev_dynstr(dupds);
+			dup->loc.first.text = first_dynstr(&dslist);
+			dup->loc.last.text = last_dynstr(&dslist);
 		}
 
-		replace_text_list(ds, ds, dupds, prev_dynstr(dupds));
+		replace_text_list(ds, ds, first_dynstr(&dslist),
+				  last_dynstr(&dslist));
 	}
+
+	struct list_head dslist, *point;
+	point = node->loc.first.text->list.prev;
+	detach_text_list(node->loc.first.text, node->loc.last.text);
+	list_add_tail(&dslist, &node->loc.first.text->list);
+	if (origflags.macro)
+		text_to_macro(&dslist, origexp);
+	else if (origflags.fake)
+		text_to_fake(&dslist, origexp);
+	list_splice(&dslist, point);
 
 	return walk_continue;
 }

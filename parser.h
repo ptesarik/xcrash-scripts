@@ -17,6 +17,8 @@ typedef union {
 } dynstr_flags_t;
 
 #define null_dynstr_flags	((dynstr_flags_t) {})
+#define fake_dynstr_flags	((dynstr_flags_t) {{.fake=1}})
+#define macro_dynstr_flags	((dynstr_flags_t) {{.macro=1}})
 
 /* Stored file contents */
 struct macro_exp;
