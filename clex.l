@@ -652,6 +652,10 @@ store_yytext(YYLTYPE *loc, const char *s, int extend)
 	int len;
 
 	if (!extend) {
+		struct dynstr *ds = last_dynstr(&raw_contents);
+		if (&ds->list != &raw_contents && ds->alloc > ds->len + 1)
+			realloc_dynstr(ds, ds->len + 1);
+
 		loc->first = loc->last;
 		loc->first.text = NULL;
 	}
